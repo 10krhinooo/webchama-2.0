@@ -1,6 +1,9 @@
 package org.chama.rest;
 
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -15,13 +18,18 @@ import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.service.KeycloakAdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class MemberResourceTest {
@@ -38,10 +46,22 @@ class MemberResourceTest {
     @Inject
     ContributionRepository contributionRepository;
 
+    @InjectMock
+    KeycloakAdminService keycloakAdminService;
+
+    @Inject
+    MockMailbox mailbox;
+
     private Long chamaId;
 
     @BeforeEach
-    void seed() {
+    void seed() throws Exception {
+        mailbox.clear();
+        Mockito.when(keycloakAdminService.findUserByEmail(Mockito.anyString())).thenReturn(null);
+        Mockito.when(keycloakAdminService.generateTempPassword()).thenReturn("Temp1234!");
+        Mockito.when(keycloakAdminService.createUser(Mockito.anyString(), Mockito.anyString(), Mockito.anyString()))
+            .thenReturn("kc-generated-id");
+
         QuarkusTransaction.requiringNew().run(() -> {
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
@@ -76,7 +96,7 @@ class MemberResourceTest {
     @TestSecurity(user = "chair-1")
     void chairpersonCanAddUpdateAndRemoveAMember() {
         String createBody = """
-            {"keycloakUserId":"new-member","fullName":"New Member","phone":"254700000002","roles":["MEMBER"]}
+            {"email":"new.member@example.com","fullName":"New Member","phone":"254700000002","roles":["MEMBER"]}
             """;
         int memberId = given()
             .contentType("application/json")
@@ -84,11 +104,12 @@ class MemberResourceTest {
             .when().post("/api/chamas/{chamaId}/members", chamaId)
             .then()
                 .statusCode(201)
-                .body("fullName", equalTo("New Member"))
-                .extract().path("id");
+                .body("member.fullName", equalTo("New Member"))
+                .body("temporaryPassword", equalTo("Temp1234!"))
+                .extract().path("member.id");
 
         String updateBody = """
-            {"keycloakUserId":"new-member","fullName":"Updated Name","phone":"254700000003","roles":["SECRETARY"]}
+            {"fullName":"Updated Name","phone":"254700000003","roles":["SECRETARY"]}
             """;
         given()
             .contentType("application/json")
@@ -106,5 +127,154 @@ class MemberResourceTest {
         given()
             .when().get("/api/chamas/{chamaId}/members/{id}", chamaId, memberId)
             .then().statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void sendsACredentialEmailWhenANewAccountIsProvisioned() {
+        String createBody = """
+            {"email":"emailed.member@example.com","fullName":"Emailed Member","phone":"254700000008","roles":["MEMBER"]}
+            """;
+        given()
+            .contentType("application/json")
+            .body(createBody)
+            .when().post("/api/chamas/{chamaId}/members", chamaId)
+            .then().statusCode(201);
+
+        List<Mail> sent = mailbox.getMailsSentTo("emailed.member@example.com");
+        assertEquals(1, sent.size());
+        Mail mail = sent.get(0);
+        assertEquals("Your Webchama account is ready", mail.getSubject());
+        assertTrue(mail.getHtml().contains("Emailed"));
+        assertTrue(mail.getHtml().contains("Temp1234!"));
+        assertTrue(mail.getHtml().contains("emailed.member@example.com"));
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void doesNotSendACredentialEmailWhenReusingAnExistingAccount() throws Exception {
+        Mockito.when(keycloakAdminService.findUserByEmail("no.new.email@example.com")).thenReturn("kc-existing-id");
+
+        String createBody = """
+            {"email":"no.new.email@example.com","fullName":"No New Email","phone":"254700000009","roles":["MEMBER"]}
+            """;
+        given()
+            .contentType("application/json")
+            .body(createBody)
+            .when().post("/api/chamas/{chamaId}/members", chamaId)
+            .then().statusCode(201);
+
+        assertEquals(0, mailbox.getMailsSentTo("no.new.email@example.com").size());
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void mineReturnsTheCallersOwnMemberRow() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/mine", chamaId)
+            .then()
+                .statusCode(200)
+                .body("fullName", equalTo("Chair One"))
+                .body("roles[0]", equalTo("CHAIRPERSON"));
+    }
+
+    @Test
+    @TestSecurity(user = "not-a-member")
+    void mineReturns404ForSomeoneWithNoMemberRowInThisChama() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/mine", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void chairpersonCanSuspendAndReactivateAMember() {
+        String createBody = """
+            {"email":"status.member@example.com","fullName":"Status Member","phone":"254700000004","roles":["MEMBER"]}
+            """;
+        int memberId = given()
+            .contentType("application/json")
+            .body(createBody)
+            .when().post("/api/chamas/{chamaId}/members", chamaId)
+            .then()
+                .statusCode(201)
+                .extract().path("member.id");
+
+        given()
+            .contentType("application/json")
+            .body("{\"status\":\"SUSPENDED\"}")
+            .when().put("/api/chamas/{chamaId}/members/{id}/status", chamaId, memberId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("SUSPENDED"));
+
+        given()
+            .contentType("application/json")
+            .body("{\"status\":\"ACTIVE\"}")
+            .when().put("/api/chamas/{chamaId}/members/{id}/status", chamaId, memberId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("ACTIVE"));
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void invitingAnEmailThatAlreadyHasAKeycloakAccountReusesItWithoutANewPassword() throws Exception {
+        Mockito.when(keycloakAdminService.findUserByEmail("existing@example.com")).thenReturn("kc-existing-id");
+
+        String createBody = """
+            {"email":"existing@example.com","fullName":"Existing Person","phone":"254700000006","roles":["MEMBER"]}
+            """;
+        given()
+            .contentType("application/json")
+            .body(createBody)
+            .when().post("/api/chamas/{chamaId}/members", chamaId)
+            .then()
+                .statusCode(201)
+                .body("member.fullName", equalTo("Existing Person"))
+                .body("temporaryPassword", equalTo(null));
+
+        Mockito.verify(keycloakAdminService, Mockito.never()).createUser(Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void surfacesAFriendlyErrorWhenKeycloakProvisioningFails() throws Exception {
+        Mockito.when(keycloakAdminService.findUserByEmail(Mockito.anyString()))
+            .thenThrow(new RuntimeException("Keycloak unreachable"));
+
+        String createBody = """
+            {"email":"broken@example.com","fullName":"Broken Person","phone":"254700000007","roles":["MEMBER"]}
+            """;
+        given()
+            .contentType("application/json")
+            .body(createBody)
+            .when().post("/api/chamas/{chamaId}/members", chamaId)
+            .then()
+                .statusCode(502)
+                .body("userMessage", equalTo("Could not create the member's account right now. Try again shortly."));
+    }
+
+    @Test
+    @TestSecurity(user = "new-member")
+    void aPlainMemberCannotChangeAnotherMembersStatus() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            Member plain = new Member();
+            plain.chama = chamaRepository.findById(chamaId);
+            plain.keycloakUserId = "new-member";
+            plain.fullName = "Plain Member";
+            plain.phone = "254700000005";
+            memberRepository.persist(plain);
+            MemberRole role = new MemberRole();
+            role.member = plain;
+            role.role = MemberRoleType.MEMBER;
+            role.persist();
+        });
+
+        given()
+            .contentType("application/json")
+            .body("{\"status\":\"SUSPENDED\"}")
+            .when().put("/api/chamas/{chamaId}/members/{id}/status", chamaId, 999999)
+            .then().statusCode(403);
     }
 }

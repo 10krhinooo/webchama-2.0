@@ -9,6 +9,7 @@ import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.dto.CreateChamaDto;
+import org.chama.dto.UpdateChamaDto;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.MemberRepository;
@@ -75,7 +76,7 @@ public class ChamaService {
     }
 
     @Transactional
-    public Chama update(Long id, CreateChamaDto dto) {
+    public Chama update(Long id, UpdateChamaDto dto) {
         Chama chama = get(id);
         chama.name = dto.name();
         chama.description = dto.description();

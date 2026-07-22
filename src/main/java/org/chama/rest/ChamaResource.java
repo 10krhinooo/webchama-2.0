@@ -16,6 +16,7 @@ import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.ChamaDto;
 import org.chama.dto.CreateChamaDto;
+import org.chama.dto.UpdateChamaDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
 import org.chama.service.ChamaService;
@@ -57,7 +58,7 @@ public class ChamaResource {
 
     @PUT
     @Path("/{id}")
-    public ChamaDto update(@PathParam("id") Long id, @Valid CreateChamaDto dto) {
+    public ChamaDto update(@PathParam("id") Long id, @Valid UpdateChamaDto dto) {
         tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON);
         return ChamaDto.from(chamaService.update(id, dto));
     }

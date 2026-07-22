@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -16,6 +17,9 @@ import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.CreateMemberDto;
 import org.chama.dto.MemberDto;
+import org.chama.dto.MemberInvitationDto;
+import org.chama.dto.UpdateMemberDto;
+import org.chama.dto.UpdateMemberStatusDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
 import org.chama.service.MemberService;
@@ -46,6 +50,14 @@ public class MemberResource {
     }
 
     @GET
+    @Path("/mine")
+    public MemberDto mine(@PathParam("chamaId") Long chamaId) {
+        tenantAccessService.requireMembership(currentUser, chamaId);
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(NotFoundException::new);
+        return MemberDto.from(member, memberService.rolesOf(member.id));
+    }
+
+    @GET
     @Path("/{id}")
     public MemberDto get(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
         tenantAccessService.requireMembership(currentUser, chamaId);
@@ -56,17 +68,26 @@ public class MemberResource {
     @POST
     public Response create(@PathParam("chamaId") Long chamaId, @Valid CreateMemberDto dto) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
-        var member = memberService.create(chamaId, dto);
+        var result = memberService.create(chamaId, dto);
+        var member = result.member();
         return Response.status(Response.Status.CREATED)
-            .entity(MemberDto.from(member, memberService.rolesOf(member.id)))
+            .entity(new MemberInvitationDto(MemberDto.from(member, memberService.rolesOf(member.id)), result.temporaryPassword()))
             .build();
     }
 
     @PUT
     @Path("/{id}")
-    public MemberDto update(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id, @Valid CreateMemberDto dto) {
+    public MemberDto update(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id, @Valid UpdateMemberDto dto) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
         var member = memberService.update(chamaId, id, dto);
+        return MemberDto.from(member, memberService.rolesOf(member.id));
+    }
+
+    @PUT
+    @Path("/{id}/status")
+    public MemberDto updateStatus(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id, @Valid UpdateMemberStatusDto dto) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
+        var member = memberService.updateStatus(chamaId, id, dto.status());
         return MemberDto.from(member, memberService.rolesOf(member.id));
     }
 

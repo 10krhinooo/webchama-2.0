@@ -25,11 +25,10 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
 /**
- * The tenant-isolation regression suite from MIGRATION_PLAN.md section 7:
- * a member or even a chairperson of one chama must never be able to read or
- * write another chama's data by guessing its ID, and a caller's chama-scoped
- * role must be resolved per chama, not trusted from a single realm-wide
- * assumption.
+ * The tenant-isolation regression suite: a member or even a chairperson of
+ * one chama must never be able to read or write another chama's data by
+ * guessing its ID, and a caller's chama-scoped role must be resolved per
+ * chama, not trusted from a single realm-wide assumption.
  */
 @QuarkusTest
 class TenantIsolationTest {
@@ -162,7 +161,7 @@ class TenantIsolationTest {
     @TestSecurity(user = "user-member-a")
     void plainMemberCannotAddMembers() {
         var body = """
-            {"keycloakUserId":"intruder","fullName":"Intruder","phone":"254700000099","roles":["MEMBER"]}
+            {"email":"intruder@example.com","fullName":"Intruder","phone":"254700000099","roles":["MEMBER"]}
             """;
         given()
             .contentType("application/json")
