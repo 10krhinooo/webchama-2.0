@@ -30,8 +30,7 @@ public class Contribution extends PanacheEntityBase {
     public Long id;
 
     // Denormalized alongside member.chama_id so tenant-scoping queries can
-    // filter on chama_id directly without an extra join, matching the
-    // DondooHomes convention of carrying the tenant key on child tables.
+    // filter on chama_id directly without an extra join.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chama_id", nullable = false)
     public Chama chama;

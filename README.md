@@ -1,13 +1,8 @@
-# Webchama 2.0
+# Webchama
 
-Chama savings and table banking platform, rewritten on Quarkus, React, PostgreSQL and Keycloak. This is a
-from scratch rewrite of `web-chama` (a Laravel and Filament prototype), built on the same stack as the
-`dondooHomes` project.
+Chama savings and table banking platform, built on Quarkus, React, PostgreSQL and Keycloak.
 
-The full plan (domain model, roles, payments, security review, and standout features) lives in a local
-`MIGRATION_PLAN.md` that is intentionally not tracked in this repository, ask the project owner for a copy
-if you need it. See the GitHub project board for phase by phase issues:
-https://github.com/users/10krhinooo/projects/3
+See the GitHub project board for phase by phase issues: https://github.com/users/10krhinooo/projects/3
 
 ## Tech stack
 
@@ -17,7 +12,7 @@ https://github.com/users/10krhinooo/projects/3
 | Frontend | React 19 + Vite + TypeScript + Tailwind CSS 3 (`frontend/`) |
 | Database | PostgreSQL 16 via Flyway migrations |
 | Auth | Keycloak 24 OIDC, realm `chama`, roles: SUPER_ADMIN, CHAIRPERSON, TREASURER, SECRETARY, MEMBER |
-| Payments | M-Pesa Daraja STK Push and B2C payout, Flutterwave card payments (planned) |
+| Payments | M-Pesa Daraja STK Push and Flutterwave card payments (backend), B2C payout (planned) |
 | CI | GitHub Actions, backend and frontend each gated at 90 percent test coverage |
 
 ## Getting started
@@ -64,5 +59,8 @@ closes. Commit messages follow the Conventional Commits format (for example `fea
 
 ## Project status
 
-Phase 1 (project scaffold) is complete. See the project board for current progress and the local
-`MIGRATION_PLAN.md` for the full phase breakdown.
+Phase 1 (project scaffold, CI/CD gate, design system and public homepage) and Phase 2 (core domain
+model: chama, member, contribution, tenant-scoped auth, admin CRUD UI) are complete. Phase 3 backend
+(M-Pesa STK push and Flutterwave card payments for contributions) is merged, with the M-Pesa
+confirmation-gate modal on the frontend. Card payment frontend and the branded Keycloak login theme
+are not built yet. See the project board for phase by phase progress.

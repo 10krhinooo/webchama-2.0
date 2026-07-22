@@ -23,12 +23,12 @@ import java.util.function.Predicate;
 
 /**
  * Simple in-memory, per-IP rate limiter for money-moving endpoints (STK push / card checkout
- * initiation) and payment provider webhooks, ported from DondooHomes' RateLimitFilter. Chama
- * payment endpoints are nested under a variable chamaId/contributionId path
- * (/api/chamas/{chamaId}/contributions/{id}/pay/mpesa), so matching is by path-suffix predicate
- * rather than DondooHomes' fixed-prefix map. Single Quarkus instance, no distributed
- * cache/redis, so this is deliberately a fixed-window in-memory counter, not a token-bucket or
- * sliding-log scheme, good enough for abuse containment, not perfect burst smoothing.
+ * initiation) and payment provider webhooks. Chama payment endpoints are nested under a
+ * variable chamaId/contributionId path (/api/chamas/{chamaId}/contributions/{id}/pay/mpesa),
+ * so matching is by path-suffix predicate rather than a fixed-prefix map. Single Quarkus
+ * instance, no distributed cache/redis, so this is deliberately a fixed-window in-memory
+ * counter, not a token-bucket or sliding-log scheme, good enough for abuse containment, not
+ * perfect burst smoothing.
  */
 @Provider
 @PreMatching
