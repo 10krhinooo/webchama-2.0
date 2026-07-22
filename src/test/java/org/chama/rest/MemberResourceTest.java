@@ -88,7 +88,7 @@ class MemberResourceTest {
                 .extract().path("id");
 
         String updateBody = """
-            {"keycloakUserId":"new-member","fullName":"Updated Name","phone":"254700000003","roles":["SECRETARY"]}
+            {"fullName":"Updated Name","phone":"254700000003","roles":["SECRETARY"]}
             """;
         given()
             .contentType("application/json")
@@ -106,5 +106,78 @@ class MemberResourceTest {
         given()
             .when().get("/api/chamas/{chamaId}/members/{id}", chamaId, memberId)
             .then().statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void mineReturnsTheCallersOwnMemberRow() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/mine", chamaId)
+            .then()
+                .statusCode(200)
+                .body("fullName", equalTo("Chair One"))
+                .body("roles[0]", equalTo("CHAIRPERSON"));
+    }
+
+    @Test
+    @TestSecurity(user = "not-a-member")
+    void mineReturns404ForSomeoneWithNoMemberRowInThisChama() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/mine", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void chairpersonCanSuspendAndReactivateAMember() {
+        String createBody = """
+            {"keycloakUserId":"status-member","fullName":"Status Member","phone":"254700000004","roles":["MEMBER"]}
+            """;
+        int memberId = given()
+            .contentType("application/json")
+            .body(createBody)
+            .when().post("/api/chamas/{chamaId}/members", chamaId)
+            .then()
+                .statusCode(201)
+                .extract().path("id");
+
+        given()
+            .contentType("application/json")
+            .body("{\"status\":\"SUSPENDED\"}")
+            .when().put("/api/chamas/{chamaId}/members/{id}/status", chamaId, memberId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("SUSPENDED"));
+
+        given()
+            .contentType("application/json")
+            .body("{\"status\":\"ACTIVE\"}")
+            .when().put("/api/chamas/{chamaId}/members/{id}/status", chamaId, memberId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("ACTIVE"));
+    }
+
+    @Test
+    @TestSecurity(user = "new-member")
+    void aPlainMemberCannotChangeAnotherMembersStatus() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            Member plain = new Member();
+            plain.chama = chamaRepository.findById(chamaId);
+            plain.keycloakUserId = "new-member";
+            plain.fullName = "Plain Member";
+            plain.phone = "254700000005";
+            memberRepository.persist(plain);
+            MemberRole role = new MemberRole();
+            role.member = plain;
+            role.role = MemberRoleType.MEMBER;
+            role.persist();
+        });
+
+        given()
+            .contentType("application/json")
+            .body("{\"status\":\"SUSPENDED\"}")
+            .when().put("/api/chamas/{chamaId}/members/{id}/status", chamaId, 999999)
+            .then().statusCode(403);
     }
 }

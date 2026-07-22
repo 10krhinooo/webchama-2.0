@@ -20,6 +20,7 @@
     "lucide-react": "^1.25.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-international-phone": "^4.8.0",
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {

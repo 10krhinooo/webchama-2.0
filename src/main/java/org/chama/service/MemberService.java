@@ -7,6 +7,7 @@ import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.dto.CreateMemberDto;
+import org.chama.dto.UpdateMemberDto;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 
@@ -61,7 +62,7 @@ public class MemberService {
     }
 
     @Transactional
-    public Member update(Long chamaId, Long memberId, CreateMemberDto dto) {
+    public Member update(Long chamaId, Long memberId, UpdateMemberDto dto) {
         Member member = get(chamaId, memberId);
         member.fullName = dto.fullName();
         member.phone = dto.phone();
@@ -75,6 +76,13 @@ public class MemberService {
             role.role = roleType;
             role.persist();
         }
+        return member;
+    }
+
+    @Transactional
+    public Member updateStatus(Long chamaId, Long memberId, org.chama.domain.enums.MemberStatus status) {
+        Member member = get(chamaId, memberId);
+        member.status = status;
         return member;
     }
 

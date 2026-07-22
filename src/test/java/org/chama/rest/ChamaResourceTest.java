@@ -75,7 +75,7 @@ class ChamaResourceTest {
 
         var updateBody = """
             {"name":"Renamed Chama","type":"TABLE_BANKING","contributionFrequency":"WEEKLY",
-             "contributionAmount":250,"creatorFullName":"x","creatorPhone":"x"}
+             "contributionAmount":250}
             """;
         given()
             .contentType("application/json")
