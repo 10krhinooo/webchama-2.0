@@ -16,6 +16,7 @@ import {
   createContribution,
   recordPayment,
   deleteContribution,
+  payContributionWithMpesa,
   type CreateContributionRequest,
 } from './contributions'
 
@@ -67,5 +68,12 @@ describe('contributions api', () => {
     mockDelete.mockResolvedValue({})
     await deleteContribution(3, 4)
     expect(mockDelete).toHaveBeenCalledWith('/chamas/3/contributions/4')
+  })
+
+  it('payContributionWithMpesa posts to the pay/mpesa endpoint with no body', async () => {
+    mockPost.mockResolvedValue({ data: { id: 9, status: 'PENDING', providerReference: 'ws_CO_1' } })
+    const result = await payContributionWithMpesa(3, 4)
+    expect(mockPost).toHaveBeenCalledWith('/chamas/3/contributions/4/pay/mpesa')
+    expect(result).toEqual({ id: 9, status: 'PENDING', providerReference: 'ws_CO_1' })
   })
 })

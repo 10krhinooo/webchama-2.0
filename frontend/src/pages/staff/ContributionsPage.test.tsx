@@ -9,6 +9,7 @@ vi.mock('../../api/contributions', () => ({
   createContribution: vi.fn(),
   recordPayment: vi.fn(),
   deleteContribution: vi.fn(),
+  payContributionWithMpesa: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
@@ -23,6 +24,7 @@ import {
   createContribution,
   recordPayment,
   deleteContribution,
+  payContributionWithMpesa,
 } from '../../api/contributions'
 import { getMembers } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -32,6 +34,7 @@ const mockGetMyContributions = getMyContributions as ReturnType<typeof vi.fn>
 const mockCreateContribution = createContribution as ReturnType<typeof vi.fn>
 const mockRecordPayment = recordPayment as ReturnType<typeof vi.fn>
 const mockDeleteContribution = deleteContribution as ReturnType<typeof vi.fn>
+const mockPayContributionWithMpesa = payContributionWithMpesa as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
@@ -210,5 +213,93 @@ describe('ContributionsPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Delete'))
     expect(mockDeleteContribution).not.toHaveBeenCalled()
+  })
+
+  it('shows the M-Pesa confirmation modal with amount and phone before sending a push', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      member: { phone: '254700000002' },
+      loading: false,
+    })
+    mockGetMyContributions.mockResolvedValue([{ ...contribution, amountDue: 500, amountPaid: 200 }])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Pay via M-Pesa')).toBeTruthy())
+    fireEvent.click(screen.getByText('Pay via M-Pesa'))
+
+    expect(screen.getByText('Confirm M-Pesa Payment')).toBeTruthy()
+    expect(screen.getByText('KES 300')).toBeTruthy()
+    expect(screen.getByText('To 254700000002')).toBeTruthy()
+    expect(mockPayContributionWithMpesa).not.toHaveBeenCalled()
+  })
+
+  it('sends the STK push only after the member confirms', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      member: { phone: '254700000002' },
+      loading: false,
+    })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockPayContributionWithMpesa.mockResolvedValue({ ...contribution, status: 'PENDING' })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Pay via M-Pesa')).toBeTruthy())
+    fireEvent.click(screen.getByText('Pay via M-Pesa'))
+    fireEvent.click(screen.getByText('Send Prompt'))
+
+    await waitFor(() => expect(mockPayContributionWithMpesa).toHaveBeenCalledWith(3, 1))
+    await waitFor(() => expect(screen.getByText(/check your phone/i)).toBeTruthy())
+  })
+
+  it('does not send a push when the M-Pesa confirmation is cancelled', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      member: { phone: '254700000002' },
+      loading: false,
+    })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Pay via M-Pesa')).toBeTruthy())
+    fireEvent.click(screen.getByText('Pay via M-Pesa'))
+    fireEvent.click(screen.getByText('Cancel'))
+
+    expect(screen.queryByText('Confirm M-Pesa Payment')).toBeNull()
+    expect(mockPayContributionWithMpesa).not.toHaveBeenCalled()
+  })
+
+  it('shows the backend error message when the STK push fails', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      member: { phone: '254700000002' },
+      loading: false,
+    })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockPayContributionWithMpesa.mockRejectedValue(new Error('A payment is already in progress for this number.'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Pay via M-Pesa')).toBeTruthy())
+    fireEvent.click(screen.getByText('Pay via M-Pesa'))
+    fireEvent.click(screen.getByText('Send Prompt'))
+
+    await waitFor(() => expect(screen.getByText('A payment is already in progress for this number.')).toBeTruthy())
+  })
+
+  it('does not show a pay button once a contribution is fully paid', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      member: { phone: '254700000002' },
+      loading: false,
+    })
+    mockGetMyContributions.mockResolvedValue([{ ...contribution, status: 'PAID' as const, amountPaid: 500 }])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('PAID')).toBeTruthy())
+    expect(screen.queryByText('Pay via M-Pesa')).toBeNull()
   })
 })

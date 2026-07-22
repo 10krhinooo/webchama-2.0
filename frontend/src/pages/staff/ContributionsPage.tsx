@@ -6,6 +6,7 @@ import {
   createContribution,
   recordPayment,
   deleteContribution,
+  payContributionWithMpesa,
   type Contribution,
   type PaymentMethod,
 } from '../../api/contributions'
@@ -31,7 +32,7 @@ function statusVariant(status: Contribution['status']) {
 export default function ContributionsPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
-  const { isTreasurer, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
+  const { isTreasurer, isChairperson, member, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
   const [contributions, setContributions] = useState<Contribution[]>([])
@@ -42,6 +43,8 @@ export default function ContributionsPage() {
   const [saving, setSaving] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [payingContribution, setPayingContribution] = useState<Contribution | null>(null)
+  const [mpesaConfirm, setMpesaConfirm] = useState<Contribution | null>(null)
+  const [sendingStkPush, setSendingStkPush] = useState(false)
   const [createForm, setCreateForm] = useState(EMPTY_CONTRIBUTION_FORM)
   const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT_FORM)
 
@@ -108,6 +111,27 @@ export default function ContributionsPage() {
     }
   }
 
+  const openMpesaConfirm = (contribution: Contribution) => {
+    setMpesaConfirm(contribution)
+    setModalNotice(null)
+  }
+
+  const handleConfirmMpesaPush = async () => {
+    if (!mpesaConfirm) return
+    setSendingStkPush(true)
+    setModalNotice(null)
+    try {
+      await payContributionWithMpesa(chamaId, mpesaConfirm.id)
+      setNotice({ variant: 'success', message: 'M-Pesa prompt sent. Check your phone to complete payment.' })
+      setMpesaConfirm(null)
+      refresh()
+    } catch (err) {
+      setModalNotice(extractErrorMessage(err))
+    } finally {
+      setSendingStkPush(false)
+    }
+  }
+
   const handleDelete = async (contribution: Contribution) => {
     if (!confirm(`Delete this contribution for ${contribution.memberName}?`)) return
     try {
@@ -149,7 +173,7 @@ export default function ContributionsPage() {
                 <th className="text-left px-4 py-3 font-medium text-ink/80">Due</th>
                 <th className="text-left px-4 py-3 font-medium text-ink/80">Paid</th>
                 <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                {canManage && <th />}
+                <th />
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
@@ -163,16 +187,22 @@ export default function ContributionsPage() {
                   <td className="px-4 py-3 font-mono text-muted">{c.amountDue.toLocaleString()}</td>
                   <td className="px-4 py-3 font-mono text-muted">{c.amountPaid.toLocaleString()}</td>
                   <td className="px-4 py-3"><Badge label={c.status} variant={statusVariant(c.status)} /></td>
-                  {canManage && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-3">
-                        {c.status !== 'PAID' && (
-                          <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
-                        )}
-                        <button onClick={() => handleDelete(c)} className="text-danger text-xs hover:underline">Delete</button>
-                      </div>
-                    </td>
-                  )}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-3">
+                      {canManage ? (
+                        <>
+                          {c.status !== 'PAID' && (
+                            <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
+                          )}
+                          <button onClick={() => handleDelete(c)} className="text-danger text-xs hover:underline">Delete</button>
+                        </>
+                      ) : (
+                        c.status !== 'PAID' && (
+                          <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                        )
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -246,6 +276,41 @@ export default function ContributionsPage() {
               Record Payment
             </LoadingButton>
           </form>
+        </Modal>
+      )}
+
+      {mpesaConfirm && (
+        <Modal title="Confirm M-Pesa Payment" onClose={() => setMpesaConfirm(null)}>
+          <div className="space-y-4">
+            {modalNotice && (
+              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+            )}
+            <p className="text-sm text-ink/80">Send an M-Pesa prompt to your registered phone for:</p>
+            <div className="bg-paper-dim rounded-xl p-4 space-y-1">
+              <p className="text-xs text-muted">{mpesaConfirm.period}</p>
+              <p className="font-mono text-2xl font-bold text-primary">
+                KES {(mpesaConfirm.amountDue - mpesaConfirm.amountPaid).toLocaleString()}
+              </p>
+              {member?.phone && <p className="text-xs text-muted">To {member.phone}</p>}
+            </div>
+            <p className="text-xs text-muted">Complete the PIN prompt on your phone to finish payment.</p>
+            <div className="flex gap-3">
+              <LoadingButton
+                onClick={handleConfirmMpesaPush}
+                loading={sendingStkPush}
+                loadingText="Sending…"
+                className="flex-1 bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark disabled:opacity-50"
+              >
+                Send Prompt
+              </LoadingButton>
+              <button
+                onClick={() => setMpesaConfirm(null)}
+                className="flex-1 border border-black/15 text-ink/80 font-semibold py-2.5 rounded-xl hover:bg-paper-dim"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
