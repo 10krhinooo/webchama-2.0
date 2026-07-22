@@ -13,9 +13,9 @@ export interface MyMembership {
 
 /**
  * Resolves the caller's own role(s) within one chama. SUPER_ADMIN is a real
- * Keycloak realm role (see MIGRATION_PLAN.md section 5) and bypasses every
- * chama-scoped check, so it is read straight from the token rather than from
- * a member row, which a platform admin may not even have.
+ * Keycloak realm role and bypasses every chama-scoped check, so it is read
+ * straight from the token rather than from a member row, which a platform
+ * admin may not even have.
  */
 export function useMyMembership(chamaId: number | undefined): MyMembership {
   const { keycloak } = useKeycloak()

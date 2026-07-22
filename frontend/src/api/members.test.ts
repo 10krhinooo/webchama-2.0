@@ -27,7 +27,7 @@ const mockPut = client.put as ReturnType<typeof vi.fn>
 const mockDelete = client.delete as ReturnType<typeof vi.fn>
 
 const payload: CreateMemberRequest = {
-  keycloakUserId: 'kc-1',
+  email: 'jane@example.com',
   fullName: 'Jane Doe',
   phone: '+254700000000',
   roles: ['MEMBER'],
@@ -59,11 +59,12 @@ describe('members api', () => {
     expect(result).toEqual({ id: 2 })
   })
 
-  it('createMember posts the payload', async () => {
-    mockPost.mockResolvedValue({ data: { id: 4, ...payload } })
+  it('createMember posts the payload and returns the invitation result', async () => {
+    const invitationResult = { member: { id: 4, fullName: payload.fullName }, temporaryPassword: 'Temp1234!' }
+    mockPost.mockResolvedValue({ data: invitationResult })
     const result = await createMember(3, payload)
     expect(mockPost).toHaveBeenCalledWith('/chamas/3/members', payload)
-    expect(result).toEqual({ id: 4, ...payload })
+    expect(result).toEqual(invitationResult)
   })
 
   it('updateMember puts the payload', async () => {

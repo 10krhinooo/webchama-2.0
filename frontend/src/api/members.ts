@@ -24,7 +24,12 @@ export interface UpdateMemberRequest {
 }
 
 export interface CreateMemberRequest extends UpdateMemberRequest {
-  keycloakUserId: string
+  email: string
+}
+
+export interface MemberInvitationResult {
+  member: Member
+  temporaryPassword: string | null
 }
 
 export async function getMembers(chamaId: number): Promise<Member[]> {
@@ -42,8 +47,8 @@ export async function getMember(chamaId: number, id: number): Promise<Member> {
   return data
 }
 
-export async function createMember(chamaId: number, payload: CreateMemberRequest): Promise<Member> {
-  const { data } = await client.post<Member>(`/chamas/${chamaId}/members`, payload)
+export async function createMember(chamaId: number, payload: CreateMemberRequest): Promise<MemberInvitationResult> {
+  const { data } = await client.post<MemberInvitationResult>(`/chamas/${chamaId}/members`, payload)
   return data
 }
 

@@ -83,29 +83,51 @@ describe('MembersPage', () => {
     expect(screen.getByText('Suspend')).toBeTruthy()
   })
 
-  it('invites a new member through the modal', async () => {
+  it('invites a new member and shows the temporary password when a new account was provisioned', async () => {
     mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
-    mockCreateMember.mockResolvedValue({ ...member, id: 2 })
+    mockCreateMember.mockResolvedValue({ member: { ...member, id: 2 }, temporaryPassword: 'Temp1234!' })
     renderPage()
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
 
     fireEvent.click(screen.getByText('+ Invite Member'))
-    fireEvent.change(screen.getByLabelText(/keycloak user id/i), { target: { value: 'kc-2' } })
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'new.member@example.com' } })
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'New Member' } })
     fireEvent.click(screen.getByText('Add Member'))
 
     await waitFor(() => expect(mockCreateMember).toHaveBeenCalled())
-    expect(mockCreateMember.mock.calls[0][1]).toMatchObject({ keycloakUserId: 'kc-2', fullName: 'New Member', roles: ['MEMBER'] })
+    expect(mockCreateMember.mock.calls[0][1]).toMatchObject({ email: 'new.member@example.com', fullName: 'New Member', roles: ['MEMBER'] })
+
+    await waitFor(() => expect(screen.getByText('Member Invited')).toBeTruthy())
+    expect(screen.getByText('Temp1234!')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Done'))
+    expect(screen.queryByText('Member Invited')).toBeNull()
   })
 
-  it('edits a member without asking for a Keycloak ID', async () => {
+  it('invites a member whose email already has an account without showing a temporary password', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockCreateMember.mockResolvedValue({ member: { ...member, id: 2 }, temporaryPassword: null })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('+ Invite Member'))
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'existing@example.com' } })
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Existing Person' } })
+    fireEvent.click(screen.getByText('Add Member'))
+
+    await waitFor(() => expect(mockCreateMember).toHaveBeenCalled())
+    expect(screen.queryByText('Member Invited')).toBeNull()
+    expect(screen.queryByText(/^New Member$/)).toBeNull()
+  })
+
+  it('edits a member without asking for an email', async () => {
     mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
     mockUpdateMember.mockResolvedValue({ ...member, fullName: 'Jane Renamed' })
     renderPage()
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
 
     fireEvent.click(screen.getByText('Edit'))
-    expect(screen.queryByLabelText(/keycloak user id/i)).toBeNull()
+    expect(screen.queryByLabelText(/^email/i)).toBeNull()
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Jane Renamed' } })
     fireEvent.click(screen.getByText('Save Changes'))
 
@@ -165,7 +187,7 @@ describe('MembersPage', () => {
 
   it('toggles a role checkbox on and off in the invite form', async () => {
     mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
-    mockCreateMember.mockResolvedValue({ ...member, id: 2 })
+    mockCreateMember.mockResolvedValue({ member: { ...member, id: 2 }, temporaryPassword: null })
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
@@ -178,7 +200,7 @@ describe('MembersPage', () => {
     fireEvent.click(memberCheckbox)
     fireEvent.click(treasurerCheckbox)
 
-    fireEvent.change(screen.getByLabelText(/keycloak user id/i), { target: { value: 'kc-2' } })
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'new.member@example.com' } })
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'New Member' } })
     fireEvent.change(screen.getByLabelText(/national id/i), { target: { value: '12345' } })
     fireEvent.change(screen.getByLabelText(/next of kin/i), { target: { value: 'Someone' } })

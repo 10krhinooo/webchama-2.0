@@ -9,6 +9,7 @@ import {
   type Member,
   type MemberRoleType,
   type MemberStatus,
+  type MemberInvitationResult,
 } from '../../api/members'
 import { getChama, type Chama } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
@@ -23,7 +24,7 @@ import PhoneInput from '../../components/ui/PhoneInput'
 const ALL_ROLES: MemberRoleType[] = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'MEMBER']
 
 const EMPTY_FORM = {
-  keycloakUserId: '',
+  email: '',
   fullName: '',
   phone: '',
   nationalId: '',
@@ -52,6 +53,7 @@ export default function MembersPage() {
   const [editing, setEditing] = useState<Member | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [statusUpdating, setStatusUpdating] = useState<number | null>(null)
+  const [inviteResult, setInviteResult] = useState<MemberInvitationResult | null>(null)
 
   const refresh = () => {
     setLoading(true)
@@ -69,13 +71,14 @@ export default function MembersPage() {
     setEditing(null)
     setForm(EMPTY_FORM)
     setModalNotice(null)
+    setInviteResult(null)
     setShowModal(true)
   }
 
   const openEdit = (member: Member) => {
     setEditing(member)
     setForm({
-      keycloakUserId: '',
+      email: '',
       fullName: member.fullName,
       phone: member.phone,
       nationalId: member.nationalId ?? '',
@@ -108,15 +111,22 @@ export default function MembersPage() {
         })
         setNotice({ variant: 'success', message: `${form.fullName} updated.` })
       } else {
-        await createMember(chamaId, {
-          keycloakUserId: form.keycloakUserId,
+        const result = await createMember(chamaId, {
+          email: form.email,
           fullName: form.fullName,
           phone: form.phone,
           nationalId: form.nationalId || undefined,
           nextOfKin: form.nextOfKin || undefined,
           roles: form.roles,
         })
-        setNotice({ variant: 'success', message: `${form.fullName} added to the chama.` })
+        if (result.temporaryPassword) {
+          setInviteResult(result)
+        } else {
+          setNotice({ variant: 'success', message: `${form.fullName} added to the chama.` })
+          setShowModal(false)
+        }
+        refresh()
+        return
       }
       setShowModal(false)
       refresh()
@@ -125,6 +135,11 @@ export default function MembersPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const closeInviteResult = () => {
+    setInviteResult(null)
+    setShowModal(false)
   }
 
   const handleStatusChange = async (member: Member, status: MemberStatus) => {
@@ -222,7 +237,7 @@ export default function MembersPage() {
         </div>
       )}
 
-      {showModal && (
+      {showModal && !inviteResult && (
         <Modal title={editing ? 'Edit Member' : 'Invite Member'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {modalNotice && (
@@ -230,13 +245,12 @@ export default function MembersPage() {
             )}
             {!editing && (
               <div>
-                <label htmlFor="member-keycloak-id" className="block text-sm font-medium text-ink/80 mb-1">Keycloak user ID *</label>
-                <input id="member-keycloak-id" required value={form.keycloakUserId}
-                  onChange={(e) => setForm({ ...form, keycloakUserId: e.target.value })}
+                <label htmlFor="member-email" className="block text-sm font-medium text-ink/80 mb-1">Email *</label>
+                <input id="member-email" required type="email" value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
                 <p className="text-xs text-muted mt-1">
-                  The member must already have a Keycloak account for this chama&apos;s realm. Self-service invite
-                  by email/phone is a future enhancement.
+                  We will create their account and email them sign-in instructions.
                 </p>
               </div>
             )}
@@ -276,6 +290,30 @@ export default function MembersPage() {
               {editing ? 'Save Changes' : 'Add Member'}
             </LoadingButton>
           </form>
+        </Modal>
+      )}
+
+      {inviteResult && (
+        <Modal title="Member Invited" onClose={closeInviteResult}>
+          <div className="space-y-4">
+            <p className="text-sm text-ink/80">
+              An email with sign-in instructions was sent to <strong>{inviteResult.member.fullName}</strong>.
+              If it does not arrive, you can share this temporary password directly.
+            </p>
+            <div className="bg-paper-dim border border-black/10 rounded-lg px-4 py-3 space-y-1.5 text-sm">
+              <div><span className="text-muted">Email:</span> {form.email}</div>
+              <div>
+                <span className="text-muted">Temporary password:</span>{' '}
+                <span className="font-mono bg-white border border-black/10 rounded px-2 py-0.5">
+                  {inviteResult.temporaryPassword}
+                </span>
+              </div>
+            </div>
+            <button onClick={closeInviteResult}
+              className="w-full bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark">
+              Done
+            </button>
+          </div>
         </Modal>
       )}
     </div>

@@ -17,6 +17,7 @@ import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.CreateMemberDto;
 import org.chama.dto.MemberDto;
+import org.chama.dto.MemberInvitationDto;
 import org.chama.dto.UpdateMemberDto;
 import org.chama.dto.UpdateMemberStatusDto;
 import org.chama.security.CurrentUser;
@@ -67,9 +68,10 @@ public class MemberResource {
     @POST
     public Response create(@PathParam("chamaId") Long chamaId, @Valid CreateMemberDto dto) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
-        var member = memberService.create(chamaId, dto);
+        var result = memberService.create(chamaId, dto);
+        var member = result.member();
         return Response.status(Response.Status.CREATED)
-            .entity(MemberDto.from(member, memberService.rolesOf(member.id)))
+            .entity(new MemberInvitationDto(MemberDto.from(member, memberService.rolesOf(member.id)), result.temporaryPassword()))
             .build();
     }
 
