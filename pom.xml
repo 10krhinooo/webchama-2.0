@@ -84,6 +84,22 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-test-security</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Quarkus tests load application classes through Quarkus's own
+                 runtime classloader, which the plain jacoco-maven-plugin agent
+                 does not see. This extension is the documented fix so
+                 @QuarkusTest coverage of service/repository/entity classes is
+                 actually captured, not just REST/DTO classes touched via
+                 reflection at the JAX-RS boundary. -->
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jacoco</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -144,11 +160,39 @@
                         </goals>
                     </execution>
                     <execution>
+                        <!-- @QuarkusTest runs application classes through Quarkus's
+                             own runtime classloader, which quarkus-jacoco records
+                             separately into target/jacoco-quarkus.exec. Merge that
+                             with the plain agent's target/jacoco.exec before
+                             reporting, or coverage of every service/repository/
+                             entity class silently comes back as zero. -->
+                        <id>merge</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>merge</goal>
+                        </goals>
+                        <configuration>
+                            <fileSets>
+                                <fileSet>
+                                    <directory>${project.build.directory}</directory>
+                                    <includes>
+                                        <include>jacoco.exec</include>
+                                        <include>jacoco-quarkus.exec</include>
+                                    </includes>
+                                </fileSet>
+                            </fileSets>
+                            <destFile>${project.build.directory}/jacoco-merged.exec</destFile>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>report</id>
                         <phase>test</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <configuration>
+                            <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
@@ -156,6 +200,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
