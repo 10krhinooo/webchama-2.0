@@ -50,3 +50,27 @@ export async function recordPayment(
 export async function deleteContribution(chamaId: number, id: number): Promise<void> {
   await client.delete(`/chamas/${chamaId}/contributions/${id}`)
 }
+
+export type PaymentPurpose = 'CONTRIBUTION' | 'LOAN_REPAYMENT' | 'PENALTY'
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED'
+
+export interface Payment {
+  id: number
+  chamaId: number
+  memberId: number
+  contributionId: number | null
+  purpose: PaymentPurpose
+  amount: number
+  method: PaymentMethod
+  status: PaymentStatus
+  providerReference: string | null
+  mpesaReceiptNumber: string | null
+  paidAt: string | null
+  createdAt: string
+}
+
+/** Self-service: pays the contribution's remaining balance via M-Pesa STK push. */
+export async function payContributionWithMpesa(chamaId: number, id: number): Promise<Payment> {
+  const { data } = await client.post<Payment>(`/chamas/${chamaId}/contributions/${id}/pay/mpesa`)
+  return data
+}
