@@ -4,7 +4,7 @@
 
 body {
   margin: 0;
-  font-family: "Karla", system-ui, sans-serif;
+  font-family: "Public Sans", system-ui, sans-serif;
   color: theme("colors.ink");
   background: theme("colors.paper");
 }
@@ -15,13 +15,14 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: "Sora", sans-serif;
+  font-family: "Archivo", sans-serif;
 }
 
-/* The zamu wheel's settling rotation is a page-load flourish, not information,
-   so it is skipped entirely for anyone who has asked for reduced motion. */
+/* The contribution pot's fill rise is a progress flourish, not information itself
+   (the fraction/label carries the information), so it is skipped for anyone who has
+   asked for reduced motion. */
 @media (prefers-reduced-motion: reduce) {
-  .zamu-wheel-spin {
+  .pot-fill-animate {
     animation: none !important;
     transition: none !important;
   }
@@ -29,7 +30,7 @@ h6 {
 
 a:focus-visible,
 button:focus-visible {
-  outline: 2px solid theme("colors.warning");
+  outline: 2px solid theme("colors.accent.DEFAULT");
   outline-offset: 2px;
   border-radius: 2px;
 }
