@@ -16,6 +16,8 @@ import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanRepaymentRepository;
+import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.service.KeycloakAdminService;
@@ -46,6 +48,12 @@ class MemberResourceTest {
     @Inject
     ContributionRepository contributionRepository;
 
+    @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
     @InjectMock
     KeycloakAdminService keycloakAdminService;
 
@@ -63,6 +71,8 @@ class MemberResourceTest {
             .thenReturn("kc-generated-id");
 
         QuarkusTransaction.requiringNew().run(() -> {
+            loanRepaymentRepository.deleteAll();
+            loanRepository.deleteAll();
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();

@@ -6,6 +6,8 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanRepaymentRepository;
+import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,9 +31,17 @@ class ChamaResourceTest {
     @Inject
     ContributionRepository contributionRepository;
 
+    @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
     @BeforeEach
     @Transactional
     void cleanDatabase() {
+        loanRepaymentRepository.deleteAll();
+        loanRepository.deleteAll();
         contributionRepository.deleteAll();
         memberRoleRepository.deleteAll();
         memberRepository.deleteAll();

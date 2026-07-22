@@ -20,6 +20,8 @@ import org.chama.domain.model.MemberRole;
 import org.chama.domain.model.Payment;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanRepaymentRepository;
+import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
@@ -55,6 +57,12 @@ class PaymentFlowResourceTest {
     @Inject
     PaymentRepository paymentRepository;
 
+    @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
     @InjectMock
     MpesaService mpesaService;
 
@@ -69,6 +77,8 @@ class PaymentFlowResourceTest {
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
             paymentRepository.deleteAll();
+            loanRepaymentRepository.deleteAll();
+            loanRepository.deleteAll();
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();

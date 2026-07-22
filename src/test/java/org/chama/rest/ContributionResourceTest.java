@@ -14,6 +14,8 @@ import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanRepaymentRepository;
+import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,12 +41,20 @@ class ContributionResourceTest {
     @Inject
     ContributionRepository contributionRepository;
 
+    @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
     private Long chamaId;
     private Long memberId;
 
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            loanRepaymentRepository.deleteAll();
+            loanRepository.deleteAll();
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
