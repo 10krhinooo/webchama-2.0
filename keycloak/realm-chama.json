@@ -1,0 +1,116 @@
+{
+  "realm": "chama",
+  "enabled": true,
+  "displayName": "Webchama",
+  "loginTheme": "chama",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+
+  "roles": {
+    "realm": [
+      { "name": "SUPER_ADMIN",  "description": "Platform owner — cross-chama oversight, no operational access to any single chama's financial data by default" },
+      { "name": "CHAIRPERSON",  "description": "Chama-level admin — manage members, approve loans, view all financials for their chama" },
+      { "name": "TREASURER",    "description": "Record contributions/payments, manage loan disbursement/repayment, generate financial statements" },
+      { "name": "SECRETARY",    "description": "Manage meetings, minutes, attendance, member communications" },
+      { "name": "MEMBER",       "description": "Self-service — view own contributions/loans/payout position, pay via M-Pesa/card" }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "webchama-backend",
+      "name": "Webchama Backend API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "webchama-backend-secret",
+      "bearerOnly": true,
+      "publicClient": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "webchama-frontend",
+      "name": "Webchama Frontend SPA",
+      "enabled": true,
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:5173",
+        "https://YOUR_PROD_DOMAIN/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "https://YOUR_PROD_DOMAIN"
+      ],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@webchama.local",
+      "firstName": "Webchama",
+      "lastName": "SuperAdmin",
+      "credentials": [
+        { "type": "password", "value": "SuperAdmin1234!", "temporary": false }
+      ],
+      "realmRoles": ["SUPER_ADMIN"]
+    },
+    {
+      "username": "chairperson1",
+      "enabled": true,
+      "email": "chairperson1@webchama.local",
+      "firstName": "Grace",
+      "lastName": "Chairperson",
+      "credentials": [
+        { "type": "password", "value": "Chairperson1!", "temporary": false }
+      ],
+      "realmRoles": ["CHAIRPERSON"]
+    },
+    {
+      "username": "treasurer1",
+      "enabled": true,
+      "email": "treasurer1@webchama.local",
+      "firstName": "Peter",
+      "lastName": "Treasurer",
+      "credentials": [
+        { "type": "password", "value": "Treasurer1!", "temporary": false }
+      ],
+      "realmRoles": ["TREASURER"]
+    },
+    {
+      "username": "secretary1",
+      "enabled": true,
+      "email": "secretary1@webchama.local",
+      "firstName": "Alice",
+      "lastName": "Secretary",
+      "credentials": [
+        { "type": "password", "value": "Secretary1!", "temporary": false }
+      ],
+      "realmRoles": ["SECRETARY"]
+    },
+    {
+      "username": "member1",
+      "enabled": true,
+      "email": "member1@webchama.local",
+      "firstName": "John",
+      "lastName": "Member",
+      "credentials": [
+        { "type": "password", "value": "Member1!", "temporary": false }
+      ],
+      "realmRoles": ["MEMBER"]
+    }
+  ]
+}
