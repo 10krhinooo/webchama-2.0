@@ -74,3 +74,27 @@ export async function payContributionWithMpesa(chamaId: number, id: number): Pro
   const { data } = await client.post<Payment>(`/chamas/${chamaId}/contributions/${id}/pay/mpesa`)
   return data
 }
+
+export interface CardPaymentInit {
+  paymentLink: string
+  txRef: string
+}
+
+/** Self-service: starts a Flutterwave card checkout for the contribution's remaining balance. */
+export async function initiateCardPayment(chamaId: number, id: number, email: string): Promise<CardPaymentInit> {
+  const { data } = await client.post<CardPaymentInit>(`/chamas/${chamaId}/contributions/${id}/pay/card`, { email })
+  return data
+}
+
+/** Re-verifies a card payment server-to-server after the Flutterwave checkout redirect returns. */
+export async function verifyCardPayment(
+  chamaId: number,
+  id: number,
+  txRef: string,
+  transactionId: number,
+): Promise<boolean> {
+  const { data } = await client.get<{ paid: boolean }>(`/chamas/${chamaId}/contributions/${id}/pay/card/verify`, {
+    params: { txRef, transactionId },
+  })
+  return data.paid
+}
