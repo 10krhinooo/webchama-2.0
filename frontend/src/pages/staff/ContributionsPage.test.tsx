@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ContributionsPage from './ContributionsPage'
 
@@ -64,7 +64,6 @@ function renderPage() {
 describe('ContributionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('confirm', vi.fn(() => true))
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
   })
 
@@ -129,6 +128,7 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Delete'))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(mockDeleteContribution).toHaveBeenCalledWith(3, 1))
   })
 
@@ -201,17 +201,18 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Delete'))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(screen.getByText('cannot delete a paid contribution')).toBeTruthy())
   })
 
   it('does not delete when the confirmation is dismissed', async () => {
-    vi.stubGlobal('confirm', vi.fn(() => false))
     mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
     mockGetContributions.mockResolvedValue([contribution])
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Delete'))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
     expect(mockDeleteContribution).not.toHaveBeenCalled()
   })
 
