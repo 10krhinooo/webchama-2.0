@@ -17,9 +17,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 /**
- * Daraja STK push integration, retargeted from DondooHomes' booking/rent contexts at chama
- * contribution payments. C2B till reconciliation and the startup URL-registration job are not
- * ported here (issue #23, optional, deferred).
+ * Daraja STK push integration for chama contribution payments. C2B till reconciliation and the
+ * startup URL-registration job are not implemented here (issue #23, optional, deferred).
  */
 @ApplicationScoped
 public class MpesaService {
