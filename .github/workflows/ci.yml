@@ -21,6 +21,9 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Create application.properties from the example
+        run: cp src/main/resources/example.application.properties src/main/resources/application.properties
+
       - name: Start Postgres and Keycloak (docker compose)
         run: docker compose up -d
 

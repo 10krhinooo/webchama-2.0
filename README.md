@@ -4,8 +4,9 @@ Chama savings and table banking platform, rewritten on Quarkus, React, PostgreSQ
 from scratch rewrite of `web-chama` (a Laravel and Filament prototype), built on the same stack as the
 `dondooHomes` project.
 
-See `MIGRATION_PLAN.md` for the full plan: domain model, roles, payments, security review, and standout
-features. See the GitHub project board for phase by phase issues:
+The full plan (domain model, roles, payments, security review, and standout features) lives in a local
+`MIGRATION_PLAN.md` that is intentionally not tracked in this repository, ask the project owner for a copy
+if you need it. See the GitHub project board for phase by phase issues:
 https://github.com/users/10krhinooo/projects/3
 
 ## Tech stack
@@ -22,6 +23,9 @@ https://github.com/users/10krhinooo/projects/3
 ## Getting started
 
 ```bash
+# Backend config, copy once, application.properties is gitignored
+cp src/main/resources/example.application.properties src/main/resources/application.properties
+
 # Infrastructure: PostgreSQL 16 + Keycloak 24
 docker compose up -d
 
@@ -60,5 +64,5 @@ closes. Commit messages follow the Conventional Commits format (for example `fea
 
 ## Project status
 
-Phase 1 (project scaffold) is complete. See `MIGRATION_PLAN.md` for the full phase breakdown and the
-project board for current progress.
+Phase 1 (project scaffold) is complete. See the project board for current progress and the local
+`MIGRATION_PLAN.md` for the full phase breakdown.

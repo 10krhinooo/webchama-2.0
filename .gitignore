@@ -42,6 +42,12 @@ nb-configuration.xml
 # Local Claude Code guidance, intentionally not tracked
 CLAUDE.md
 
+# Local planning document, intentionally not tracked
+MIGRATION_PLAN.md
+
+# Local runtime config, copy from example.application.properties, intentionally not tracked
+src/main/resources/application.properties
+
 # Plugin directory
 /.quarkus/cli/plugins/
 # TLS Certificates
