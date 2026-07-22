@@ -4,6 +4,7 @@ import KeycloakProvider from './auth/KeycloakProvider'
 import ProtectedRoute from './auth/ProtectedRoute'
 import StaffLayout from './components/layout/StaffLayout'
 import ChamasPage from './pages/staff/ChamasPage'
+import DashboardPage from './pages/staff/DashboardPage'
 import MembersPage from './pages/staff/MembersPage'
 import ContributionsPage from './pages/staff/ContributionsPage'
 
@@ -21,6 +22,7 @@ function App() {
             }
           >
             <Route path="/chamas" element={<ChamasPage />} />
+            <Route path="/chamas/:chamaId/dashboard" element={<DashboardPage />} />
             <Route path="/chamas/:chamaId/members" element={<MembersPage />} />
             <Route path="/chamas/:chamaId/contributions" element={<ContributionsPage />} />
           </Route>
