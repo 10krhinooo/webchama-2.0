@@ -12,17 +12,22 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.ContributionDto;
 import org.chama.dto.CreateContributionDto;
+import org.chama.dto.InitiateCardPaymentDto;
+import org.chama.dto.PaymentDto;
 import org.chama.dto.RecordPaymentDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
 import org.chama.service.ContributionService;
+import org.chama.service.PaymentService;
 
 import java.util.List;
+import java.util.Map;
 
 @Path("/api/chamas/{chamaId}/contributions")
 @Authenticated
@@ -32,6 +37,9 @@ public class ContributionResource {
 
     @Inject
     ContributionService contributionService;
+
+    @Inject
+    PaymentService paymentService;
 
     @Inject
     TenantAccessService tenantAccessService;
@@ -80,5 +88,37 @@ public class ContributionResource {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
         contributionService.delete(chamaId, id);
         return Response.noContent().build();
+    }
+
+    /** Self-service: a member pays their own contribution's remaining balance via M-Pesa STK push. */
+    @POST
+    @Path("/{id}/pay/mpesa")
+    public Response payWithMpesa(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        var payment = paymentService.initiateMpesaPayment(chamaId, id, member);
+        return Response.status(Response.Status.CREATED).entity(PaymentDto.from(payment)).build();
+    }
+
+    /** Self-service: a member pays their own contribution's remaining balance via Flutterwave card checkout. */
+    @POST
+    @Path("/{id}/pay/card")
+    public Response payWithCard(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id,
+                                 @Valid InitiateCardPaymentDto dto) {
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        var init = paymentService.initiateCardPayment(chamaId, id, member, dto.email());
+        return Response.ok(Map.of(
+            "paymentLink", init.paymentLink(),
+            "txRef", init.payment().providerReference
+        )).build();
+    }
+
+    @GET
+    @Path("/{id}/pay/card/verify")
+    public Response verifyCardPayment(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id,
+                                       @QueryParam("txRef") String txRef,
+                                       @QueryParam("transactionId") Long transactionId) {
+        tenantAccessService.requireMembership(currentUser, chamaId);
+        boolean paid = paymentService.verifyCardPayment(chamaId, id, txRef, transactionId);
+        return Response.ok(Map.of("paid", paid)).build();
     }
 }
