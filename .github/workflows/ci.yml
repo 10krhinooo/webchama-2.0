@@ -8,23 +8,8 @@ on:
 
 jobs:
   backend:
-    name: Backend (Quarkus / Maven)
+    name: Backend (Quarkus / Maven, 90 percent coverage gate)
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: chama_test
-          POSTGRES_USER: chama
-          POSTGRES_PASSWORD: chama
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -36,16 +21,31 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Override datasource for CI
-        run: |
-          cat >> src/main/resources/application.properties << 'EOF'
-          %test.quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/chama_test
-          %test.quarkus.datasource.username=chama
-          %test.quarkus.datasource.password=chama
-          EOF
+      - name: Start Postgres and Keycloak (docker compose)
+        run: docker compose up -d
 
-      - name: Build and test
+      - name: Wait for Keycloak to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8180/realms/chama/.well-known/openid-configuration > /dev/null; then
+              echo "Keycloak is ready"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Keycloak did not become ready in time"
+          docker compose logs
+          exit 1
+
+      - name: Build and test with coverage gate
         run: ./mvnw -B verify
+
+      - name: Upload JaCoCo coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
 
       - name: Upload test reports
         if: failure()
@@ -54,8 +54,12 @@ jobs:
           name: surefire-reports
           path: target/surefire-reports/
 
+      - name: Stop docker compose
+        if: always()
+        run: docker compose down -v
+
   frontend:
-    name: Frontend (Vite / TypeScript)
+    name: Frontend (Vite / TypeScript, 90 percent coverage gate)
     runs-on: ubuntu-latest
 
     steps:
@@ -71,6 +75,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
         working-directory: frontend
+
+      - name: Run tests with coverage gate
+        run: npm run test:coverage
+        working-directory: frontend
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage-report
+          path: frontend/coverage/
 
       - name: Build
         run: npm run build
