@@ -1,11 +1,11 @@
-import ZamuMark from "../marketing/ZamuMark"
+import WeaveMark from "../marketing/WeaveMark"
 
 export default function PublicNav() {
   return (
     <header className="border-b border-ink/10 bg-paper/90 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <a href="/" className="flex items-center gap-2 font-mono text-lg font-bold text-ink">
-          <ZamuMark className="h-6 w-6 text-primary" />
+        <a href="/" className="flex items-center gap-2 font-heading text-lg font-bold text-ink">
+          <WeaveMark className="h-6 w-6 text-primary" />
           Webchama
         </a>
         <div className="hidden items-center gap-8 text-sm font-medium text-ink/70 sm:flex">
