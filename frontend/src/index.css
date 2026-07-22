@@ -4,7 +4,32 @@
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "Karla", system-ui, sans-serif;
   color: theme("colors.ink");
-  background: theme("colors.canvas");
+  background: theme("colors.paper");
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Sora", sans-serif;
+}
+
+/* The zamu wheel's settling rotation is a page-load flourish, not information,
+   so it is skipped entirely for anyone who has asked for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .zamu-wheel-spin {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid theme("colors.warning");
+  outline-offset: 2px;
+  border-radius: 2px;
 }

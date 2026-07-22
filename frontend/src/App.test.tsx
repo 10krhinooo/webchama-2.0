@@ -16,6 +16,6 @@ import App from './App'
 describe('App', () => {
   it('renders the home page at the root route', () => {
     render(<App />)
-    expect(screen.getByText('Webchama')).toBeTruthy()
+    expect(screen.getByText('Every mchango has a turn.')).toBeTruthy()
   })
 })
