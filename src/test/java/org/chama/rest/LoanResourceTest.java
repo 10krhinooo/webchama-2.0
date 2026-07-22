@@ -1,0 +1,241 @@
+package org.chama.rest;
+
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
+import jakarta.inject.Inject;
+import org.chama.domain.enums.ChamaStatus;
+import org.chama.domain.enums.ChamaType;
+import org.chama.domain.enums.ContributionFrequency;
+import org.chama.domain.enums.InterestMethod;
+import org.chama.domain.enums.MemberRoleType;
+import org.chama.domain.enums.MemberStatus;
+import org.chama.domain.model.Chama;
+import org.chama.domain.model.Loan;
+import org.chama.domain.model.Member;
+import org.chama.domain.model.MemberRole;
+import org.chama.repository.ChamaRepository;
+import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanRepaymentRepository;
+import org.chama.repository.LoanRepository;
+import org.chama.repository.MemberRepository;
+import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+
+@QuarkusTest
+class LoanResourceTest {
+
+    @Inject
+    ChamaRepository chamaRepository;
+
+    @Inject
+    MemberRepository memberRepository;
+
+    @Inject
+    MemberRoleRepository memberRoleRepository;
+
+    @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
+    @Inject
+    ContributionRepository contributionRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
+
+    private Long chamaId;
+    private Long borrowerId;
+    private Long otherMemberId;
+
+    @BeforeEach
+    void seed() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            paymentRepository.deleteAll();
+            contributionRepository.deleteAll();
+            loanRepaymentRepository.deleteAll();
+            loanRepository.deleteAll();
+            memberRoleRepository.deleteAll();
+            memberRepository.deleteAll();
+            chamaRepository.deleteAll();
+
+            Chama chama = new Chama();
+            chama.name = "Loan Test Chama";
+            chama.type = ChamaType.TABLE_BANKING;
+            chama.currency = "KES";
+            chama.contributionFrequency = ContributionFrequency.MONTHLY;
+            chama.contributionAmount = new BigDecimal("500");
+            chama.status = ChamaStatus.ACTIVE;
+            chamaRepository.persist(chama);
+            chamaId = chama.id;
+
+            Member treasurer = new Member();
+            treasurer.chama = chama;
+            treasurer.keycloakUserId = "loan-treasurer-1";
+            treasurer.fullName = "Treasurer One";
+            treasurer.phone = "254700000101";
+            treasurer.status = MemberStatus.ACTIVE;
+            memberRepository.persist(treasurer);
+            MemberRole treasurerRole = new MemberRole();
+            treasurerRole.member = treasurer;
+            treasurerRole.role = MemberRoleType.TREASURER;
+            treasurerRole.persist();
+
+            Member borrower = new Member();
+            borrower.chama = chama;
+            borrower.keycloakUserId = "loan-borrower-1";
+            borrower.fullName = "Borrower One";
+            borrower.phone = "254700000102";
+            borrower.status = MemberStatus.ACTIVE;
+            memberRepository.persist(borrower);
+            MemberRole borrowerRole = new MemberRole();
+            borrowerRole.member = borrower;
+            borrowerRole.role = MemberRoleType.MEMBER;
+            borrowerRole.persist();
+            borrowerId = borrower.id;
+
+            Member other = new Member();
+            other.chama = chama;
+            other.keycloakUserId = "loan-other-1";
+            other.fullName = "Other Member";
+            other.phone = "254700000103";
+            other.status = MemberStatus.ACTIVE;
+            memberRepository.persist(other);
+            MemberRole otherRole = new MemberRole();
+            otherRole.member = other;
+            otherRole.role = MemberRoleType.MEMBER;
+            otherRole.persist();
+            otherMemberId = other.id;
+        });
+    }
+
+    @Test
+    @TestSecurity(user = "loan-borrower-1")
+    void memberCanRequestOwnLoanAndGetsAFlatRepaymentSchedule() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":12000,\"interestRate\":12,\"interestMethod\":\"FLAT\",\"termMonths\":12}",
+            borrowerId);
+
+        int loanId = given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then()
+                .statusCode(201)
+                .body("status", equalTo("REQUESTED"))
+                .body("memberId", equalTo(borrowerId.intValue()))
+                .extract().path("id");
+
+        given()
+            .when().get("/api/chamas/{chamaId}/loans/{id}/repayments", chamaId, loanId)
+            .then()
+                .statusCode(200)
+                .body("$", hasSize(12))
+                .body("[0].installmentNumber", equalTo(1))
+                .body("[0].amountDue", equalTo(1120.0f))
+                .body("[11].amountDue", equalTo(1120.0f))
+                .body("[0].status", equalTo("PENDING"));
+    }
+
+    @Test
+    @TestSecurity(user = "loan-borrower-1")
+    void memberCannotRequestALoanForAnotherMember() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":5000,\"interestRate\":10,\"interestMethod\":\"FLAT\",\"termMonths\":6}",
+            otherMemberId);
+
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void treasurerCanRequestALoanOnBehalfOfAMemberAndRecordRepayments() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":6000,\"interestRate\":0,\"interestMethod\":\"REDUCING_BALANCE\",\"termMonths\":6}",
+            borrowerId);
+
+        int loanId = given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+
+        int firstRepaymentId = given()
+            .when().get("/api/chamas/{chamaId}/loans/{id}/repayments", chamaId, loanId)
+            .then().statusCode(200)
+            .body("$", hasSize(6))
+            .body("[0].amountDue", equalTo(1000.0f))
+            .extract().path("[0].id");
+
+        given()
+            .contentType("application/json")
+            .body("{\"amount\":400}")
+            .when().put("/api/chamas/{chamaId}/loans/{loanId}/repayments/{repaymentId}/payment",
+                chamaId, loanId, firstRepaymentId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("PARTIAL"))
+                .body("amountPaid", equalTo(400.0f));
+
+        given()
+            .contentType("application/json")
+            .body("{\"amount\":600}")
+            .when().put("/api/chamas/{chamaId}/loans/{loanId}/repayments/{repaymentId}/payment",
+                chamaId, loanId, firstRepaymentId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("PAID"))
+                .body("amountPaid", equalTo(1000.0f));
+    }
+
+    @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void treasurerCanListAllLoansForTheChama() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":3000,\"interestRate\":5,\"interestMethod\":\"FLAT\",\"termMonths\":3}",
+            borrowerId);
+        given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(200)
+                .body("$", hasSize(1));
+    }
+
+    @Test
+    @TestSecurity(user = "loan-other-1")
+    void anotherMemberCannotSeeSomeoneElsesLoan() {
+        Long loanId = QuarkusTransaction.requiringNew().call(() -> {
+            Loan loan = new Loan();
+            loan.chama = chamaRepository.findById(chamaId);
+            loan.member = memberRepository.findById(borrowerId);
+            loan.principal = new BigDecimal("3000");
+            loan.interestRate = new BigDecimal("5");
+            loan.interestMethod = InterestMethod.FLAT;
+            loan.termMonths = 3;
+            loanRepository.persist(loan);
+            return loan.id;
+        });
+
+        given()
+            .when().get("/api/chamas/{chamaId}/loans/{id}", chamaId, loanId)
+            .then().statusCode(403);
+    }
+}
