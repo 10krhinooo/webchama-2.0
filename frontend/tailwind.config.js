@@ -3,29 +3,35 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
-      // Starter palette per MIGRATION_PLAN.md §3 — distinct-but-consistent with DondooHomes'
-      // ocean-blue system. Confirmed direction: confident indigo primary. Revisit at UI kickoff,
-      // not blocking backend work.
+      // Design tokens per MIGRATION_PLAN.md section 3, confirmed at UI kickoff. The brand color
+      // is a deep ink-indigo, the color of blue-black ledger ink, tying the palette to the
+      // literal artifact a chama keeps its records in. Danger, success, and warning each get
+      // their own hue (brick, forest, marigold) so status colors never read as brand color.
       colors: {
         primary: {
-          DEFAULT: "#4F46E5",
-          dark: "#3730A3",
-          light: "#EEF2FF",
+          DEFAULT: "#3D3A6B",
+          dark: "#26244A",
+          light: "#E9E7F5",
         },
-        secondary: "#F5F3EE",
-        danger: "#B91C1C",
-        success: "#15803D",
-        warning: "#B45309",
-        muted: "#6B7280",
-        ink: "#1F2933",
-        canvas: "#FAFAF9",
-        "canvas-dim": "#F2F1EC",
-        night: "#1E1B4B",
-        "night-deep": "#14123A",
+        secondary: "#F2EBD9",
+        danger: "#B23A2E",
+        success: "#1E5B3E",
+        warning: "#C97F1D",
+        muted: "#6E6759",
+        ink: "#1C1A17",
+        paper: "#FBF7EE",
+        "paper-dim": "#F2EBD9",
+        night: "#201D18",
+        "night-deep": "#14120E",
+      },
+      fontFamily: {
+        display: ["Courier Prime", "ui-monospace", "monospace"],
+        mono: ["Courier Prime", "ui-monospace", "monospace"],
+        heading: ["Sora", "sans-serif"],
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgba(31, 41, 51, 0.08), 0 1px 2px -1px rgba(31, 41, 51, 0.08)",
-        "card-hover": "0 4px 12px -2px rgba(31, 41, 51, 0.12)",
+        card: "0 1px 3px 0 rgba(28, 26, 23, 0.08), 0 1px 2px -1px rgba(28, 26, 23, 0.08)",
+        "card-hover": "0 4px 12px -2px rgba(28, 26, 23, 0.12)",
       },
     },
   },
