@@ -7,6 +7,7 @@ import ChamasPage from './pages/staff/ChamasPage'
 import DashboardPage from './pages/staff/DashboardPage'
 import MembersPage from './pages/staff/MembersPage'
 import ContributionsPage from './pages/staff/ContributionsPage'
+import LoansPage from './pages/staff/LoansPage'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="/chamas/:chamaId/dashboard" element={<DashboardPage />} />
             <Route path="/chamas/:chamaId/members" element={<MembersPage />} />
             <Route path="/chamas/:chamaId/contributions" element={<ContributionsPage />} />
+            <Route path="/chamas/:chamaId/loans" element={<LoansPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
