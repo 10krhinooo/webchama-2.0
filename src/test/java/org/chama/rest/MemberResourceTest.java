@@ -20,6 +20,8 @@ import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PayoutRepository;
+import org.chama.repository.PayoutScheduleRepository;
 import org.chama.service.KeycloakAdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,12 @@ class MemberResourceTest {
     @Inject
     LoanRepaymentRepository loanRepaymentRepository;
 
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    PayoutScheduleRepository payoutScheduleRepository;
+
     @InjectMock
     KeycloakAdminService keycloakAdminService;
 
@@ -71,6 +79,8 @@ class MemberResourceTest {
             .thenReturn("kc-generated-id");
 
         QuarkusTransaction.requiringNew().run(() -> {
+            payoutRepository.deleteAll();
+            payoutScheduleRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
