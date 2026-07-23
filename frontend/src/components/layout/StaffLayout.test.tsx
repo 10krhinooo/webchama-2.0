@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import StaffLayout from './StaffLayout'
 
@@ -7,8 +7,14 @@ vi.mock('@react-keycloak/web', () => ({
   useKeycloak: vi.fn(),
 }))
 
+vi.mock('../../api/chamas', () => ({
+  getChama: vi.fn(),
+}))
+
 import { useKeycloak } from '@react-keycloak/web'
+import { getChama } from '../../api/chamas'
 const mockUseKeycloak = useKeycloak as ReturnType<typeof vi.fn>
+const mockGetChama = getChama as ReturnType<typeof vi.fn>
 
 function renderAt(path: string) {
   return render(
@@ -29,13 +35,16 @@ describe('StaffLayout', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseKeycloak.mockReturnValue({ keycloak: { logout } })
+    mockUseKeycloak.mockReturnValue({
+      keycloak: { logout, tokenParsed: { name: 'Grace Wanjiru', email: 'grace@example.com' } },
+    })
+    mockGetChama.mockResolvedValue({ id: 7, name: 'Tumaini Chama' })
   })
 
   it('always shows the Chamas nav link and renders the routed page', () => {
     renderAt('/chamas')
     expect(screen.getByText('Chamas Page')).toBeTruthy()
-    expect(screen.getByRole('link', { name: /chamas/i })).toBeTruthy()
+    expect(screen.getAllByRole('link', { name: /chamas/i }).length).toBeGreaterThan(0)
   })
 
   it('shows Members and Contributions sub-nav only once a chama is in the URL', () => {
@@ -52,7 +61,25 @@ describe('StaffLayout', () => {
 
   it('logs out when the log out button is clicked', () => {
     renderAt('/chamas')
+    fireEvent.click(screen.getByText('Grace Wanjiru'))
     fireEvent.click(screen.getByText('Log out'))
     expect(logout).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the current user\'s name in the topbar', () => {
+    renderAt('/chamas')
+    expect(screen.getByText('Grace Wanjiru')).toBeTruthy()
+  })
+
+  it('shows the active chama name in the breadcrumb once it loads', async () => {
+    renderAt('/chamas/7/members')
+    await waitFor(() => expect(screen.getByText('Tumaini Chama')).toBeTruthy())
+    expect(mockGetChama).toHaveBeenCalledWith(7)
+  })
+
+  it('omits the chama breadcrumb on the top-level chamas list', () => {
+    renderAt('/chamas')
+    expect(screen.queryByText('Tumaini Chama')).toBeNull()
+    expect(mockGetChama).not.toHaveBeenCalled()
   })
 })

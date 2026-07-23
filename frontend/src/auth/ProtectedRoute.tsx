@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useKeycloak } from '@react-keycloak/web'
+import WeaveMark from '../components/marketing/WeaveMark'
 
 interface Props {
   children: React.ReactNode
@@ -16,16 +17,22 @@ export default function ProtectedRoute({ children, roles }: Props) {
   }, [initialized, keycloak])
 
   if (!initialized || !keycloak.authenticated) {
-    return <div className="min-h-screen flex items-center justify-center text-muted">Loading…</div>
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper text-muted">
+        <WeaveMark className="h-8 w-8 animate-pulse text-primary" />
+        <p>Loading…</p>
+      </div>
+    )
   }
 
   if (roles && roles.length > 0 && !roles.some((r) => keycloak.hasRealmRole(r))) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-danger font-semibold">Access denied: insufficient role.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper px-6 text-center">
+        <WeaveMark className="h-8 w-8 text-danger" />
+        <p className="font-semibold text-danger">Access denied: your account doesn&rsquo;t hold the role this page needs.</p>
         <button
           onClick={() => keycloak.logout()}
-          className="text-primary hover:text-primary-dark font-medium underline"
+          className="font-medium text-primary underline hover:text-primary-dark"
         >
           Log out
         </button>
