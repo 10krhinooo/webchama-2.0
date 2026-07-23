@@ -12,24 +12,29 @@ import org.chama.domain.model.Chama;
 import org.chama.domain.model.Contribution;
 import org.chama.domain.model.GeneratedDocument;
 import org.chama.domain.model.Loan;
+import org.chama.domain.model.Member;
 import org.chama.domain.model.Payout;
+import org.chama.dto.CustomDocumentLineItemRequest;
 import org.chama.dto.DocumentLineItemDto;
+import org.chama.dto.GenerateCustomDocumentRequest;
 import org.chama.repository.GeneratedDocumentRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Generates the three document types (contribution receipt, loan statement, payout receipt) by
- * reading their line items straight off the existing domain entity, unlike DondooHomes'
- * DocumentService which accepts an arbitrary packet, webchama's three document types map 1:1 to
- * entities that already exist, there is no free-form invoicing use case here. Ported orchestration
- * shape from DondooHomes' DocumentService.generate(): persist a placeholder document_number first
- * (NOT NULL, but the id isn't known until the identity insert happens), then rebuild the real
- * number once the id is assigned, then render the PDF so the number can appear on it.
+ * Generates the three record-derived document types (contribution receipt, loan statement, payout
+ * receipt) by reading their line items straight off the existing domain entity, plus a freeform
+ * generator (issue #106, generateCustomDocument) for an ad-hoc invoice/receipt against any existing
+ * chama member, the closer counterpart to DondooHomes' DocumentService which accepts an arbitrary
+ * packet. Ported orchestration shape from DondooHomes' DocumentService.generate(): persist a
+ * placeholder document_number first (NOT NULL, but the id isn't known until the identity insert
+ * happens), then rebuild the real number once the id is assigned, then render the PDF so the
+ * number can appear on it.
  */
 @ApplicationScoped
 public class DocumentGenerationService {
@@ -48,6 +53,9 @@ public class DocumentGenerationService {
 
     @Inject
     PayoutService payoutService;
+
+    @Inject
+    MemberService memberService;
 
     @Inject
     PdfDocumentService pdfDocumentService;
@@ -101,6 +109,43 @@ public class DocumentGenerationService {
         GeneratedDocument doc = newDocument(DocumentType.PAYOUT_RECEIPT, payout.chama, payout.member);
         doc.payout = payout;
         return generate(doc, lineItems, payout.amount);
+    }
+
+    @Transactional
+    public GeneratedDocument generateCustomDocument(Long chamaId, GenerateCustomDocumentRequest request) {
+        if (request.documentType() != DocumentType.CUSTOM_INVOICE && request.documentType() != DocumentType.CUSTOM_RECEIPT) {
+            throw new BadRequestException("documentType must be CUSTOM_INVOICE or CUSTOM_RECEIPT");
+        }
+        if (request.lineItems() == null || request.lineItems().isEmpty()) {
+            throw new BadRequestException("At least one line item is required");
+        }
+
+        Member member = memberService.get(chamaId, request.memberId());
+
+        List<DocumentLineItemDto> lineItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (CustomDocumentLineItemRequest item : request.lineItems()) {
+            if (item.description() == null || item.description().isBlank()) {
+                throw new BadRequestException("Every line item needs a description");
+            }
+            if (item.quantity() <= 0) {
+                throw new BadRequestException("Every line item needs a quantity greater than zero");
+            }
+            if (item.unitPrice() == null || item.unitPrice().compareTo(BigDecimal.ZERO) < 0) {
+                throw new BadRequestException("Every line item needs a non-negative unit price");
+            }
+            BigDecimal amount = item.unitPrice().multiply(BigDecimal.valueOf(item.quantity()));
+            String description = item.quantity() == 1
+                ? item.description()
+                : item.description() + " (x" + item.quantity() + " @ " + item.unitPrice() + ")";
+            lineItems.add(new DocumentLineItemDto(description, amount));
+            totalAmount = totalAmount.add(amount);
+        }
+
+        GeneratedDocument doc = newDocument(request.documentType(), member.chama, member);
+        doc.billingPeriod = request.billingPeriod();
+        doc.notes = request.notes();
+        return generate(doc, lineItems, totalAmount);
     }
 
     private GeneratedDocument newDocument(DocumentType type, Chama chama, org.chama.domain.model.Member member) {

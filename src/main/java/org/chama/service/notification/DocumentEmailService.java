@@ -89,6 +89,8 @@ public class DocumentEmailService {
             case CONTRIBUTION_RECEIPT -> "Your contribution receipt from " + chamaName;
             case LOAN_STATEMENT -> "Your loan statement from " + chamaName;
             case PAYOUT_RECEIPT -> "Your payout receipt from " + chamaName;
+            case CUSTOM_INVOICE -> "Your invoice from " + chamaName;
+            case CUSTOM_RECEIPT -> "Your receipt from " + chamaName;
         };
     }
 
@@ -97,6 +99,8 @@ public class DocumentEmailService {
             case CONTRIBUTION_RECEIPT -> "contribution receipt";
             case LOAN_STATEMENT -> "loan statement";
             case PAYOUT_RECEIPT -> "payout receipt";
+            case CUSTOM_INVOICE -> "invoice";
+            case CUSTOM_RECEIPT -> "receipt";
         };
     }
 
