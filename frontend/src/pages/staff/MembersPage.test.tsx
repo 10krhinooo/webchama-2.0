@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import MembersPage from './MembersPage'
 
@@ -54,7 +54,6 @@ function renderPage(path = '/chamas/3/members') {
 describe('MembersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('confirm', vi.fn(() => true))
     mockGetChama.mockResolvedValue({ id: 3, name: 'Tumaini' })
     mockGetMembers.mockResolvedValue([member])
   })
@@ -151,6 +150,7 @@ describe('MembersPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
 
     fireEvent.click(screen.getByText('Remove'))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(mockDeleteMember).toHaveBeenCalledWith(3, 1))
   })
 
@@ -231,16 +231,17 @@ describe('MembersPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Remove'))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(screen.getByText('cannot remove the last chairperson')).toBeTruthy())
   })
 
   it('does not remove a member when the confirmation is dismissed', async () => {
-    vi.stubGlobal('confirm', vi.fn(() => false))
     mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Remove'))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
     expect(mockDeleteMember).not.toHaveBeenCalled()
   })
 })

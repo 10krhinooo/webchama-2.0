@@ -1,12 +1,10 @@
 import PublicNav from "../../components/layout/PublicNav"
 import PublicFooter from "../../components/layout/PublicFooter"
-import ZamuWheel from "../../components/marketing/ZamuWheel"
+import ContributionPot from "../../components/marketing/ContributionPot"
 import LedgerRow from "../../components/marketing/LedgerRow"
 import StampApproval from "../../components/marketing/StampApproval"
 import RoleCard from "../../components/marketing/RoleCard"
 import WhatsAppQuote from "../../components/marketing/WhatsAppQuote"
-
-const ROTATION_MEMBERS = ["JM", "GW", "PO", "AK", "MN", "SW", "DK", "RC"]
 
 const LEDGER_ENTRIES = [
   {
@@ -56,11 +54,11 @@ function HomePage() {
         {/* Hero */}
         <section className="mx-auto grid max-w-6xl gap-12 px-6 py-20 sm:py-28 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
+            <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-primary">
               Table banking, digitised
             </p>
-            <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-ink sm:text-5xl">
-              Every mchango has a turn.
+            <h1 className="mt-4 font-display text-4xl font-semibold leading-tight text-ink sm:text-5xl">
+              Every shilling lands in the kiondo.
             </h1>
             <p className="mt-6 max-w-md text-lg text-ink/70">
               Webchama keeps your chama&rsquo;s contributions, loans, and payout rotation straight,
@@ -78,13 +76,13 @@ function HomePage() {
               </a>
             </div>
           </div>
-          <ZamuWheel members={ROTATION_MEMBERS} activeIndex={2} activeLabel="Peter O." />
+          <ContributionPot percent={72} label="This cycle" sublabel="KES 144,000 of KES 200,000 mchango collected" />
         </section>
 
         {/* Ledger strip */}
         <section id="how-it-works" className="border-y border-ink/10 bg-paper-dim">
           <div className="mx-auto max-w-3xl px-6 py-16">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
+            <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-primary">
               What&rsquo;s in the book
             </p>
             <div className="mt-6">
@@ -103,7 +101,7 @@ function HomePage() {
         {/* Trust / maker-checker */}
         <section id="trust" className="bg-success text-paper">
           <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-paper/70">
+            <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-paper/70">
               Why trust matters most
             </p>
             <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
@@ -122,7 +120,7 @@ function HomePage() {
 
         {/* Roles */}
         <section id="roles" className="mx-auto max-w-6xl px-6 py-20">
-          <p className="text-center font-mono text-xs uppercase tracking-[0.2em] text-primary">
+          <p className="text-center font-heading text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             Everyone has a seat
           </p>
           <h2 className="mt-4 text-center text-3xl font-bold text-ink sm:text-4xl">

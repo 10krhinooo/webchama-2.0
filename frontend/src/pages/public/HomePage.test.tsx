@@ -5,7 +5,7 @@ import HomePage from './HomePage'
 describe('HomePage', () => {
   it('renders the hero headline and primary call to action', () => {
     render(<HomePage />)
-    expect(screen.getByText('Every mchango has a turn.')).toBeTruthy()
+    expect(screen.getByText('Every shilling lands in the kiondo.')).toBeTruthy()
     expect(screen.getAllByText('Start your chama').length).toBeGreaterThan(0)
   })
 

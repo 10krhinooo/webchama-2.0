@@ -7,17 +7,26 @@ import {
   recordPayment,
   deleteContribution,
   payContributionWithMpesa,
+  initiateCardPayment,
   type Contribution,
   type PaymentMethod,
 } from '../../api/contributions'
 import { getMembers, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
+import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
+import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
+import FormField from '../../components/ui/FormField'
+import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
+import Pagination from '../../components/ui/Pagination'
+import { usePagination } from '../../hooks/usePagination'
 
 const EMPTY_CONTRIBUTION_FORM = { memberId: '', period: '', amountDue: '' }
 const EMPTY_PAYMENT_FORM = { amount: '', method: 'MPESA' as PaymentMethod }
@@ -47,6 +56,12 @@ export default function ContributionsPage() {
   const [sendingStkPush, setSendingStkPush] = useState(false)
   const [createForm, setCreateForm] = useState(EMPTY_CONTRIBUTION_FORM)
   const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT_FORM)
+  const [deleting, setDeleting] = useState<Contribution | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [cardPayment, setCardPayment] = useState<Contribution | null>(null)
+  const [cardEmail, setCardEmail] = useState('')
+  const [startingCardCheckout, setStartingCardCheckout] = useState(false)
+  const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(contributions)
 
   const refresh = () => {
     if (roleLoading) return
@@ -132,14 +147,39 @@ export default function ContributionsPage() {
     }
   }
 
-  const handleDelete = async (contribution: Contribution) => {
-    if (!confirm(`Delete this contribution for ${contribution.memberName}?`)) return
+  const openCardPayment = (contribution: Contribution) => {
+    setCardPayment(contribution)
+    setCardEmail('')
+    setModalNotice(null)
+  }
+
+  const handleStartCardCheckout = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cardPayment) return
+    setStartingCardCheckout(true)
+    setModalNotice(null)
     try {
-      await deleteContribution(chamaId, contribution.id)
+      const { paymentLink, txRef } = await initiateCardPayment(chamaId, cardPayment.id, cardEmail)
+      savePendingCardPayment({ chamaId, contributionId: cardPayment.id, txRef })
+      window.location.href = paymentLink
+    } catch (err) {
+      setModalNotice(extractErrorMessage(err))
+      setStartingCardCheckout(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleting) return
+    setDeleteLoading(true)
+    try {
+      await deleteContribution(chamaId, deleting.id)
       setNotice({ variant: 'success', message: 'Contribution deleted.' })
+      setDeleting(null)
       refresh()
     } catch (err) {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -149,14 +189,7 @@ export default function ContributionsPage() {
         <h1 className="font-heading text-2xl font-bold text-ink">
           {canManage ? 'Contributions' : 'My Contributions'}
         </h1>
-        {canManage && (
-          <button
-            onClick={openCreate}
-            className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary-dark"
-          >
-            + New Contribution
-          </button>
-        )}
+        {canManage && <Button onClick={openCreate}>+ New Contribution</Button>}
       </div>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
@@ -180,7 +213,7 @@ export default function ContributionsPage() {
               {contributions.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-10 text-center text-muted text-sm">No contributions yet.</td></tr>
               )}
-              {contributions.map((c) => (
+              {pageItems.map((c) => (
                 <tr key={c.id} className="hover:bg-paper-dim/30">
                   {canManage && <td className="px-4 py-3 font-medium text-ink">{c.memberName}</td>}
                   <td className="px-4 py-3 text-muted">{c.period}</td>
@@ -194,11 +227,14 @@ export default function ContributionsPage() {
                           {c.status !== 'PAID' && (
                             <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
                           )}
-                          <button onClick={() => handleDelete(c)} className="text-danger text-xs hover:underline">Delete</button>
+                          <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
                         </>
                       ) : (
                         c.status !== 'PAID' && (
-                          <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                          <>
+                            <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                            <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
+                          </>
                         )
                       )}
                     </div>
@@ -210,35 +246,36 @@ export default function ContributionsPage() {
         </div>
       )}
 
+      {!loading && !roleLoading && (
+        <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} label="contributions" />
+      )}
+
       {showCreateModal && (
         <Modal title="New Contribution" onClose={() => setShowCreateModal(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
             {modalNotice && (
               <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
             )}
-            <div>
-              <label htmlFor="contribution-member" className="block text-sm font-medium text-ink/80 mb-1">Member *</label>
-              <select id="contribution-member" required value={createForm.memberId}
+            <FormField label="Member" htmlFor="contribution-member" required>
+              <Select
+                id="contribution-member"
+                required
+                value={createForm.memberId}
                 onChange={(e) => setCreateForm({ ...createForm, memberId: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              >
                 <option value="" disabled>Select a member</option>
                 {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="contribution-period" className="block text-sm font-medium text-ink/80 mb-1">Period *</label>
-              <input id="contribution-period" required type="date" value={createForm.period}
-                onChange={(e) => setCreateForm({ ...createForm, period: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div>
-              <label htmlFor="contribution-amount" className="block text-sm font-medium text-ink/80 mb-1">Amount due *</label>
-              <input id="contribution-amount" required type="number" min="0" step="0.01" value={createForm.amountDue}
-                onChange={(e) => setCreateForm({ ...createForm, amountDue: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <LoadingButton type="submit" loading={saving} loadingText="Saving…"
-              className="w-full bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark disabled:opacity-50">
+              </Select>
+            </FormField>
+            <FormField label="Period" htmlFor="contribution-period" required>
+              <Input id="contribution-period" required type="date" value={createForm.period}
+                onChange={(e) => setCreateForm({ ...createForm, period: e.target.value })} />
+            </FormField>
+            <FormField label="Amount due" htmlFor="contribution-amount" required>
+              <Input id="contribution-amount" required type="number" min="0" step="0.01" value={createForm.amountDue}
+                onChange={(e) => setCreateForm({ ...createForm, amountDue: e.target.value })} />
+            </FormField>
+            <LoadingButton type="submit" loading={saving} loadingText="Saving…" className="w-full">
               Create Contribution
             </LoadingButton>
           </form>
@@ -254,25 +291,23 @@ export default function ContributionsPage() {
             <p className="text-sm text-muted">
               Due {payingContribution.amountDue.toLocaleString()}, already paid {payingContribution.amountPaid.toLocaleString()}.
             </p>
-            <div>
-              <label htmlFor="payment-amount" className="block text-sm font-medium text-ink/80 mb-1">Amount *</label>
-              <input id="payment-amount" required type="number" min="0" step="0.01" value={paymentForm.amount}
-                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div>
-              <label htmlFor="payment-method" className="block text-sm font-medium text-ink/80 mb-1">Method *</label>
-              <select id="payment-method" value={paymentForm.method}
+            <FormField label="Amount" htmlFor="payment-amount" required>
+              <Input id="payment-amount" required type="number" min="0" step="0.01" value={paymentForm.amount}
+                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
+            </FormField>
+            <FormField label="Method" htmlFor="payment-method" required>
+              <Select
+                id="payment-method"
+                value={paymentForm.method}
                 onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value as PaymentMethod })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              >
                 <option value="MPESA">M-Pesa</option>
                 <option value="CARD">Card</option>
                 <option value="CASH">Cash</option>
                 <option value="BANK">Bank</option>
-              </select>
-            </div>
-            <LoadingButton type="submit" loading={saving} loadingText="Saving…"
-              className="w-full bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark disabled:opacity-50">
+              </Select>
+            </FormField>
+            <LoadingButton type="submit" loading={saving} loadingText="Saving…" className="w-full">
               Record Payment
             </LoadingButton>
           </form>
@@ -299,19 +334,56 @@ export default function ContributionsPage() {
                 onClick={handleConfirmMpesaPush}
                 loading={sendingStkPush}
                 loadingText="Sending…"
-                className="flex-1 bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark disabled:opacity-50"
+                className="flex-1"
               >
                 Send Prompt
               </LoadingButton>
-              <button
-                onClick={() => setMpesaConfirm(null)}
-                className="flex-1 border border-black/15 text-ink/80 font-semibold py-2.5 rounded-xl hover:bg-paper-dim"
-              >
+              <Button variant="secondary" onClick={() => setMpesaConfirm(null)} className="flex-1">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
+      )}
+
+      {cardPayment && (
+        <Modal title="Pay by Card" onClose={() => setCardPayment(null)}>
+          <form onSubmit={handleStartCardCheckout} className="space-y-4">
+            {modalNotice && (
+              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+            )}
+            <p className="text-sm text-ink/80">You will be taken to Flutterwave's secure checkout to pay:</p>
+            <div className="bg-paper-dim rounded-xl p-4 space-y-1">
+              <p className="text-xs text-muted">{cardPayment.period}</p>
+              <p className="font-mono text-2xl font-bold text-primary">
+                KES {(cardPayment.amountDue - cardPayment.amountPaid).toLocaleString()}
+              </p>
+            </div>
+            <FormField label="Receipt email" htmlFor="card-payment-email" required>
+              <Input
+                id="card-payment-email"
+                required
+                type="email"
+                value={cardEmail}
+                onChange={(e) => setCardEmail(e.target.value)}
+              />
+            </FormField>
+            <LoadingButton type="submit" loading={startingCardCheckout} loadingText="Redirecting…" className="w-full">
+              Continue to Checkout
+            </LoadingButton>
+          </form>
+        </Modal>
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Delete contribution"
+          message={`Delete this contribution for ${deleting.memberName}?`}
+          confirmLabel="Delete"
+          loading={deleteLoading}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleting(null)}
+        />
       )}
     </div>
   )
