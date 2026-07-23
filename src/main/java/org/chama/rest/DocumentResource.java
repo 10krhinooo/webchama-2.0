@@ -2,6 +2,7 @@ package org.chama.rest;
 
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -14,6 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.GeneratedDocument;
+import org.chama.dto.GenerateCustomDocumentRequest;
 import org.chama.dto.GeneratedDocumentDto;
 import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.security.CurrentUser;
@@ -24,11 +26,12 @@ import org.chama.service.notification.DocumentEmailService;
 import java.util.List;
 
 /**
- * Generation and read endpoints for the three document types (issue #42). Financial documents,
- * generation and listing are TREASURER/CHAIRPERSON-only, same convention as penalties/payouts. A
- * member may still fetch their own document by id, self-service, same pattern as PayoutResource's
- * requireTreasuryRoleOrOwnDocument. Sending a generated document by email is issue #38, WhatsApp
- * (issue #40) is not wired up here yet.
+ * Generation and read endpoints for the three record-derived document types (issue #42), plus a
+ * freeform generator (issue #106) for an ad-hoc invoice/receipt against any existing chama member.
+ * Financial documents, generation and listing are TREASURER/CHAIRPERSON-only, same convention as
+ * penalties/payouts. A member may still fetch their own document by id, self-service, same pattern
+ * as PayoutResource's requireTreasuryRoleOrOwnDocument. Sending a generated document by email is
+ * issue #38, WhatsApp (issue #40) is not wired up here yet.
  */
 @Path("/api/chamas/{chamaId}")
 @Authenticated
@@ -71,6 +74,15 @@ public class DocumentResource {
     public Response generatePayoutReceipt(@PathParam("chamaId") Long chamaId, @PathParam("payoutId") Long payoutId) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
         GeneratedDocument doc = documentGenerationService.generatePayoutReceipt(chamaId, payoutId);
+        return Response.status(Response.Status.CREATED).entity(GeneratedDocumentDto.from(doc, true)).build();
+    }
+
+    @POST
+    @Path("/documents/generate")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response generateCustomDocument(@PathParam("chamaId") Long chamaId, GenerateCustomDocumentRequest request) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        GeneratedDocument doc = documentGenerationService.generateCustomDocument(chamaId, request);
         return Response.status(Response.Status.CREATED).entity(GeneratedDocumentDto.from(doc, true)).build();
     }
 

@@ -92,6 +92,8 @@ public class PdfDocumentService {
             case CONTRIBUTION_RECEIPT -> "CONTRIBUTION RECEIPT";
             case LOAN_STATEMENT -> "LOAN STATEMENT";
             case PAYOUT_RECEIPT -> "PAYOUT RECEIPT";
+            case CUSTOM_INVOICE -> "INVOICE";
+            case CUSTOM_RECEIPT -> "RECEIPT";
         };
     }
 

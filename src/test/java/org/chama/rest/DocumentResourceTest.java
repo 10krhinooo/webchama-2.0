@@ -326,6 +326,113 @@ class DocumentResourceTest {
 
     @Test
     @TestSecurity(user = "doc-treasurer-1")
+    void treasurerCanGenerateACustomInvoiceForAnExistingMember() {
+        String body = String.format("""
+            {"documentType":"CUSTOM_INVOICE","memberId":%d,"billingPeriod":"July 2026",
+             "notes":"Thank you","lineItems":[
+                {"description":"Registration fee","quantity":1,"unitPrice":300},
+                {"description":"Ledger book","quantity":2,"unitPrice":150}]}
+            """, memberId);
+
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/documents/generate", chamaId)
+            .then()
+                .statusCode(201)
+                .body("documentType", equalTo("CUSTOM_INVOICE"))
+                .body("documentNumber", startsWith("CI-"))
+                .body("memberName", equalTo("Member One"))
+                .body("billingPeriod", equalTo("July 2026"))
+                .body("lineItems", hasSize(2))
+                .body("lineItems[1].description", equalTo("Ledger book (x2 @ 150)"))
+                .body("totalAmount", equalTo(600))
+                .body("pdfBase64", notNullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "doc-member-1")
+    void memberCannotGenerateACustomDocument() {
+        String body = String.format(
+            "{\"documentType\":\"CUSTOM_RECEIPT\",\"memberId\":%d,\"lineItems\":[{\"description\":\"Fee\",\"quantity\":1,\"unitPrice\":100}]}",
+            memberId);
+
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/documents/generate", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void generatingACustomDocumentWithAWrongDocumentTypeReturns400() {
+        String body = String.format(
+            "{\"documentType\":\"CONTRIBUTION_RECEIPT\",\"memberId\":%d,\"lineItems\":[{\"description\":\"Fee\",\"quantity\":1,\"unitPrice\":100}]}",
+            memberId);
+
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/documents/generate", chamaId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void generatingACustomDocumentWithNoLineItemsReturns400() {
+        String body = String.format(
+            "{\"documentType\":\"CUSTOM_INVOICE\",\"memberId\":%d,\"lineItems\":[]}", memberId);
+
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/documents/generate", chamaId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "other-chama-custom-doc-treasurer")
+    void generatingACustomDocumentForAMemberInAnotherChamaReturnsNotFound() {
+        Long otherChamaId = QuarkusTransaction.requiringNew().call(() -> {
+            Chama other = new Chama();
+            other.name = "Other Chama For Custom Doc Test";
+            other.type = ChamaType.TABLE_BANKING;
+            other.currency = "KES";
+            other.contributionFrequency = ContributionFrequency.MONTHLY;
+            other.contributionAmount = new BigDecimal("500");
+            other.status = ChamaStatus.ACTIVE;
+            chamaRepository.persist(other);
+
+            Member treasurer = new Member();
+            treasurer.chama = other;
+            treasurer.keycloakUserId = "other-chama-custom-doc-treasurer";
+            treasurer.fullName = "Other Chama Custom Doc Treasurer";
+            treasurer.phone = "254700000506";
+            treasurer.status = MemberStatus.ACTIVE;
+            memberRepository.persist(treasurer);
+            MemberRole role = new MemberRole();
+            role.member = treasurer;
+            role.role = MemberRoleType.TREASURER;
+            role.persist();
+            return other.id;
+        });
+
+        // A treasurer of otherChamaId, generating against a member who actually belongs to
+        // chamaId, must get 404, not leak the other chama's member data.
+        String body = String.format(
+            "{\"documentType\":\"CUSTOM_RECEIPT\",\"memberId\":%d,\"lineItems\":[{\"description\":\"Fee\",\"quantity\":1,\"unitPrice\":100}]}",
+            memberId);
+
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/documents/generate", otherChamaId)
+            .then().statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
     void listOmitsPdfBytesAndReturnsNewestFirst() {
         given().when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
             .then().statusCode(201);

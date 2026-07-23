@@ -3,7 +3,9 @@ package org.chama.domain.enums;
 public enum DocumentType {
     CONTRIBUTION_RECEIPT("CR"),
     LOAN_STATEMENT("LS"),
-    PAYOUT_RECEIPT("PR");
+    PAYOUT_RECEIPT("PR"),
+    CUSTOM_INVOICE("CI"),
+    CUSTOM_RECEIPT("CX");
 
     private final String prefix;
 
