@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
 
@@ -82,6 +82,10 @@ export default function StaffLayout() {
               <NavLink to={`/chamas/${chamaId}/loans`} className={navLinkClass}>
                 <HandCoins className="h-4 w-4" />
                 Loans
+              </NavLink>
+              <NavLink to={`/chamas/${chamaId}/payouts`} className={navLinkClass}>
+                <RotateCw className="h-4 w-4" />
+                Payouts
               </NavLink>
             </>
           )}

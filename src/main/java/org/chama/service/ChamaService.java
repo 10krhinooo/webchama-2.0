@@ -12,8 +12,16 @@ import org.chama.dto.CreateChamaDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanRepaymentRepository;
+import org.chama.repository.LoanRepository;
+import org.chama.repository.MeetingAttendanceRepository;
+import org.chama.repository.MeetingRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
+import org.chama.repository.PayoutRepository;
+import org.chama.repository.PayoutScheduleRepository;
+import org.chama.repository.PenaltyRepository;
 import org.chama.security.CurrentUser;
 
 import java.util.List;
@@ -32,6 +40,30 @@ public class ChamaService {
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
+
+    @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
+    @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    PayoutScheduleRepository payoutScheduleRepository;
+
+    @Inject
+    PenaltyRepository penaltyRepository;
+
+    @Inject
+    MeetingAttendanceRepository meetingAttendanceRepository;
+
+    @Inject
+    MeetingRepository meetingRepository;
 
     public List<Chama> listForUser(CurrentUser user) {
         if (user.isSuperAdmin()) {
@@ -95,11 +127,18 @@ public class ChamaService {
         if (!chamaRepository.findByIdOptional(id).isPresent()) {
             throw new NotFoundException();
         }
-        // Order matters: member_role and contribution both reference member,
-        // which references chama, so they must go first. Bulk delete-by-query
-        // throughout (never loading the child entities into the persistence
-        // context) avoids stale-entity flush ordering issues with the final
-        // chamaRepository.deleteById(id) below.
+        // Order matters: every table below references chama directly or transitively (member,
+        // loan, meeting), so they must go first. Bulk delete-by-query throughout (never loading
+        // the child entities into the persistence context) avoids stale-entity flush ordering
+        // issues with the final chamaRepository.deleteById(id) below.
+        paymentRepository.delete("chama.id", id);
+        loanRepaymentRepository.delete("loan.chama.id", id);
+        loanRepository.delete("chama.id", id);
+        payoutRepository.delete("chama.id", id);
+        payoutScheduleRepository.delete("chama.id", id);
+        penaltyRepository.delete("chama.id", id);
+        meetingAttendanceRepository.delete("meeting.chama.id", id);
+        meetingRepository.delete("chama.id", id);
         contributionRepository.delete("chama.id", id);
         memberRoleRepository.deleteByChamaId(id);
         memberRepository.delete("chama.id", id);
