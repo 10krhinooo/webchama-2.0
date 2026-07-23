@@ -14,6 +14,8 @@ import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
@@ -54,6 +56,12 @@ class TenantIsolationTest {
     ContributionRepository contributionRepository;
 
     @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
+
+    @Inject
     LoanDisbursementRepository loanDisbursementRepository;
 
     @Inject
@@ -83,6 +91,8 @@ class TenantIsolationTest {
     @BeforeEach
     void seedTwoChamas() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
             penaltyRepository.deleteAll();

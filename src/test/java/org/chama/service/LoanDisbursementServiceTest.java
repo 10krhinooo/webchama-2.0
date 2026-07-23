@@ -19,6 +19,8 @@ import org.chama.domain.model.LoanDisbursement;
 import org.chama.domain.model.Member;
 import org.chama.dto.B2cResultCallbackDto;
 import org.chama.repository.ChamaRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
@@ -48,6 +50,12 @@ class LoanDisbursementServiceTest {
     ChamaRepository chamaRepository;
 
     @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
+
+    @Inject
     MemberRepository memberRepository;
 
     @Inject
@@ -69,6 +77,8 @@ class LoanDisbursementServiceTest {
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();

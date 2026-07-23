@@ -6,6 +6,8 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
@@ -38,6 +40,12 @@ class ChamaResourceTest {
     ContributionRepository contributionRepository;
 
     @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
+
+    @Inject
     LoanDisbursementRepository loanDisbursementRepository;
 
     @Inject
@@ -64,6 +72,8 @@ class ChamaResourceTest {
     @BeforeEach
     @Transactional
     void cleanDatabase() {
+        documentDeliveryAttemptRepository.deleteAll();
+        generatedDocumentRepository.deleteAll();
         meetingAttendanceRepository.deleteAll();
         meetingRepository.deleteAll();
         penaltyRepository.deleteAll();
