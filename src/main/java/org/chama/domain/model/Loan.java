@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.chama.domain.enums.InterestMethod;
 import org.chama.domain.enums.LoanStatus;
 import org.hibernate.annotations.CreationTimestamp;
@@ -72,4 +73,10 @@ public class Loan extends PanacheEntityBase {
     @CreationTimestamp
     @Column(name = "requested_at", nullable = false, updatable = false)
     public Instant requestedAt;
+
+    // Approving a loan is a claim-once transition (MIGRATION_PLAN.md section 7); @Version
+    // closes the race a plain REQUESTED-status check can't close alone (issue #30).
+    @Version
+    @Column(nullable = false)
+    public long version;
 }
