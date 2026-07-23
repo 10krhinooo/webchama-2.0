@@ -11,6 +11,13 @@
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
 
+  "eventsEnabled": true,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
+  "eventsExpiration": 2592000,
+  "eventsListeners": ["jboss-logging"],
+  "enabledEventTypes": ["LOGIN", "LOGIN_ERROR", "LOGOUT", "LOGOUT_ERROR", "REGISTER", "REGISTER_ERROR", "UPDATE_PASSWORD", "UPDATE_PASSWORD_ERROR"],
+
   "roles": {
     "realm": [
       { "name": "SUPER_ADMIN",  "description": "Platform owner — cross-chama oversight, no operational access to any single chama's financial data by default" },
