@@ -47,6 +47,33 @@ class DocumentRepositoryTest {
     ContributionRepository contributionRepository;
 
     @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
+    @Inject
+    LoanDisbursementRepository loanDisbursementRepository;
+
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    PayoutScheduleRepository payoutScheduleRepository;
+
+    @Inject
+    PenaltyRepository penaltyRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
+
+    @Inject
+    MeetingAttendanceRepository meetingAttendanceRepository;
+
+    @Inject
+    MeetingRepository meetingRepository;
+
+    @Inject
     GeneratedDocumentRepository generatedDocumentRepository;
 
     @Inject
@@ -62,6 +89,15 @@ class DocumentRepositoryTest {
         QuarkusTransaction.requiringNew().run(() -> {
             documentDeliveryAttemptRepository.deleteAll();
             generatedDocumentRepository.deleteAll();
+            paymentRepository.deleteAll();
+            meetingAttendanceRepository.deleteAll();
+            meetingRepository.deleteAll();
+            penaltyRepository.deleteAll();
+            payoutRepository.deleteAll();
+            payoutScheduleRepository.deleteAll();
+            loanRepaymentRepository.deleteAll();
+            loanDisbursementRepository.deleteAll();
+            loanRepository.deleteAll();
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
