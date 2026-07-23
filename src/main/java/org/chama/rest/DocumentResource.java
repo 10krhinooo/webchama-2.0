@@ -19,6 +19,7 @@ import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
 import org.chama.service.DocumentGenerationService;
+import org.chama.service.notification.DocumentEmailService;
 
 import java.util.List;
 
@@ -26,8 +27,8 @@ import java.util.List;
  * Generation and read endpoints for the three document types (issue #42). Financial documents,
  * generation and listing are TREASURER/CHAIRPERSON-only, same convention as penalties/payouts. A
  * member may still fetch their own document by id, self-service, same pattern as PayoutResource's
- * requireTreasuryRoleOrOwnDocument. Sending a generated document (email/whatsapp) is not wired up
- * here, that lands with the delivery channels (issues #38/#39/#40).
+ * requireTreasuryRoleOrOwnDocument. Sending a generated document by email is issue #38, WhatsApp
+ * (issue #40) is not wired up here yet.
  */
 @Path("/api/chamas/{chamaId}")
 @Authenticated
@@ -36,6 +37,9 @@ public class DocumentResource {
 
     @Inject
     DocumentGenerationService documentGenerationService;
+
+    @Inject
+    DocumentEmailService documentEmailService;
 
     @Inject
     GeneratedDocumentRepository generatedDocumentRepository;
@@ -85,12 +89,25 @@ public class DocumentResource {
     @Path("/documents/{id}")
     public GeneratedDocumentDto get(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id,
             @QueryParam("pdf") @DefaultValue("false") boolean includePdf) {
+        GeneratedDocument doc = findForChama(chamaId, id);
+        requireTreasuryRoleOrOwnDocument(chamaId, doc);
+        return GeneratedDocumentDto.from(doc, includePdf);
+    }
+
+    @POST
+    @Path("/documents/{id}/send/email")
+    public GeneratedDocumentDto sendEmail(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        GeneratedDocument doc = findForChama(chamaId, id);
+        return GeneratedDocumentDto.from(documentEmailService.send(doc), false);
+    }
+
+    private GeneratedDocument findForChama(Long chamaId, Long id) {
         GeneratedDocument doc = generatedDocumentRepository.findByIdOptional(id).orElseThrow(NotFoundException::new);
         if (!doc.chama.id.equals(chamaId)) {
             throw new NotFoundException();
         }
-        requireTreasuryRoleOrOwnDocument(chamaId, doc);
-        return GeneratedDocumentDto.from(doc, includePdf);
+        return doc;
     }
 
     private void requireTreasuryRoleOrOwnDocument(Long chamaId, GeneratedDocument doc) {
