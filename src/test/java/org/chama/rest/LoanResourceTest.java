@@ -1,6 +1,7 @@
 package org.chama.rest;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -16,6 +17,7 @@ import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
@@ -26,14 +28,18 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.service.DarajaB2cClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 
 @QuarkusTest
 class LoanResourceTest {
@@ -74,6 +80,12 @@ class LoanResourceTest {
     @Inject
     MeetingRepository meetingRepository;
 
+    @Inject
+    LoanDisbursementRepository loanDisbursementRepository;
+
+    @InjectMock
+    DarajaB2cClient b2cClient;
+
     private Long chamaId;
     private Long borrowerId;
     private Long otherMemberId;
@@ -88,6 +100,7 @@ class LoanResourceTest {
             payoutRepository.deleteAll();
             payoutScheduleRepository.deleteAll();
             contributionRepository.deleteAll();
+            loanDisbursementRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             memberRoleRepository.deleteAll();
@@ -317,5 +330,63 @@ class LoanResourceTest {
         given()
             .when().get("/api/chamas/{chamaId}/loans/{id}", chamaId, loanId)
             .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void treasurerCanDisburseAnApprovedLoan() {
+        Long loanId = approvedLoan();
+        Mockito.when(b2cClient.requestPayout(anyString(), any(BigDecimal.class), anyString()))
+            .thenReturn(new DarajaB2cClient.B2cAckResult("AG_1", "16740-1"));
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/disburse", chamaId, loanId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("PENDING"))
+                .body("loanId", equalTo(loanId.intValue()));
+    }
+
+    @Test
+    @TestSecurity(user = "loan-borrower-1")
+    void memberCannotDisburseALoan() {
+        Long loanId = approvedLoan();
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/disburse", chamaId, loanId)
+            .then().statusCode(403);
+        Mockito.verifyNoInteractions(b2cClient);
+    }
+
+    @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void disbursingARequestedLoanThatIsNotYetApprovedFails() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":4000,\"interestRate\":8,\"interestMethod\":\"FLAT\",\"termMonths\":4}",
+            borrowerId);
+        int loanId = given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/disburse", chamaId, loanId)
+            .then().statusCode(400);
+        Mockito.verifyNoInteractions(b2cClient);
+    }
+
+    private Long approvedLoan() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            Loan loan = new Loan();
+            loan.chama = chamaRepository.findById(chamaId);
+            loan.member = memberRepository.findById(borrowerId);
+            loan.principal = new BigDecimal("4000");
+            loan.interestRate = new BigDecimal("8");
+            loan.interestMethod = InterestMethod.FLAT;
+            loan.termMonths = 4;
+            loan.status = org.chama.domain.enums.LoanStatus.APPROVED;
+            loanRepository.persist(loan);
+            return loan.id;
+        });
     }
 }

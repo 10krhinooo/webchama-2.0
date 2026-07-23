@@ -45,8 +45,11 @@ public class RateLimitFilter implements ContainerRequestFilter {
         new Rule("card-verify", p -> p.endsWith("/pay/card/verify"), 30, Duration.ofMinutes(1).toMillis()),
         new Rule("mpesa-push", p -> p.endsWith("/pay/mpesa"), 10, Duration.ofMinutes(1).toMillis()),
         new Rule("card-init", p -> p.endsWith("/pay/card"), 15, Duration.ofMinutes(1).toMillis()),
+        new Rule("loan-disburse", p -> p.endsWith("/disburse"), 10, Duration.ofMinutes(1).toMillis()),
         new Rule("mpesa-callback", p -> p.equals("/api/payments/mpesa-callback"), 60, Duration.ofMinutes(1).toMillis()),
-        new Rule("card-callback", p -> p.equals("/api/payments/card/callback"), 60, Duration.ofMinutes(1).toMillis())
+        new Rule("card-callback", p -> p.equals("/api/payments/card/callback"), 60, Duration.ofMinutes(1).toMillis()),
+        new Rule("b2c-callback", p -> p.equals("/api/payments/b2c-callback"), 60, Duration.ofMinutes(1).toMillis()),
+        new Rule("b2c-timeout", p -> p.equals("/api/payments/b2c-timeout"), 60, Duration.ofMinutes(1).toMillis())
     );
 
     private static final long STALE_AFTER_MILLIS = Duration.ofMinutes(30).toMillis();

@@ -14,6 +14,7 @@ import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
@@ -53,6 +54,9 @@ class TenantIsolationTest {
     ContributionRepository contributionRepository;
 
     @Inject
+    LoanDisbursementRepository loanDisbursementRepository;
+
+    @Inject
     LoanRepository loanRepository;
 
     @Inject
@@ -85,6 +89,7 @@ class TenantIsolationTest {
             payoutRepository.deleteAll();
             payoutScheduleRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
+            loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();

@@ -14,6 +14,7 @@ import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
@@ -50,6 +51,9 @@ class PayoutResourceTest {
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    LoanDisbursementRepository loanDisbursementRepository;
 
     @Inject
     LoanRepository loanRepository;
@@ -95,6 +99,7 @@ class PayoutResourceTest {
             payoutScheduleRepository.deleteAll();
             contributionRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
+            loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
