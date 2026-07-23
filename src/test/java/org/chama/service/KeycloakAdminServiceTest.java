@@ -4,9 +4,19 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,6 +48,63 @@ class KeycloakAdminServiceTest {
     void findUserByEmailReturnsNullForAnUnknownEmail() throws Exception {
         String email = "does-not-exist-" + UUID.randomUUID() + "@example.com";
         assertNull(keycloakAdminService.findUserByEmail(email));
+    }
+
+    @Test
+    void ensureEventsEnabledSucceedsAgainstTheRealKeycloakInstance() throws Exception {
+        keycloakAdminService.ensureEventsEnabled();
+    }
+
+    /**
+     * Triggers a real bad-password direct-grant attempt against webchama-frontend (public,
+     * direct access grants enabled) for the seeded member1 account, then confirms the resulting
+     * LOGIN_ERROR shows up through fetchLoginEvents. This is exactly the "someone tries to force
+     * enter" signal KeycloakSecurityEventSyncService exists to capture, error is Keycloak's own
+     * failure reason string (e.g. invalid_user_credentials, or user_temporarily_disabled once
+     * bruteForceProtected locks the account).
+     */
+    @Test
+    void fetchLoginEventsIncludesARealFailedLoginAttempt() throws Exception {
+        keycloakAdminService.ensureEventsEnabled();
+        triggerBadPasswordLoginAttempt();
+
+        List<KeycloakAdminService.KeycloakLoginEvent> events =
+            keycloakAdminService.fetchLoginEvents(LocalDate.now(ZoneOffset.UTC).minusDays(1));
+
+        assertTrue(events.stream().anyMatch(e -> "LOGIN_ERROR".equals(e.type()) && e.error() != null),
+            "expected at least one LOGIN_ERROR event with a non-null error after a bad-password attempt");
+    }
+
+    @Test
+    void fetchAdminEventsIncludesARealUserCreationEvent() throws Exception {
+        keycloakAdminService.ensureEventsEnabled();
+        String email = "kc-admin-event-test-" + UUID.randomUUID() + "@example.com";
+        keycloakAdminService.createUser(email, "Admin Event Test", keycloakAdminService.generateTempPassword());
+
+        List<KeycloakAdminService.KeycloakAdminEvent> events =
+            keycloakAdminService.fetchAdminEvents(LocalDate.now(ZoneOffset.UTC).minusDays(1));
+
+        assertFalse(events.isEmpty(), "expected at least one admin event after provisioning a user");
+        assertTrue(events.stream().anyMatch(e -> "CREATE".equals(e.operationType())),
+            "expected at least one CREATE admin event after provisioning a user");
+    }
+
+    private void triggerBadPasswordLoginAttempt() throws Exception {
+        HttpClient http = HttpClient.newHttpClient();
+        String body = "grant_type=password"
+            + "&client_id=" + URLEncoder.encode("webchama-frontend", StandardCharsets.UTF_8)
+            + "&username=" + URLEncoder.encode("member1", StandardCharsets.UTF_8)
+            + "&password=" + URLEncoder.encode("definitely-the-wrong-password", StandardCharsets.UTF_8);
+
+        HttpRequest req = HttpRequest.newBuilder(
+                URI.create("http://localhost:8180/realms/chama/protocol/openid-connect/token"))
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        // Expected to fail (401), that is the whole point, the failure itself is what we're testing for.
+        assertEquals(401, resp.statusCode());
     }
 
     @Test
