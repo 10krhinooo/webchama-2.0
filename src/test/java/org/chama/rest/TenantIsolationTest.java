@@ -18,6 +18,8 @@ import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PayoutRepository;
+import org.chama.repository.PayoutScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -53,12 +55,20 @@ class TenantIsolationTest {
     @Inject
     LoanRepaymentRepository loanRepaymentRepository;
 
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    PayoutScheduleRepository payoutScheduleRepository;
+
     private Long chamaAId;
     private Long chamaBId;
 
     @BeforeEach
     void seedTwoChamas() {
         QuarkusTransaction.requiringNew().run(() -> {
+            payoutRepository.deleteAll();
+            payoutScheduleRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();

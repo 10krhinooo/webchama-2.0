@@ -25,6 +25,8 @@ import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
+import org.chama.repository.PayoutRepository;
+import org.chama.repository.PayoutScheduleRepository;
 import org.chama.service.FlutterwaveService;
 import org.chama.service.MpesaService;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +65,12 @@ class PaymentFlowResourceTest {
     @Inject
     LoanRepaymentRepository loanRepaymentRepository;
 
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    PayoutScheduleRepository payoutScheduleRepository;
+
     @InjectMock
     MpesaService mpesaService;
 
@@ -77,6 +85,8 @@ class PaymentFlowResourceTest {
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
             paymentRepository.deleteAll();
+            payoutRepository.deleteAll();
+            payoutScheduleRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();

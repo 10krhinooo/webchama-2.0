@@ -43,6 +43,9 @@ public class MemberService {
     @Inject
     MemberInvitationEmailService memberInvitationEmailService;
 
+    @Inject
+    PayoutService payoutService;
+
     public List<Member> listForChama(Long chamaId) {
         return memberRepository.findByChama(chamaId);
     }
@@ -121,6 +124,9 @@ public class MemberService {
     public Member updateStatus(Long chamaId, Long memberId, org.chama.domain.enums.MemberStatus status) {
         Member member = get(chamaId, memberId);
         member.status = status;
+        if (status == org.chama.domain.enums.MemberStatus.EXITED) {
+            payoutService.handleMemberExit(chamaId, memberId);
+        }
         return member;
     }
 
