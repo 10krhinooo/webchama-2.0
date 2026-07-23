@@ -74,6 +74,11 @@
             <artifactId>quarkus-scheduler</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>1.3.35</version>
+        </dependency>
+        <dependency>
             <groupId>io.quarkiverse.groovy</groupId>
             <artifactId>quarkus-groovy-junit5</artifactId>
             <version>3.37.3</version>
