@@ -3,35 +3,40 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
-      // Design tokens per MIGRATION_PLAN.md section 3, confirmed at UI kickoff. The brand color
-      // is a deep ink-indigo, the color of blue-black ledger ink, tying the palette to the
-      // literal artifact a chama keeps its records in. Danger, success, and warning each get
-      // their own hue (brick, forest, marigold) so status colors never read as brand color.
+      // Design system v2 (see issue #84): a Kenyan market/textile-grounded identity, replacing
+      // the ink-ledger palette. Primary is a deep kanga-teal (the color of trust and money,
+      // drawn from kanga-cloth borders), accent is a saffron gold. Danger, success, and warning
+      // each keep their own hue (clay, shamba green, ochre) distinct from primary and accent so
+      // status colors never collide with brand color.
       colors: {
         primary: {
-          DEFAULT: "#3D3A6B",
-          dark: "#26244A",
-          light: "#E9E7F5",
+          DEFAULT: "#1B4D45",
+          dark: "#12302B",
+          light: "#DCEAE6",
         },
-        secondary: "#F2EBD9",
-        danger: "#B23A2E",
-        success: "#1E5B3E",
-        warning: "#C97F1D",
+        accent: {
+          DEFAULT: "#E0A233",
+          dark: "#B87D1D",
+          light: "#FBEBCB",
+        },
+        danger: "#B84B2E",
+        success: "#3F7A3B",
+        warning: "#B8860B",
         muted: "#6E6759",
-        ink: "#1C1A17",
-        paper: "#FBF7EE",
-        "paper-dim": "#F2EBD9",
-        night: "#201D18",
-        "night-deep": "#14120E",
+        ink: "#241E1A",
+        paper: "#F7F0E4",
+        "paper-dim": "#EDE1CC",
+        night: "#12302B",
+        "night-deep": "#0B211D",
       },
       fontFamily: {
-        display: ["Courier Prime", "ui-monospace", "monospace"],
-        mono: ["Courier Prime", "ui-monospace", "monospace"],
-        heading: ["Sora", "sans-serif"],
+        display: ["Fraunces", "Georgia", "serif"],
+        heading: ["Archivo", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgba(28, 26, 23, 0.08), 0 1px 2px -1px rgba(28, 26, 23, 0.08)",
-        "card-hover": "0 4px 12px -2px rgba(28, 26, 23, 0.12)",
+        card: "0 1px 3px 0 rgba(18, 48, 43, 0.10), 0 1px 2px -1px rgba(18, 48, 43, 0.10)",
+        "card-hover": "0 4px 12px -2px rgba(18, 48, 43, 0.16)",
       },
     },
   },
