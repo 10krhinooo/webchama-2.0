@@ -9,7 +9,7 @@ vi.mock('./client', () => ({
 }))
 
 import { client } from './client'
-import { getLoans, getMyLoans, createLoan, getLoanRepayments, recordLoanRepayment, type CreateLoanRequest } from './loans'
+import { getLoans, getMyLoans, createLoan, approveLoan, getLoanRepayments, recordLoanRepayment, type CreateLoanRequest } from './loans'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
 const mockPost = client.post as ReturnType<typeof vi.fn>
@@ -47,6 +47,13 @@ describe('loans api', () => {
     const result = await createLoan(3, payload)
     expect(mockPost).toHaveBeenCalledWith('/chamas/3/loans', payload)
     expect(result).toEqual({ id: 9, ...payload })
+  })
+
+  it('approveLoan puts and unwraps data', async () => {
+    mockPut.mockResolvedValue({ data: { id: 9, status: 'APPROVED' } })
+    const result = await approveLoan(3, 9)
+    expect(mockPut).toHaveBeenCalledWith('/chamas/3/loans/9/approve', {})
+    expect(result).toEqual({ id: 9, status: 'APPROVED' })
   })
 
   it('getLoanRepayments fetches the schedule and unwraps data', async () => {

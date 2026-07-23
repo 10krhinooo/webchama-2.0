@@ -220,6 +220,61 @@ class LoanResourceTest {
     }
 
     @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void treasurerCanApproveARequestedLoan() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":4000,\"interestRate\":8,\"interestMethod\":\"FLAT\",\"termMonths\":4}",
+            borrowerId);
+        int loanId = given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/approve", chamaId, loanId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("APPROVED"))
+                .body("approvedByName", equalTo("Treasurer One"))
+                .body("approvedAt", org.hamcrest.Matchers.notNullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "loan-borrower-1")
+    void memberCannotApproveALoan() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":4000,\"interestRate\":8,\"interestMethod\":\"FLAT\",\"termMonths\":4}",
+            borrowerId);
+        int loanId = given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/approve", chamaId, loanId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void approvingAnAlreadyApprovedLoanFails() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":4000,\"interestRate\":8,\"interestMethod\":\"FLAT\",\"termMonths\":4}",
+            borrowerId);
+        int loanId = given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+
+        given().when().put("/api/chamas/{chamaId}/loans/{id}/approve", chamaId, loanId)
+            .then().statusCode(200);
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/approve", chamaId, loanId)
+            .then().statusCode(400);
+    }
+
+    @Test
     @TestSecurity(user = "loan-other-1")
     void anotherMemberCannotSeeSomeoneElsesLoan() {
         Long loanId = QuarkusTransaction.requiringNew().call(() -> {
