@@ -16,11 +16,13 @@ import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.Loan;
 import org.chama.dto.CreateLoanDto;
+import org.chama.dto.LoanDisbursementDto;
 import org.chama.dto.LoanDto;
 import org.chama.dto.LoanRepaymentDto;
 import org.chama.dto.RecordLoanRepaymentDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
+import org.chama.service.LoanDisbursementService;
 import org.chama.service.LoanService;
 
 import java.util.List;
@@ -33,6 +35,9 @@ public class LoanResource {
 
     @Inject
     LoanService loanService;
+
+    @Inject
+    LoanDisbursementService loanDisbursementService;
 
     @Inject
     TenantAccessService tenantAccessService;
@@ -87,6 +92,18 @@ public class LoanResource {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
         var approver = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
         return LoanDto.from(loanService.approve(chamaId, id, approver.id));
+    }
+
+    /**
+     * CHAIRPERSON/TREASURER-only: trigger the M-Pesa B2C payout for an APPROVED loan. This is a
+     * single-role gate, not yet the maker-checker dual sign-off MIGRATION_PLAN.md section 6 calls
+     * for, that lands with Phase 7a (issue #36).
+     */
+    @PUT
+    @Path("/{id}/disburse")
+    public LoanDisbursementDto disburse(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        return LoanDisbursementDto.from(loanDisbursementService.initiate(chamaId, id));
     }
 
     @PUT

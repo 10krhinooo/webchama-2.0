@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
@@ -37,6 +38,9 @@ class ChamaResourceTest {
     ContributionRepository contributionRepository;
 
     @Inject
+    LoanDisbursementRepository loanDisbursementRepository;
+
+    @Inject
     LoanRepository loanRepository;
 
     @Inject
@@ -66,6 +70,7 @@ class ChamaResourceTest {
         payoutRepository.deleteAll();
         payoutScheduleRepository.deleteAll();
         loanRepaymentRepository.deleteAll();
+        loanDisbursementRepository.deleteAll();
         loanRepository.deleteAll();
         contributionRepository.deleteAll();
         memberRoleRepository.deleteAll();
