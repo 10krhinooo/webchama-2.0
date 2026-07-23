@@ -19,8 +19,11 @@ import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
+import org.chama.repository.MeetingAttendanceRepository;
+import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
+import org.chama.repository.PenaltyRepository;
 import org.chama.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,6 +67,15 @@ class PayoutResourceTest {
     PayoutScheduleRepository payoutScheduleRepository;
 
     @Inject
+    PenaltyRepository penaltyRepository;
+
+    @Inject
+    MeetingAttendanceRepository meetingAttendanceRepository;
+
+    @Inject
+    MeetingRepository meetingRepository;
+
+    @Inject
     MemberService memberService;
 
     private Long chamaId;
@@ -76,6 +88,9 @@ class PayoutResourceTest {
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
             paymentRepository.deleteAll();
+            meetingAttendanceRepository.deleteAll();
+            meetingRepository.deleteAll();
+            penaltyRepository.deleteAll();
             payoutRepository.deleteAll();
             payoutScheduleRepository.deleteAll();
             contributionRepository.deleteAll();

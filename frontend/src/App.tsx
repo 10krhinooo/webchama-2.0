@@ -10,6 +10,7 @@ import MembersPage from './pages/staff/MembersPage'
 import ContributionsPage from './pages/staff/ContributionsPage'
 import ContributionPaymentResultPage from './pages/staff/ContributionPaymentResultPage'
 import LoansPage from './pages/staff/LoansPage'
+import PayoutsPage from './pages/staff/PayoutsPage'
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             <Route path="/chamas/:chamaId/members" element={<MembersPage />} />
             <Route path="/chamas/:chamaId/contributions" element={<ContributionsPage />} />
             <Route path="/chamas/:chamaId/loans" element={<LoansPage />} />
+            <Route path="/chamas/:chamaId/payouts" element={<PayoutsPage />} />
           </Route>
           <Route
             path="/contribution-payment-result"
