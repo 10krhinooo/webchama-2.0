@@ -54,6 +54,11 @@ export async function createLoan(chamaId: number, payload: CreateLoanRequest): P
   return data
 }
 
+export async function approveLoan(chamaId: number, loanId: number): Promise<Loan> {
+  const { data } = await client.put<Loan>(`/chamas/${chamaId}/loans/${loanId}/approve`, {})
+  return data
+}
+
 export async function getLoanRepayments(chamaId: number, loanId: number): Promise<LoanRepayment[]> {
   const { data } = await client.get<LoanRepayment[]>(`/chamas/${chamaId}/loans/${loanId}/repayments`)
   return data

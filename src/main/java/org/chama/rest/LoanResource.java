@@ -80,6 +80,15 @@ public class LoanResource {
         return loanService.getRepayments(chamaId, id).stream().map(LoanRepaymentDto::from).toList();
     }
 
+    /** CHAIRPERSON/TREASURER-only: move a REQUESTED loan to APPROVED, recording who approved it and when. */
+    @PUT
+    @Path("/{id}/approve")
+    public LoanDto approve(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        var approver = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        return LoanDto.from(loanService.approve(chamaId, id, approver.id));
+    }
+
     @PUT
     @Path("/{id}/repayments/{repaymentId}/payment")
     public LoanRepaymentDto recordRepayment(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id,

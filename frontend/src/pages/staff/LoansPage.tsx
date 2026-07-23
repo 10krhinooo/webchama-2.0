@@ -4,6 +4,7 @@ import {
   getLoans,
   getMyLoans,
   createLoan,
+  approveLoan,
   getLoanRepayments,
   recordLoanRepayment,
   type Loan,
@@ -57,6 +58,7 @@ export default function LoansPage() {
   const [saving, setSaving] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [approvingId, setApprovingId] = useState<number | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(loans)
 
   const [scheduleLoan, setScheduleLoan] = useState<Loan | null>(null)
@@ -106,6 +108,19 @@ export default function LoansPage() {
       setModalNotice(extractErrorMessage(err))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleApprove = async (loan: Loan) => {
+    setApprovingId(loan.id)
+    try {
+      await approveLoan(chamaId, loan.id)
+      setNotice({ variant: 'success', message: `Loan for ${loan.memberName} approved.` })
+      refresh()
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setApprovingId(null)
     }
   }
 
@@ -178,6 +193,15 @@ export default function LoansPage() {
                   <td className="px-4 py-3"><Badge label={loan.status} variant={loanStatusVariant(loan.status)} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-3">
+                      {canManage && loan.status === 'REQUESTED' && (
+                        <button
+                          onClick={() => handleApprove(loan)}
+                          disabled={approvingId === loan.id}
+                          className="text-primary text-xs hover:underline disabled:opacity-50"
+                        >
+                          {approvingId === loan.id ? 'Approving…' : 'Approve'}
+                        </button>
+                      )}
                       <button onClick={() => openSchedule(loan)} className="text-primary text-xs hover:underline">View Schedule</button>
                     </div>
                   </td>

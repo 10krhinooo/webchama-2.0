@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.LoanRepaymentStatus;
+import org.chama.domain.enums.LoanStatus;
 import org.chama.domain.model.Loan;
 import org.chama.domain.model.LoanRepayment;
 import org.chama.domain.model.Member;
@@ -16,6 +17,7 @@ import org.chama.repository.MemberRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +80,20 @@ public class LoanService {
         for (LoanRepayment repayment : buildSchedule(loan)) {
             loanRepaymentRepository.persist(repayment);
         }
+        return loan;
+    }
+
+    @Transactional
+    public Loan approve(Long chamaId, Long loanId, Long approverMemberId) {
+        Loan loan = get(chamaId, loanId);
+        if (loan.status != LoanStatus.REQUESTED) {
+            throw new BadRequestException("Only a requested loan can be approved");
+        }
+        Member approver = memberRepository.findByIdOptional(approverMemberId).orElseThrow(NotFoundException::new);
+
+        loan.status = LoanStatus.APPROVED;
+        loan.approvedBy = approver;
+        loan.approvedAt = Instant.now();
         return loan;
     }
 

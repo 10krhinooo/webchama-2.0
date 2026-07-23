@@ -7,6 +7,7 @@ vi.mock('../../api/loans', () => ({
   getLoans: vi.fn(),
   getMyLoans: vi.fn(),
   createLoan: vi.fn(),
+  approveLoan: vi.fn(),
   getLoanRepayments: vi.fn(),
   recordLoanRepayment: vi.fn(),
 }))
@@ -17,13 +18,14 @@ vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
-import { getLoans, getMyLoans, createLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
+import { getLoans, getMyLoans, createLoan, approveLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
 import { getMembers } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
 const mockGetLoans = getLoans as ReturnType<typeof vi.fn>
 const mockGetMyLoans = getMyLoans as ReturnType<typeof vi.fn>
 const mockCreateLoan = createLoan as ReturnType<typeof vi.fn>
+const mockApproveLoan = approveLoan as ReturnType<typeof vi.fn>
 const mockGetLoanRepayments = getLoanRepayments as ReturnType<typeof vi.fn>
 const mockRecordLoanRepayment = recordLoanRepayment as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
@@ -168,13 +170,44 @@ describe('LoansPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('View Schedule'))
-    await waitFor(() => expect(mockGetLoanRepayments).toHaveBeenCalledWith(3, 1))
+    await waitFor(() => expect(screen.getByText('Record Payment')).toBeTruthy())
 
     fireEvent.click(screen.getByText('Record Payment'))
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '1766.67' } })
     fireEvent.click(screen.getByText('Record Payment', { selector: 'button[type="submit"]' }))
 
     await waitFor(() => expect(mockRecordLoanRepayment).toHaveBeenCalledWith(3, 1, 10, 1766.67))
+  })
+
+  it('lets a manager approve a requested loan', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    mockApproveLoan.mockResolvedValue({ ...loan, status: 'APPROVED' })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    fireEvent.click(screen.getByText('Approve'))
+
+    await waitFor(() => expect(mockApproveLoan).toHaveBeenCalledWith(3, 1))
+    await waitFor(() => expect(screen.getByText(/approved/i)).toBeTruthy())
+  })
+
+  it('does not offer an Approve action once a loan is past REQUESTED', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([{ ...loan, status: 'APPROVED' }])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    expect(screen.queryByText('Approve')).toBeNull()
+  })
+
+  it('does not offer Approve to a plain member', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, member: { id: 5 }, loading: false })
+    mockGetMyLoans.mockResolvedValue([loan])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('View Schedule')).toBeTruthy())
+    expect(screen.queryByText('Approve')).toBeNull()
   })
 
   it("does not offer Record Payment to a plain member viewing their own schedule", async () => {
