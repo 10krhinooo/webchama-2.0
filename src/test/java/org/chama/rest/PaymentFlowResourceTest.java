@@ -20,6 +20,8 @@ import org.chama.domain.model.MemberRole;
 import org.chama.domain.model.Payment;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
@@ -60,6 +62,12 @@ class PaymentFlowResourceTest {
     ContributionRepository contributionRepository;
 
     @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
+
+    @Inject
     PaymentRepository paymentRepository;
 
     @Inject
@@ -96,6 +104,8 @@ class PaymentFlowResourceTest {
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             paymentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
