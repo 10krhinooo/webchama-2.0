@@ -12,10 +12,18 @@ import {
 import { extractErrorMessage } from '../../api/client'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
+import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
 import PhoneInput from '../../components/ui/PhoneInput'
+import FormField from '../../components/ui/FormField'
+import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
+import Textarea from '../../components/ui/Textarea'
+import Pagination from '../../components/ui/Pagination'
+import { usePagination } from '../../hooks/usePagination'
 
 const EMPTY_FORM = {
   name: '',
@@ -38,6 +46,9 @@ export default function ChamasPage() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Chama | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [deleting, setDeleting] = useState<Chama | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(chamas)
 
   const refresh = () => {
     setLoading(true)
@@ -105,14 +116,18 @@ export default function ChamasPage() {
     }
   }
 
-  const handleDelete = async (chama: Chama) => {
-    if (!confirm(`Delete ${chama.name}? This removes all its members and contributions.`)) return
+  const handleDelete = async () => {
+    if (!deleting) return
+    setDeleteLoading(true)
     try {
-      await deleteChama(chama.id)
-      setNotice({ variant: 'success', message: `${chama.name} deleted.` })
+      await deleteChama(deleting.id)
+      setNotice({ variant: 'success', message: `${deleting.name} deleted.` })
+      setDeleting(null)
       refresh()
     } catch (err) {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -122,12 +137,7 @@ export default function ChamasPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">Chamas</h1>
-        <button
-          onClick={openCreate}
-          className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary-dark"
-        >
-          + New Chama
-        </button>
+        <Button onClick={openCreate}>+ New Chama</Button>
       </div>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
@@ -150,7 +160,7 @@ export default function ChamasPage() {
               {chamas.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-10 text-center text-muted text-sm">You are not part of any chama yet.</td></tr>
               )}
-              {chamas.map((c) => (
+              {pageItems.map((c) => (
                 <tr key={c.id} className="hover:bg-paper-dim/30">
                   <td className="px-4 py-3 font-medium text-ink">
                     <Link to={`/chamas/${c.id}/members`} className="hover:underline">{c.name}</Link>
@@ -163,7 +173,7 @@ export default function ChamasPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={() => openEdit(c)} className="text-primary text-xs hover:underline">Edit</button>
-                      <button onClick={() => handleDelete(c)} className="text-danger text-xs hover:underline">Delete</button>
+                      <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -173,83 +183,99 @@ export default function ChamasPage() {
         </div>
       )}
 
+      {!loading && (
+        <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} label="chamas" />
+      )}
+
       {showModal && (
         <Modal title={editing ? 'Edit Chama' : 'New Chama'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {modalNotice && (
               <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
             )}
-            <div>
-              <label htmlFor="chama-name" className="block text-sm font-medium text-ink/80 mb-1">Name *</label>
-              <input id="chama-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div>
-              <label htmlFor="chama-description" className="block text-sm font-medium text-ink/80 mb-1">Description</label>
-              <textarea id="chama-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
+            <FormField label="Name" htmlFor="chama-name" required>
+              <Input id="chama-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </FormField>
+            <FormField label="Description" htmlFor="chama-description">
+              <Textarea id="chama-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </FormField>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="chama-type" className="block text-sm font-medium text-ink/80 mb-1">Type *</label>
-                <select id="chama-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Chama['type'] })}
-                  className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <FormField label="Type" htmlFor="chama-type" required>
+                <Select id="chama-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Chama['type'] })}>
                   <option value="MERRY_GO_ROUND">Merry-go-round</option>
                   <option value="TABLE_BANKING">Table banking</option>
                   <option value="INVESTMENT_GROUP">Investment group</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="chama-frequency" className="block text-sm font-medium text-ink/80 mb-1">Frequency *</label>
-                <select id="chama-frequency" value={form.contributionFrequency}
+                </Select>
+              </FormField>
+              <FormField label="Frequency" htmlFor="chama-frequency" required>
+                <Select
+                  id="chama-frequency"
+                  value={form.contributionFrequency}
                   onChange={(e) => setForm({ ...form, contributionFrequency: e.target.value as Chama['contributionFrequency'] })}
-                  className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                >
                   <option value="WEEKLY">Weekly</option>
                   <option value="MONTHLY">Monthly</option>
-                </select>
-              </div>
+                </Select>
+              </FormField>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="chama-amount" className="block text-sm font-medium text-ink/80 mb-1">Contribution amount *</label>
-                <input id="chama-amount" required type="number" min="0" step="0.01" value={form.contributionAmount}
+              <FormField label="Contribution amount" htmlFor="chama-amount" required>
+                <Input
+                  id="chama-amount"
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.contributionAmount}
                   onChange={(e) => setForm({ ...form, contributionAmount: e.target.value })}
-                  className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-              </div>
-              <div>
-                <label htmlFor="chama-currency" className="block text-sm font-medium text-ink/80 mb-1">Currency</label>
-                <input id="chama-currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                  className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-              </div>
+                />
+              </FormField>
+              <FormField label="Currency" htmlFor="chama-currency">
+                <Input id="chama-currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} />
+              </FormField>
             </div>
-            <div>
-              <label htmlFor="chama-meeting-day" className="block text-sm font-medium text-ink/80 mb-1">Meeting day</label>
-              <input id="chama-meeting-day" value={form.meetingDay} onChange={(e) => setForm({ ...form, meetingDay: e.target.value })}
+            <FormField label="Meeting day" htmlFor="chama-meeting-day">
+              <Input
+                id="chama-meeting-day"
+                value={form.meetingDay}
+                onChange={(e) => setForm({ ...form, meetingDay: e.target.value })}
                 placeholder="e.g. Last Saturday of the month"
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
+              />
+            </FormField>
 
             {!editing && (
               <>
-                <div>
-                  <label htmlFor="chama-creator-name" className="block text-sm font-medium text-ink/80 mb-1">Your full name *</label>
-                  <input id="chama-creator-name" required value={form.creatorFullName} onChange={(e) => setForm({ ...form, creatorFullName: e.target.value })}
-                    className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                </div>
-                <div>
-                  <label htmlFor="chama-creator-phone" className="block text-sm font-medium text-ink/80 mb-1">Your phone *</label>
+                <FormField label="Your full name" htmlFor="chama-creator-name" required>
+                  <Input
+                    id="chama-creator-name"
+                    required
+                    value={form.creatorFullName}
+                    onChange={(e) => setForm({ ...form, creatorFullName: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Your phone" htmlFor="chama-creator-phone" required>
                   <PhoneInput value={form.creatorPhone} onChange={(v) => setForm({ ...form, creatorPhone: v })} required />
-                </div>
+                </FormField>
                 <p className="text-xs text-muted -mt-1">You will become this chama&apos;s chairperson.</p>
               </>
             )}
 
-            <LoadingButton type="submit" loading={saving} loadingText="Saving…"
-              className="w-full bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark disabled:opacity-50">
+            <LoadingButton type="submit" loading={saving} loadingText="Saving…" className="w-full">
               {editing ? 'Save Changes' : 'Create Chama'}
             </LoadingButton>
           </form>
         </Modal>
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Delete chama"
+          message={`Delete ${deleting.name}? This removes all its members and contributions.`}
+          confirmLabel="Delete"
+          loading={deleteLoading}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleting(null)}
+        />
       )}
     </div>
   )

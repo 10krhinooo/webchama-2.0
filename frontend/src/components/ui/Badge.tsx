@@ -7,8 +7,8 @@ const variants = {
   success: 'bg-success/10 text-success ring-1 ring-success/25',
   danger: 'bg-danger/10 text-danger ring-1 ring-danger/25',
   warning: 'bg-warning/10 text-warning ring-1 ring-warning/25',
-  primary: 'bg-primary-light text-primary ring-1 ring-primary/20',
-  muted: 'bg-paper-dim text-muted ring-1 ring-black/10',
+  primary: 'bg-primary/10 text-primary ring-1 ring-primary/25',
+  muted: 'bg-muted/10 text-muted ring-1 ring-muted/25',
 }
 
 export default function Badge({ label, variant }: Props) {

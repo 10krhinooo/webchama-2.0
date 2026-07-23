@@ -16,10 +16,16 @@ import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
+import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
 import PhoneInput from '../../components/ui/PhoneInput'
+import FormField from '../../components/ui/FormField'
+import Input from '../../components/ui/Input'
+import Pagination from '../../components/ui/Pagination'
+import { usePagination } from '../../hooks/usePagination'
 
 const ALL_ROLES: MemberRoleType[] = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'MEMBER']
 
@@ -54,6 +60,9 @@ export default function MembersPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [statusUpdating, setStatusUpdating] = useState<number | null>(null)
   const [inviteResult, setInviteResult] = useState<MemberInvitationResult | null>(null)
+  const [removing, setRemoving] = useState<Member | null>(null)
+  const [removeLoading, setRemoveLoading] = useState(false)
+  const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(members)
 
   const refresh = () => {
     setLoading(true)
@@ -155,14 +164,18 @@ export default function MembersPage() {
     }
   }
 
-  const handleDelete = async (member: Member) => {
-    if (!confirm(`Remove ${member.fullName} from this chama?`)) return
+  const handleDelete = async () => {
+    if (!removing) return
+    setRemoveLoading(true)
     try {
-      await deleteMember(chamaId, member.id)
-      setNotice({ variant: 'success', message: `${member.fullName} removed.` })
+      await deleteMember(chamaId, removing.id)
+      setNotice({ variant: 'success', message: `${removing.fullName} removed.` })
+      setRemoving(null)
       refresh()
     } catch (err) {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setRemoveLoading(false)
     }
   }
 
@@ -173,14 +186,7 @@ export default function MembersPage() {
           <h1 className="font-heading text-2xl font-bold text-ink">Members</h1>
           {chama && <p className="text-sm text-muted">{chama.name}</p>}
         </div>
-        {isChairperson && (
-          <button
-            onClick={openCreate}
-            className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary-dark"
-          >
-            + Invite Member
-          </button>
-        )}
+        {isChairperson && <Button onClick={openCreate}>+ Invite Member</Button>}
       </div>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
@@ -203,7 +209,7 @@ export default function MembersPage() {
               {members.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-10 text-center text-muted text-sm">No members yet.</td></tr>
               )}
-              {members.map((m) => (
+              {pageItems.map((m) => (
                 <tr key={m.id} className="hover:bg-paper-dim/30">
                   <td className="px-4 py-3 font-medium text-ink">{m.fullName}</td>
                   <td className="px-4 py-3 font-mono text-muted">{m.phone}</td>
@@ -226,7 +232,7 @@ export default function MembersPage() {
                           <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'EXITED')}
                             className="text-muted text-xs hover:underline disabled:opacity-40">Mark exited</button>
                         )}
-                        <button onClick={() => handleDelete(m)} className="text-danger text-xs hover:underline">Remove</button>
+                        <button onClick={() => setRemoving(m)} className="text-danger text-xs hover:underline">Remove</button>
                       </div>
                     </td>
                   )}
@@ -237,6 +243,10 @@ export default function MembersPage() {
         </div>
       )}
 
+      {!loading && !roleLoading && (
+        <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} label="members" />
+      )}
+
       {showModal && !inviteResult && (
         <Modal title={editing ? 'Edit Member' : 'Invite Member'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -244,35 +254,22 @@ export default function MembersPage() {
               <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
             )}
             {!editing && (
-              <div>
-                <label htmlFor="member-email" className="block text-sm font-medium text-ink/80 mb-1">Email *</label>
-                <input id="member-email" required type="email" value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                <p className="text-xs text-muted mt-1">
-                  We will create their account and email them sign-in instructions.
-                </p>
-              </div>
+              <FormField label="Email" htmlFor="member-email" required hint="We will create their account and email them sign-in instructions.">
+                <Input id="member-email" required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </FormField>
             )}
-            <div>
-              <label htmlFor="member-full-name" className="block text-sm font-medium text-ink/80 mb-1">Full name *</label>
-              <input id="member-full-name" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div>
-              <label htmlFor="member-phone" className="block text-sm font-medium text-ink/80 mb-1">Phone *</label>
+            <FormField label="Full name" htmlFor="member-full-name" required>
+              <Input id="member-full-name" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+            </FormField>
+            <FormField label="Phone" htmlFor="member-phone" required>
               <PhoneInput value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} required />
-            </div>
-            <div>
-              <label htmlFor="member-national-id" className="block text-sm font-medium text-ink/80 mb-1">National ID</label>
-              <input id="member-national-id" value={form.nationalId} onChange={(e) => setForm({ ...form, nationalId: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div>
-              <label htmlFor="member-next-of-kin" className="block text-sm font-medium text-ink/80 mb-1">Next of kin</label>
-              <input id="member-next-of-kin" value={form.nextOfKin} onChange={(e) => setForm({ ...form, nextOfKin: e.target.value })}
-                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
+            </FormField>
+            <FormField label="National ID" htmlFor="member-national-id">
+              <Input id="member-national-id" value={form.nationalId} onChange={(e) => setForm({ ...form, nationalId: e.target.value })} />
+            </FormField>
+            <FormField label="Next of kin" htmlFor="member-next-of-kin">
+              <Input id="member-next-of-kin" value={form.nextOfKin} onChange={(e) => setForm({ ...form, nextOfKin: e.target.value })} />
+            </FormField>
             <fieldset>
               <legend className="block text-sm font-medium text-ink/80 mb-1">Roles *</legend>
               <div className="flex flex-wrap gap-3">
@@ -285,8 +282,7 @@ export default function MembersPage() {
               </div>
             </fieldset>
 
-            <LoadingButton type="submit" loading={saving} loadingText="Saving…" disabled={form.roles.length === 0}
-              className="w-full bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark disabled:opacity-50">
+            <LoadingButton type="submit" loading={saving} loadingText="Saving…" disabled={form.roles.length === 0} className="w-full">
               {editing ? 'Save Changes' : 'Add Member'}
             </LoadingButton>
           </form>
@@ -309,12 +305,20 @@ export default function MembersPage() {
                 </span>
               </div>
             </div>
-            <button onClick={closeInviteResult}
-              className="w-full bg-primary text-white font-semibold py-2.5 rounded-xl hover:bg-primary-dark">
-              Done
-            </button>
+            <Button onClick={closeInviteResult} className="w-full">Done</Button>
           </div>
         </Modal>
+      )}
+
+      {removing && (
+        <ConfirmDialog
+          title="Remove member"
+          message={`Remove ${removing.fullName} from this chama?`}
+          confirmLabel="Remove"
+          loading={removeLoading}
+          onConfirm={handleDelete}
+          onCancel={() => setRemoving(null)}
+        />
       )}
     </div>
   )

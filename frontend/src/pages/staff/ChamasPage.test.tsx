@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ChamasPage from './ChamasPage'
 
@@ -41,7 +41,6 @@ function renderPage() {
 describe('ChamasPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('confirm', vi.fn(() => true))
     mockGetChamas.mockResolvedValue([chama])
   })
 
@@ -105,15 +104,18 @@ describe('ChamasPage', () => {
     await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
 
     fireEvent.click(screen.getByText('Delete'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(mockDeleteChama).toHaveBeenCalledWith(1))
   })
 
   it('does not delete when the confirmation is dismissed', async () => {
-    vi.stubGlobal('confirm', vi.fn(() => false))
     renderPage()
     await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
 
     fireEvent.click(screen.getByText('Delete'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(mockDeleteChama).not.toHaveBeenCalled()
   })
 
