@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ContributionsPage from './ContributionsPage'
@@ -10,12 +10,16 @@ vi.mock('../../api/contributions', () => ({
   recordPayment: vi.fn(),
   deleteContribution: vi.fn(),
   payContributionWithMpesa: vi.fn(),
+  initiateCardPayment: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
 }))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
+}))
+vi.mock('../../lib/cardPaymentSession', () => ({
+  savePendingCardPayment: vi.fn(),
 }))
 
 import {
@@ -25,9 +29,11 @@ import {
   recordPayment,
   deleteContribution,
   payContributionWithMpesa,
+  initiateCardPayment,
 } from '../../api/contributions'
 import { getMembers } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 
 const mockGetContributions = getContributions as ReturnType<typeof vi.fn>
 const mockGetMyContributions = getMyContributions as ReturnType<typeof vi.fn>
@@ -35,8 +41,10 @@ const mockCreateContribution = createContribution as ReturnType<typeof vi.fn>
 const mockRecordPayment = recordPayment as ReturnType<typeof vi.fn>
 const mockDeleteContribution = deleteContribution as ReturnType<typeof vi.fn>
 const mockPayContributionWithMpesa = payContributionWithMpesa as ReturnType<typeof vi.fn>
+const mockInitiateCardPayment = initiateCardPayment as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
+const mockSavePendingCardPayment = savePendingCardPayment as ReturnType<typeof vi.fn>
 
 const contribution = {
   id: 1,
@@ -302,5 +310,62 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('PAID')).toBeTruthy())
     expect(screen.queryByText('Pay via M-Pesa')).toBeNull()
+    expect(screen.queryByText('Pay by Card')).toBeNull()
+  })
+
+  describe('card payment', () => {
+    const originalLocation = window.location
+
+    beforeEach(() => {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: { ...originalLocation, href: '' },
+      })
+    })
+
+    afterEach(() => {
+      Object.defineProperty(window, 'location', { writable: true, value: originalLocation })
+    })
+
+    it('starts a Flutterwave checkout and redirects to the payment link', async () => {
+      mockUseMyMembership.mockReturnValue({
+        isTreasurer: false,
+        isChairperson: false,
+        member: { phone: '254700000002' },
+        loading: false,
+      })
+      mockGetMyContributions.mockResolvedValue([contribution])
+      mockInitiateCardPayment.mockResolvedValue({ paymentLink: 'https://checkout.flutterwave.com/abc', txRef: 'tx_123' })
+      renderPage()
+
+      await waitFor(() => expect(screen.getByText('Pay by Card')).toBeTruthy())
+      fireEvent.click(screen.getByText('Pay by Card'))
+      fireEvent.change(screen.getByLabelText(/receipt email/i), { target: { value: 'jane@example.com' } })
+      fireEvent.click(screen.getByText('Continue to Checkout'))
+
+      await waitFor(() => expect(mockInitiateCardPayment).toHaveBeenCalledWith(3, 1, 'jane@example.com'))
+      expect(mockSavePendingCardPayment).toHaveBeenCalledWith({ chamaId: 3, contributionId: 1, txRef: 'tx_123' })
+      expect(window.location.href).toBe('https://checkout.flutterwave.com/abc')
+    })
+
+    it('shows the backend error message when starting checkout fails', async () => {
+      mockUseMyMembership.mockReturnValue({
+        isTreasurer: false,
+        isChairperson: false,
+        member: { phone: '254700000002' },
+        loading: false,
+      })
+      mockGetMyContributions.mockResolvedValue([contribution])
+      mockInitiateCardPayment.mockRejectedValue(new Error('card payments are temporarily unavailable'))
+      renderPage()
+
+      await waitFor(() => expect(screen.getByText('Pay by Card')).toBeTruthy())
+      fireEvent.click(screen.getByText('Pay by Card'))
+      fireEvent.change(screen.getByLabelText(/receipt email/i), { target: { value: 'jane@example.com' } })
+      fireEvent.click(screen.getByText('Continue to Checkout'))
+
+      await waitFor(() => expect(screen.getByText('card payments are temporarily unavailable')).toBeTruthy())
+      expect(mockSavePendingCardPayment).not.toHaveBeenCalled()
+    })
   })
 })

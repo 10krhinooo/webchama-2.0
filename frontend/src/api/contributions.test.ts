@@ -17,6 +17,8 @@ import {
   recordPayment,
   deleteContribution,
   payContributionWithMpesa,
+  initiateCardPayment,
+  verifyCardPayment,
   type CreateContributionRequest,
 } from './contributions'
 
@@ -75,5 +77,21 @@ describe('contributions api', () => {
     const result = await payContributionWithMpesa(3, 4)
     expect(mockPost).toHaveBeenCalledWith('/chamas/3/contributions/4/pay/mpesa')
     expect(result).toEqual({ id: 9, status: 'PENDING', providerReference: 'ws_CO_1' })
+  })
+
+  it('initiateCardPayment posts the email and unwraps the payment link and tx ref', async () => {
+    mockPost.mockResolvedValue({ data: { paymentLink: 'https://checkout.flutterwave.com/abc', txRef: 'tx_123' } })
+    const result = await initiateCardPayment(3, 4, 'jane@example.com')
+    expect(mockPost).toHaveBeenCalledWith('/chamas/3/contributions/4/pay/card', { email: 'jane@example.com' })
+    expect(result).toEqual({ paymentLink: 'https://checkout.flutterwave.com/abc', txRef: 'tx_123' })
+  })
+
+  it('verifyCardPayment gets with query params and unwraps the paid flag', async () => {
+    mockGet.mockResolvedValue({ data: { paid: true } })
+    const result = await verifyCardPayment(3, 4, 'tx_123', 999)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/contributions/4/pay/card/verify', {
+      params: { txRef: 'tx_123', transactionId: 999 },
+    })
+    expect(result).toBe(true)
   })
 })

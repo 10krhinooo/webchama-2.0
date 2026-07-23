@@ -7,11 +7,13 @@ import {
   recordPayment,
   deleteContribution,
   payContributionWithMpesa,
+  initiateCardPayment,
   type Contribution,
   type PaymentMethod,
 } from '../../api/contributions'
 import { getMembers, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
+import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -56,6 +58,9 @@ export default function ContributionsPage() {
   const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT_FORM)
   const [deleting, setDeleting] = useState<Contribution | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [cardPayment, setCardPayment] = useState<Contribution | null>(null)
+  const [cardEmail, setCardEmail] = useState('')
+  const [startingCardCheckout, setStartingCardCheckout] = useState(false)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(contributions)
 
   const refresh = () => {
@@ -142,6 +147,27 @@ export default function ContributionsPage() {
     }
   }
 
+  const openCardPayment = (contribution: Contribution) => {
+    setCardPayment(contribution)
+    setCardEmail('')
+    setModalNotice(null)
+  }
+
+  const handleStartCardCheckout = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cardPayment) return
+    setStartingCardCheckout(true)
+    setModalNotice(null)
+    try {
+      const { paymentLink, txRef } = await initiateCardPayment(chamaId, cardPayment.id, cardEmail)
+      savePendingCardPayment({ chamaId, contributionId: cardPayment.id, txRef })
+      window.location.href = paymentLink
+    } catch (err) {
+      setModalNotice(extractErrorMessage(err))
+      setStartingCardCheckout(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!deleting) return
     setDeleteLoading(true)
@@ -205,7 +231,10 @@ export default function ContributionsPage() {
                         </>
                       ) : (
                         c.status !== 'PAID' && (
-                          <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                          <>
+                            <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                            <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
+                          </>
                         )
                       )}
                     </div>
@@ -314,6 +343,35 @@ export default function ContributionsPage() {
               </Button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {cardPayment && (
+        <Modal title="Pay by Card" onClose={() => setCardPayment(null)}>
+          <form onSubmit={handleStartCardCheckout} className="space-y-4">
+            {modalNotice && (
+              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+            )}
+            <p className="text-sm text-ink/80">You will be taken to Flutterwave's secure checkout to pay:</p>
+            <div className="bg-paper-dim rounded-xl p-4 space-y-1">
+              <p className="text-xs text-muted">{cardPayment.period}</p>
+              <p className="font-mono text-2xl font-bold text-primary">
+                KES {(cardPayment.amountDue - cardPayment.amountPaid).toLocaleString()}
+              </p>
+            </div>
+            <FormField label="Receipt email" htmlFor="card-payment-email" required>
+              <Input
+                id="card-payment-email"
+                required
+                type="email"
+                value={cardEmail}
+                onChange={(e) => setCardEmail(e.target.value)}
+              />
+            </FormField>
+            <LoadingButton type="submit" loading={startingCardCheckout} loadingText="Redirecting…" className="w-full">
+              Continue to Checkout
+            </LoadingButton>
+          </form>
         </Modal>
       )}
 
