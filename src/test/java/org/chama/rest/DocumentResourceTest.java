@@ -1,6 +1,9 @@
 package org.chama.rest;
 
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -34,11 +37,14 @@ import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.service.KeycloakAdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -46,6 +52,8 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class DocumentResourceTest {
@@ -95,6 +103,12 @@ class DocumentResourceTest {
     @Inject
     DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
+    @InjectMock
+    KeycloakAdminService keycloakAdminService;
+
+    @Inject
+    MockMailbox mailbox;
+
     private Long chamaId;
     private Long memberId;
     private Long otherMemberId;
@@ -106,7 +120,10 @@ class DocumentResourceTest {
     private Long scheduledPayoutId;
 
     @BeforeEach
-    void seed() {
+    void seed() throws Exception {
+        mailbox.clear();
+        Mockito.when(keycloakAdminService.getUserEmail(Mockito.anyString())).thenReturn("member.one@example.com");
+
         QuarkusTransaction.requiringNew().run(() -> {
             documentDeliveryAttemptRepository.deleteAll();
             generatedDocumentRepository.deleteAll();
@@ -407,6 +424,116 @@ class DocumentResourceTest {
         // would pass (they are a genuine TREASURER, just of a different chama).
         given()
             .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", otherChamaId, paidContributionId)
+            .then().statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void treasurerCanEmailAGeneratedReceipt() {
+        int docId = given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then().statusCode(201).extract().path("id");
+
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/{id}/send/email", chamaId, docId)
+            .then()
+                .statusCode(200)
+                .body("emailStatus", equalTo("SENT"))
+                .body("memberEmail", equalTo("member.one@example.com"));
+
+        List<Mail> sent = mailbox.getMailsSentTo("member.one@example.com");
+        assertEquals(1, sent.size());
+        assertTrue(sent.get(0).getSubject().contains("contribution receipt"));
+        assertEquals(1, sent.get(0).getAttachments().size());
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void emailingFailsGracefullyWhenTheMemberHasNoEmailOnKeycloak() throws Exception {
+        Mockito.when(keycloakAdminService.getUserEmail(Mockito.anyString())).thenReturn(null);
+
+        int docId = given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then().statusCode(201).extract().path("id");
+
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/{id}/send/email", chamaId, docId)
+            .then()
+                .statusCode(200)
+                .body("emailStatus", equalTo("FAILED"));
+
+        assertEquals(0, mailbox.getMailsSentTo("member.one@example.com").size());
+    }
+
+    @Test
+    @TestSecurity(user = "doc-member-1")
+    void memberCannotEmailAGeneratedDocument() {
+        Long docId = QuarkusTransaction.requiringNew().call(() -> {
+            var contribution = contributionRepository.findById(paidContributionId);
+            var doc = new org.chama.domain.model.GeneratedDocument();
+            doc.chama = contribution.chama;
+            doc.member = contribution.member;
+            doc.contribution = contribution;
+            doc.documentType = org.chama.domain.enums.DocumentType.CONTRIBUTION_RECEIPT;
+            doc.documentNumber = "CR-2026-07-0099";
+            doc.memberName = contribution.member.fullName;
+            doc.lineItemsJson = "[{\"description\":\"Contribution\",\"amount\":500}]";
+            doc.totalAmount = new BigDecimal("500");
+            doc.pdfBytes = new byte[]{1, 2, 3};
+            generatedDocumentRepository.persist(doc);
+            return doc.id;
+        });
+
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/{id}/send/email", chamaId, docId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "other-chama-email-treasurer")
+    void emailingADocumentFromAnotherChamaReturnsNotFound() {
+        Long otherChamaId = QuarkusTransaction.requiringNew().call(() -> {
+            Chama other = new Chama();
+            other.name = "Other Chama For Email Test";
+            other.type = ChamaType.TABLE_BANKING;
+            other.currency = "KES";
+            other.contributionFrequency = ContributionFrequency.MONTHLY;
+            other.contributionAmount = new BigDecimal("500");
+            other.status = ChamaStatus.ACTIVE;
+            chamaRepository.persist(other);
+
+            Member treasurer = new Member();
+            treasurer.chama = other;
+            treasurer.keycloakUserId = "other-chama-email-treasurer";
+            treasurer.fullName = "Other Chama Email Treasurer";
+            treasurer.phone = "254700000505";
+            treasurer.status = MemberStatus.ACTIVE;
+            memberRepository.persist(treasurer);
+            MemberRole role = new MemberRole();
+            role.member = treasurer;
+            role.role = MemberRoleType.TREASURER;
+            role.persist();
+            return other.id;
+        });
+
+        Long docId = QuarkusTransaction.requiringNew().call(() -> {
+            var contribution = contributionRepository.findById(paidContributionId);
+            var doc = new org.chama.domain.model.GeneratedDocument();
+            doc.chama = contribution.chama;
+            doc.member = contribution.member;
+            doc.contribution = contribution;
+            doc.documentType = org.chama.domain.enums.DocumentType.CONTRIBUTION_RECEIPT;
+            doc.documentNumber = "CR-2026-07-0098";
+            doc.memberName = contribution.member.fullName;
+            doc.lineItemsJson = "[{\"description\":\"Contribution\",\"amount\":500}]";
+            doc.totalAmount = new BigDecimal("500");
+            doc.pdfBytes = new byte[]{1, 2, 3};
+            generatedDocumentRepository.persist(doc);
+            return doc.id;
+        });
+
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/{id}/send/email", otherChamaId, docId)
             .then().statusCode(404);
     }
 }

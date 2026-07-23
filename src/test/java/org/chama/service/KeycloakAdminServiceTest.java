@@ -51,6 +51,14 @@ class KeycloakAdminServiceTest {
     }
 
     @Test
+    void getUserEmailReturnsTheEmailOfARealAccount() throws Exception {
+        String email = "kc-get-email-test-" + UUID.randomUUID() + "@example.com";
+        String userId = keycloakAdminService.createUser(email, "Get Email Test", keycloakAdminService.generateTempPassword());
+
+        assertEquals(email, keycloakAdminService.getUserEmail(userId));
+    }
+
+    @Test
     void ensureEventsEnabledSucceedsAgainstTheRealKeycloakInstance() throws Exception {
         keycloakAdminService.ensureEventsEnabled();
     }
