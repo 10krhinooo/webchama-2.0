@@ -27,6 +27,21 @@ jobs:
       - name: Start Postgres and Keycloak (docker compose)
         run: docker compose up -d
 
+      - name: Create the isolated test database
+        # @QuarkusTest wipes every table in @BeforeEach, so it must never share a database with
+        # anything else, %test.quarkus.datasource.jdbc.url points at chama_test for this reason.
+        # docker-compose.yml only creates the chama database, so chama_test needs an explicit step.
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec webchama-postgres pg_isready -U chama -d chama > /dev/null 2>&1; then
+              docker exec webchama-postgres psql -U chama -d chama -c "CREATE DATABASE chama_test OWNER chama;"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          exit 1
+
       - name: Wait for Keycloak to be ready
         run: |
           for i in $(seq 1 30); do
