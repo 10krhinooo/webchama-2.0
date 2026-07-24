@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import WeaveMark from "../marketing/WeaveMark"
 
 export default function PublicNav() {
@@ -19,12 +20,17 @@ export default function PublicNav() {
             Roles
           </a>
         </div>
-        <a
-          href="#join"
-          className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-paper transition hover:bg-primary-dark"
-        >
-          Start your chama
-        </a>
+        <div className="flex items-center gap-4">
+          <Link to="/chamas" className="text-sm font-semibold text-ink/70 hover:text-ink">
+            Sign In
+          </Link>
+          <a
+            href="#join"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-paper transition hover:bg-primary-dark"
+          >
+            Start your chama
+          </a>
+        </div>
       </nav>
     </header>
   )
