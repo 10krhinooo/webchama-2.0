@@ -95,14 +95,15 @@ describe('StaffLayout', () => {
     expect(mockGetChama).not.toHaveBeenCalled()
   })
 
-  it('hides the Documents link for a plain member', () => {
+  it('hides the Documents and Approvals links for a plain member', () => {
     mockUseMyMembership.mockReturnValue({ roles: ['MEMBER'], isSuperAdmin: false, isManager: false, loading: false })
     renderAt('/chamas/7/members')
     expect(screen.queryByRole('link', { name: /documents/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /approvals/i })).toBeNull()
     expect(screen.getByText('Member')).toBeTruthy()
   })
 
-  it('shows the Documents link and role badge for a chairperson', () => {
+  it('shows the Documents and Approvals links and role badge for a chairperson', () => {
     mockUseMyMembership.mockReturnValue({
       roles: ['CHAIRPERSON'],
       isSuperAdmin: false,
@@ -111,6 +112,7 @@ describe('StaffLayout', () => {
     })
     renderAt('/chamas/7/members')
     expect(screen.getByRole('link', { name: /documents/i })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /approvals/i })).toBeTruthy()
     expect(screen.getByText('Chairperson')).toBeTruthy()
   })
 

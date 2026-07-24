@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -113,6 +113,12 @@ export default function StaffLayout() {
                 <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass}>
                   <FileText className="h-4 w-4" />
                   Documents
+                </NavLink>
+              )}
+              {!roleLoading && isManager && (
+                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass}>
+                  <ShieldCheck className="h-4 w-4" />
+                  Approvals
                 </NavLink>
               )}
             </>
