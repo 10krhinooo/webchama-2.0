@@ -40,9 +40,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -223,13 +225,18 @@ class MemberResourceTest {
             .when().post("/api/chamas/{chamaId}/members", chamaId)
             .then().statusCode(201);
 
-        List<Mail> sent = mailbox.getMailsSentTo("emailed.member@example.com");
-        assertEquals(1, sent.size());
-        Mail mail = sent.get(0);
-        assertEquals("Your Webchama account is ready", mail.getSubject());
-        assertTrue(mail.getHtml().contains("Emailed"));
-        assertTrue(mail.getHtml().contains("Temp1234!"));
-        assertTrue(mail.getHtml().contains("emailed.member@example.com"));
+        // MemberInvitationEmailService sends off the request thread (see its
+        // class comment), so the mailbox is populated shortly after, not
+        // necessarily by the time the create request returns.
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<Mail> sent = mailbox.getMailsSentTo("emailed.member@example.com");
+            assertEquals(1, sent.size());
+            Mail mail = sent.get(0);
+            assertEquals("Your Webchama account is ready", mail.getSubject());
+            assertTrue(mail.getHtml().contains("Emailed"));
+            assertTrue(mail.getHtml().contains("Temp1234!"));
+            assertTrue(mail.getHtml().contains("emailed.member@example.com"));
+        });
     }
 
     @Test

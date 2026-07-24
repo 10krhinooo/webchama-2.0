@@ -4,19 +4,37 @@ import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.context.ManagedExecutor;
+import org.eclipse.microprofile.context.ThreadContext;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 /**
  * Sends the one-time credential email when a member's account is first
- * provisioned (see MemberService.create). Delivery failure is swallowed and
- * logged rather than propagated, the chairperson can still see and share the
- * temporary password from the invite response if the email never arrives.
+ * provisioned (see MemberService.create). The actual SMTP send runs off the
+ * calling (request) thread: MemberService.create is @Transactional and calls
+ * this synchronously, so a slow or unreachable mail server would otherwise
+ * hold up the whole member-creation response for as long as the SMTP
+ * handshake takes. Delivery failure is swallowed and logged rather than
+ * propagated, the chairperson can still see and share the temporary password
+ * from the invite response if the email never arrives.
  */
 @ApplicationScoped
 public class MemberInvitationEmailService {
 
     private static final Logger LOG = Logger.getLogger(MemberInvitationEmailService.class);
+
+    // The CDI-default ManagedExecutor propagates the caller's active JTA
+    // transaction onto the background thread (this project pulls in
+    // smallrye-context-propagation-jta), so a plain @Inject ManagedExecutor
+    // here collides with MemberService.create's own transaction commit
+    // ("Enlisted connection used without active transaction"). Nothing this
+    // background task does needs any propagated context, so contexts are
+    // cleared entirely.
+    private static final ManagedExecutor MAIL_EXECUTOR = ManagedExecutor.builder()
+        .propagated(ThreadContext.NONE)
+        .cleared(ThreadContext.ALL_REMAINING)
+        .build();
 
     @Inject
     Mailer mailer;
@@ -25,11 +43,13 @@ public class MemberInvitationEmailService {
     String frontendUrl;
 
     public void sendCredentials(String toEmail, String fullName, String temporaryPassword) {
-        try {
-            mailer.send(Mail.withHtml(toEmail, "Your Webchama account is ready", buildHtml(fullName, toEmail, temporaryPassword)));
-        } catch (Exception e) {
-            LOG.warnf(e, "Failed to send invite credentials email to %s", toEmail);
-        }
+        MAIL_EXECUTOR.runAsync(() -> {
+            try {
+                mailer.send(Mail.withHtml(toEmail, "Your Webchama account is ready", buildHtml(fullName, toEmail, temporaryPassword)));
+            } catch (Exception e) {
+                LOG.warnf(e, "Failed to send invite credentials email to %s", toEmail);
+            }
+        });
     }
 
     String buildHtml(String fullName, String email, String temporaryPassword) {
