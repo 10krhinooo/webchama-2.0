@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import {
   getContributions,
   getMyContributions,
+  getMyContributionStreak,
   createContribution,
   recordPayment,
   deleteContribution,
@@ -63,6 +64,7 @@ export default function ContributionsPage() {
   const [startingCardCheckout, setStartingCardCheckout] = useState(false)
   const [autoPayEnabled, setAutoPayEnabled] = useState(false)
   const [autoPaySaving, setAutoPaySaving] = useState(false)
+  const [streak, setStreak] = useState<number | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(contributions)
 
   useEffect(() => {
@@ -79,6 +81,14 @@ export default function ContributionsPage() {
         setMembers(m)
       })
       .finally(() => setLoading(false))
+
+    if (!canManage) {
+      getMyContributionStreak(chamaId)
+        .then(setStreak)
+        .catch(() => setStreak(null))
+    } else {
+      setStreak(null)
+    }
   }
 
   useEffect(refresh, [chamaId, canManage, roleLoading])
@@ -216,16 +226,26 @@ export default function ContributionsPage() {
         </h1>
         {canManage && <Button onClick={openCreate}>+ New Contribution</Button>}
         {!canManage && !roleLoading && (
-          <label className="flex items-center gap-2 text-sm text-ink/80">
-            <input
-              type="checkbox"
-              checked={autoPayEnabled}
-              disabled={autoPaySaving}
-              onChange={handleToggleAutoPay}
-              aria-label="Auto-pay via M-Pesa"
-            />
-            Auto-pay on due date
-          </label>
+          <div className="flex items-center gap-4">
+            {streak !== null && streak > 0 && (
+              <span
+                data-testid="contribution-streak"
+                className="flex items-center gap-1 text-sm font-medium text-warning"
+              >
+                🔥 {streak} on-time streak
+              </span>
+            )}
+            <label className="flex items-center gap-2 text-sm text-ink/80">
+              <input
+                type="checkbox"
+                checked={autoPayEnabled}
+                disabled={autoPaySaving}
+                onChange={handleToggleAutoPay}
+                aria-label="Auto-pay via M-Pesa"
+              />
+              Auto-pay on due date
+            </label>
+          </div>
         )}
       </div>
 

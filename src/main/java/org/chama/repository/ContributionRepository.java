@@ -24,6 +24,11 @@ public class ContributionRepository implements PanacheRepository<Contribution> {
         return list("chama.id = ?1 and member.id = ?2", chamaId, memberId);
     }
 
+    /** A member's contribution history for one chama, most recent billing period first (issue #61's streak). */
+    public List<Contribution> findByChamaAndMemberOrderByPeriodDesc(Long chamaId, Long memberId) {
+        return list("chama.id = ?1 and member.id = ?2 order by period desc", chamaId, memberId);
+    }
+
     /** Contributions whose billing period falls strictly before a statement period (issue #66's opening balance). */
     public List<Contribution> findByChamaAndPeriodBefore(Long chamaId, LocalDate before) {
         return list("chama.id = ?1 and period < ?2", chamaId, before);

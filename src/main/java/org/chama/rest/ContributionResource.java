@@ -61,6 +61,15 @@ public class ContributionResource {
         return contributionService.listForMember(chamaId, member.id).stream().map(ContributionDto::from).toList();
     }
 
+    /** Self-service: the caller's own on-time contribution streak (issue #61), a light engagement nudge. */
+    @GET
+    @Path("/mine/streak")
+    public Map<String, Integer> myStreak(@PathParam("chamaId") Long chamaId) {
+        var member = tenantAccessService.currentMember(currentUser, chamaId)
+            .orElseThrow(ForbiddenException::new);
+        return Map.of("streak", contributionService.currentStreak(chamaId, member.id));
+    }
+
     @GET
     @Path("/{id}")
     public ContributionDto get(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {

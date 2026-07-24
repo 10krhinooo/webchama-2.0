@@ -13,6 +13,7 @@ import { client } from './client'
 import {
   getContributions,
   getMyContributions,
+  getMyContributionStreak,
   createContribution,
   recordPayment,
   deleteContribution,
@@ -50,6 +51,13 @@ describe('contributions api', () => {
     const result = await getMyContributions(3)
     expect(mockGet).toHaveBeenCalledWith('/chamas/3/contributions/mine')
     expect(result).toEqual([{ id: 2 }])
+  })
+
+  it('getMyContributionStreak fetches and unwraps the streak count', async () => {
+    mockGet.mockResolvedValue({ data: { streak: 4 } })
+    const result = await getMyContributionStreak(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/contributions/mine/streak')
+    expect(result).toBe(4)
   })
 
   it('createContribution posts the payload', async () => {
