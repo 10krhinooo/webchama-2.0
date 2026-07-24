@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.ActivityEventType;
+import org.chama.domain.enums.ApprovalTargetType;
 import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.enums.PayoutScheduleEntryStatus;
 import org.chama.domain.enums.PayoutStatus;
@@ -47,6 +48,9 @@ public class PayoutService {
 
     @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    ApprovalService approvalService;
 
     public List<PayoutSchedule> listSchedule(Long chamaId) {
         return payoutScheduleRepository.findByChama(chamaId);
@@ -155,12 +159,19 @@ public class PayoutService {
         return payout;
     }
 
-    /** CHAIRPERSON/TREASURER-only claim-once transition: SCHEDULED to DISBURSED. */
+    /**
+     * CHAIRPERSON/TREASURER-only claim-once transition: SCHEDULED to DISBURSED. A payout at or
+     * above the chama's approval threshold additionally requires a cleared maker-checker dual
+     * sign-off (issues #52/#54/#36) before this transition is allowed.
+     */
     @Transactional
     public Payout markDisbursed(Long chamaId, Long payoutId) {
         Payout payout = get(chamaId, payoutId);
         if (payout.status != PayoutStatus.SCHEDULED) {
             throw new BadRequestException("Only a scheduled payout can be marked disbursed");
+        }
+        if (approvalService.requiresApproval(payout.chama, payout.amount)) {
+            approvalService.requireApproved(chamaId, ApprovalTargetType.PAYOUT_DISBURSEMENT, payoutId);
         }
         payout.status = PayoutStatus.DISBURSED;
         payout.disbursedAt = Instant.now();

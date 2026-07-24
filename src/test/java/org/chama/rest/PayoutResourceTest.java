@@ -324,6 +324,45 @@ class PayoutResourceTest {
     }
 
     @Test
+    @TestSecurity(user = "payout-treasurer-1")
+    void disbursingAnAboveThresholdPayoutRequiresAClearedApproval() {
+        Long payoutId = QuarkusTransaction.requiringNew().call(() -> {
+            org.chama.domain.model.Payout payout = new org.chama.domain.model.Payout();
+            payout.chama = chamaRepository.findById(chamaId);
+            payout.member = memberRepository.findById(m1Id);
+            payout.roundNumber = 1;
+            payout.scheduledDate = LocalDate.of(2026, 8, 1);
+            payout.amount = new BigDecimal("150000");
+            payoutRepository.persist(payout);
+            return payout.id;
+        });
+
+        given()
+            .when().put("/api/chamas/{chamaId}/payouts/{id}/disburse", chamaId, payoutId)
+            .then().statusCode(400);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            org.chama.domain.model.Approval approval = new org.chama.domain.model.Approval();
+            approval.chama = chamaRepository.findById(chamaId);
+            approval.targetType = org.chama.domain.enums.ApprovalTargetType.PAYOUT_DISBURSEMENT;
+            approval.targetId = payoutId;
+            approval.member = memberRepository.findById(m1Id);
+            approval.amount = new BigDecimal("150000");
+            approval.requestedBy = memberRepository.findById(treasurerId);
+            approval.firstApprover = memberRepository.findById(treasurerId);
+            approval.firstApprovedAt = java.time.Instant.now();
+            approval.secondApprover = memberRepository.findById(m1Id);
+            approval.secondApprovedAt = java.time.Instant.now();
+            approval.status = org.chama.domain.enums.ApprovalStatus.APPROVED;
+            approvalRepository.persist(approval);
+        });
+
+        given()
+            .when().put("/api/chamas/{chamaId}/payouts/{id}/disburse", chamaId, payoutId)
+            .then().statusCode(200).body("status", equalTo("DISBURSED"));
+    }
+
+    @Test
     @TestSecurity(user = "payout-m1")
     void memberCannotCreateOrDisbursePayouts() {
         given().contentType("application/json").body("{\"scheduledDate\":\"2026-08-01\"}")
