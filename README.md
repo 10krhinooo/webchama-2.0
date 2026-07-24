@@ -60,8 +60,9 @@ closes. Commit messages follow the Conventional Commits format (for example `fea
 ## Project status
 
 Phase 1 (project scaffold, CI/CD gate, design system and public homepage), Phase 2 (core domain
-model: chama, member, contribution, tenant-scoped auth, admin CRUD UI), and Phase 4 (loans, payout
-rotation, penalties, meetings and attendance, optimistic locking on claim-once transitions) are
-complete. Phase 3 backend (M-Pesa STK push and Flutterwave card payments for contributions) is
-merged, with the M-Pesa confirmation-gate modal on the frontend. Card payment frontend and the
-branded Keycloak login theme are not built yet. See the project board for phase by phase progress.
+model: chama, member, contribution, tenant-scoped auth, admin CRUD UI), Phase 3 (M-Pesa STK Push
+and Flutterwave card payments for contributions, with full webhook security hardening and the
+M-Pesa confirmation-gate modal on the frontend), Phase 4 (loans, payout rotation, penalties,
+meetings and attendance, optimistic locking on claim-once transitions), Phase 5 (M-Pesa B2C
+automated loan disbursement), and Phase 6 (PDF statement/receipt generation, email delivery, and a
+freeform document generator wizard) are complete. See the project board for progress details.
