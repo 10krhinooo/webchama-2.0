@@ -85,6 +85,15 @@ class DocumentRepositoryTest {
     @Inject
     DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
     private Long chamaId;
     private Long memberId;
     private Long otherChamaId;
@@ -106,6 +115,9 @@ class DocumentRepositoryTest {
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
             approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();

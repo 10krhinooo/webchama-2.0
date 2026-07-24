@@ -32,6 +32,9 @@ import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
 import org.chama.repository.ActivityLogRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.service.KeycloakAdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -107,6 +110,15 @@ class DocumentEmailServiceTest {
     @Inject
     MemberRoleRepository memberRoleRepository;
 
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
     @InjectMock
     KeycloakAdminService keycloakAdminService;
 
@@ -135,6 +147,9 @@ class DocumentEmailServiceTest {
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
             approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();

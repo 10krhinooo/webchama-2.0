@@ -13,6 +13,7 @@ import LoansPage from './pages/staff/LoansPage'
 import PayoutsPage from './pages/staff/PayoutsPage'
 import ApprovalsPage from './pages/staff/ApprovalsPage'
 import ResolutionsPage from './pages/staff/ResolutionsPage'
+import WelfareFundPage from './pages/staff/WelfareFundPage'
 import DocumentGeneratorPage from './pages/staff/DocumentGeneratorPage'
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
             <Route path="/chamas/:chamaId/payouts" element={<PayoutsPage />} />
             <Route path="/chamas/:chamaId/approvals" element={<ApprovalsPage />} />
             <Route path="/chamas/:chamaId/resolutions" element={<ResolutionsPage />} />
+            <Route path="/chamas/:chamaId/welfare-fund" element={<WelfareFundPage />} />
             <Route path="/chamas/:chamaId/documents" element={<DocumentGeneratorPage />} />
           </Route>
           <Route

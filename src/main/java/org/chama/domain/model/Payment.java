@@ -23,8 +23,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * Polymorphic ledger row backing contribution/loan_repayment/penalty payments (only contribution
- * is wired up so far, loan_repayment and penalty don't have tables until Phase 4). Idempotent on
+ * Polymorphic ledger row backing contribution/loan_repayment/penalty/welfare payments (only
+ * contribution and welfare are wired up so far, loan_repayment and penalty don't have tables
+ * until Phase 4). Idempotent on
  * providerReference (M-Pesa CheckoutRequestID or Flutterwave tx_ref), so a webhook retry looks up
  * the existing row instead of creating a duplicate credit.
  */
@@ -47,6 +48,10 @@ public class Payment extends PanacheEntityBase {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contribution_id")
     public Contribution contribution;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "welfare_contribution_id")
+    public WelfareContribution welfareContribution;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

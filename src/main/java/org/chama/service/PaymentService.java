@@ -12,6 +12,7 @@ import org.chama.domain.enums.PaymentStatus;
 import org.chama.domain.model.Contribution;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.Payment;
+import org.chama.domain.model.WelfareContribution;
 import org.chama.dto.FlutterwaveCallbackDto;
 import org.chama.dto.MpesaCallbackDto;
 import org.chama.repository.PaymentRepository;
@@ -32,6 +33,9 @@ public class PaymentService {
     ContributionService contributionService;
 
     @Inject
+    WelfareContributionService welfareContributionService;
+
+    @Inject
     MpesaService mpesaService;
 
     @Inject
@@ -50,6 +54,32 @@ public class PaymentService {
         try {
             String checkoutId = mpesaService.stkPush(caller.phone, remaining,
                 "CHAMA" + chamaId + "-C" + contributionId);
+            payment.providerReference = checkoutId;
+        } catch (RuntimeException e) {
+            payment.status = PaymentStatus.FAILED;
+            throw new BadRequestException(e.getMessage());
+        }
+        return payment;
+    }
+
+    /** Self-service: a member tops up the chama's welfare fund by an amount of their own choosing, via M-Pesa STK push. */
+    @Transactional
+    public Payment initiateMpesaWelfareContribution(Long chamaId, Member caller, BigDecimal amount) {
+        WelfareContribution contribution = welfareContributionService.createPending(chamaId, caller, amount);
+
+        Payment payment = new Payment();
+        payment.chama = contribution.chama;
+        payment.member = caller;
+        payment.welfareContribution = contribution;
+        payment.purpose = PaymentPurpose.WELFARE;
+        payment.amount = amount;
+        payment.method = PaymentMethod.MPESA;
+        payment.status = PaymentStatus.PENDING;
+        paymentRepository.persist(payment);
+
+        try {
+            String checkoutId = mpesaService.stkPush(caller.phone, amount,
+                "CHAMA" + chamaId + "-W" + contribution.id);
             payment.providerReference = checkoutId;
         } catch (RuntimeException e) {
             payment.status = PaymentStatus.FAILED;
@@ -182,6 +212,8 @@ public class PaymentService {
         payment.mpesaReceiptNumber = mpesaReceiptNumber;
         if (payment.contribution != null) {
             contributionService.recordPayment(payment.chama.id, payment.contribution.id, payment.amount, payment.method);
+        } else if (payment.welfareContribution != null) {
+            welfareContributionService.markPaid(payment.chama.id, payment.welfareContribution.id, payment.method);
         }
     }
 }

@@ -30,6 +30,10 @@ import org.chama.repository.PenaltyRepository;
 import org.chama.repository.ResolutionRepository;
 import org.chama.repository.ResolutionVoteRepository;
 import org.chama.repository.ActivityLogRepository;
+import org.chama.repository.PaymentRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -101,6 +105,18 @@ class TenantIsolationTest {
     @Inject
     ResolutionRepository resolutionRepository;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
     private Long chamaAId;
     private Long chamaBId;
 
@@ -110,6 +126,10 @@ class TenantIsolationTest {
             resolutionVoteRepository.deleteAll();
             resolutionRepository.deleteAll();
             approvalRepository.deleteAll();
+            paymentRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             documentDeliveryAttemptRepository.deleteAll();
             generatedDocumentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
@@ -284,6 +304,14 @@ class TenantIsolationTest {
 
     @Test
     @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotReadChamaBWelfareFund() {
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
     void chairOfChamaACannotOpenAResolutionInChamaB() {
         var body = """
             {"meetingId":1,"title":"Hijacked resolution"}
@@ -313,6 +341,34 @@ class TenantIsolationTest {
             .contentType("application/json")
             .body(body)
             .when().post("/api/chamas/{chamaId}/approvals", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-member-a")
+    void plainMemberCannotReadWelfareFundSummary() {
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaAId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-member-a")
+    void plainMemberCanSeeOwnWelfareContributionsViaMineEndpoint() {
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund/contributions/mine", chamaAId)
+            .then()
+                .statusCode(200)
+                .body("size()", equalTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotCreateWithdrawalForChamaB() {
+        given()
+            .contentType("application/json")
+            .body("{\"amount\":10,\"reason\":\"attempted cross-tenant withdrawal\"}")
+            .when().post("/api/chamas/{chamaId}/welfare-fund/withdrawals", chamaBId)
             .then().statusCode(403);
     }
 
