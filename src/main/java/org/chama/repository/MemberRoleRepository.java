@@ -6,6 +6,8 @@ import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.MemberRole;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class MemberRoleRepository implements PanacheRepository<MemberRole> {
@@ -21,6 +23,14 @@ public class MemberRoleRepository implements PanacheRepository<MemberRole> {
             .stream()
             .map(r -> r.role)
             .toList();
+    }
+
+    /** One query for the My Chamas picker, rather than N+1 per-chama role lookups. */
+    public Map<Long, List<MemberRoleType>> findRoleTypesForKeycloakUserGroupedByChama(String keycloakUserId, List<Long> chamaIds) {
+        return find("member.keycloakUserId = ?1 and member.chama.id in ?2", keycloakUserId, chamaIds)
+            .list()
+            .stream()
+            .collect(Collectors.groupingBy(r -> r.member.chama.id, Collectors.mapping(r -> r.role, Collectors.toList())));
     }
 
     public long deleteByChamaId(Long chamaId) {

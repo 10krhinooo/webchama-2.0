@@ -199,4 +199,49 @@ class ChamaResourceTest {
             .when().post("/api/chamas")
             .then().statusCode(400);
     }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void mineListsEachChamaWithTheCallersRoleInIt() {
+        given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201);
+
+        given()
+            .when().get("/api/chamas/mine")
+            .then()
+                .statusCode(200)
+                .body("[0].name", equalTo("Tumaini Chama"))
+                .body("[0].roles[0]", equalTo("CHAIRPERSON"))
+                .body("[0].superAdmin", equalTo(false));
+    }
+
+    @Test
+    @TestSecurity(user = "nobody")
+    void mineIsEmptyForAUserWithNoChamas() {
+        given()
+            .when().get("/api/chamas/mine")
+            .then()
+                .statusCode(200)
+                .body("size()", equalTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "SUPER_ADMIN")
+    void mineShowsSuperAdminWithNoRolesForEveryChama() {
+        given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201);
+
+        given()
+            .when().get("/api/chamas/mine")
+            .then()
+                .statusCode(200)
+                .body("[0].superAdmin", equalTo(true))
+                .body("[0].roles.size()", equalTo(0));
+    }
 }

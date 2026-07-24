@@ -5,6 +5,7 @@ import KeycloakProvider from './auth/KeycloakProvider'
 import ProtectedRoute from './auth/ProtectedRoute'
 import StaffLayout from './components/layout/StaffLayout'
 import ChamasPage from './pages/staff/ChamasPage'
+import MyChamasPage from './pages/staff/MyChamasPage'
 import DashboardPage from './pages/staff/DashboardPage'
 import MembersPage from './pages/staff/MembersPage'
 import ContributionsPage from './pages/staff/ContributionsPage'
@@ -29,6 +30,7 @@ function App() {
               </ProtectedRoute>
             }
           >
+            <Route path="/my-chamas" element={<MyChamasPage />} />
             <Route path="/chamas" element={<ChamasPage />} />
             <Route path="/chamas/:chamaId/dashboard" element={<DashboardPage />} />
             <Route path="/chamas/:chamaId/members" element={<MembersPage />} />
