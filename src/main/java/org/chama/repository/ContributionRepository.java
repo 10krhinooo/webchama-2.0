@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.chama.domain.enums.ContributionStatus;
 import org.chama.domain.model.Contribution;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -37,6 +38,15 @@ public class ContributionRepository implements PanacheRepository<Contribution> {
     /** Contributions whose billing period falls within a statement period, inclusive of both ends. */
     public List<Contribution> findByChamaAndPeriodBetween(Long chamaId, LocalDate start, LocalDate end) {
         return list("chama.id = ?1 and period between ?2 and ?3", chamaId, start, end);
+    }
+
+    /** Lifetime total paid across every contribution the chama has ever had, for the savings-goal progress view (not scoped to the current cycle, unlike the dashboard's "this cycle" figure). */
+    public BigDecimal sumAmountPaidForChama(Long chamaId) {
+        BigDecimal total = getEntityManager()
+            .createQuery("select coalesce(sum(c.amountPaid), 0) from Contribution c where c.chama.id = :chamaId", BigDecimal.class)
+            .setParameter("chamaId", chamaId)
+            .getSingleResult();
+        return total;
     }
 
     /**

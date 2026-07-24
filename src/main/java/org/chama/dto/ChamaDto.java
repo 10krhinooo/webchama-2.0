@@ -18,6 +18,7 @@ public record ChamaDto(
     BigDecimal contributionAmount,
     String meetingDay,
     BigDecimal approvalThreshold,
+    BigDecimal savingsTarget,
     ChamaStatus status,
     Instant createdAt) {
 
@@ -32,6 +33,7 @@ public record ChamaDto(
             chama.contributionAmount,
             chama.meetingDay,
             chama.approvalThreshold,
+            chama.savingsTarget,
             chama.status,
             chama.createdAt);
     }
