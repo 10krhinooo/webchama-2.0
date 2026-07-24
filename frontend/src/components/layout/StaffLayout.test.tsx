@@ -11,10 +11,16 @@ vi.mock('../../api/chamas', () => ({
   getChama: vi.fn(),
 }))
 
+vi.mock('../../hooks/useMyMembership', () => ({
+  useMyMembership: vi.fn(),
+}))
+
 import { useKeycloak } from '@react-keycloak/web'
 import { getChama } from '../../api/chamas'
+import { useMyMembership } from '../../hooks/useMyMembership'
 const mockUseKeycloak = useKeycloak as ReturnType<typeof vi.fn>
 const mockGetChama = getChama as ReturnType<typeof vi.fn>
+const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 function renderAt(path: string) {
   return render(
@@ -39,6 +45,12 @@ describe('StaffLayout', () => {
       keycloak: { logout, tokenParsed: { name: 'Grace Wanjiru', email: 'grace@example.com' } },
     })
     mockGetChama.mockResolvedValue({ id: 7, name: 'Tumaini Chama' })
+    mockUseMyMembership.mockReturnValue({
+      roles: [],
+      isSuperAdmin: false,
+      isManager: false,
+      loading: false,
+    })
   })
 
   it('always shows the Chamas nav link and renders the routed page', () => {
@@ -81,5 +93,38 @@ describe('StaffLayout', () => {
     renderAt('/chamas')
     expect(screen.queryByText('Tumaini Chama')).toBeNull()
     expect(mockGetChama).not.toHaveBeenCalled()
+  })
+
+  it('hides the Documents link for a plain member', () => {
+    mockUseMyMembership.mockReturnValue({ roles: ['MEMBER'], isSuperAdmin: false, isManager: false, loading: false })
+    renderAt('/chamas/7/members')
+    expect(screen.queryByRole('link', { name: /documents/i })).toBeNull()
+    expect(screen.getByText('Member')).toBeTruthy()
+  })
+
+  it('shows the Documents link and role badge for a chairperson', () => {
+    mockUseMyMembership.mockReturnValue({
+      roles: ['CHAIRPERSON'],
+      isSuperAdmin: false,
+      isManager: true,
+      loading: false,
+    })
+    renderAt('/chamas/7/members')
+    expect(screen.getByRole('link', { name: /documents/i })).toBeTruthy()
+    expect(screen.getByText('Chairperson')).toBeTruthy()
+  })
+
+  it('shows the Documents link and a platform-admin badge for SUPER_ADMIN', () => {
+    mockUseMyMembership.mockReturnValue({ roles: [], isSuperAdmin: true, isManager: true, loading: false })
+    renderAt('/chamas/7/members')
+    expect(screen.getByRole('link', { name: /documents/i })).toBeTruthy()
+    expect(screen.getByText('Platform admin')).toBeTruthy()
+  })
+
+  it('hides the Documents link and role badge while the role lookup is still loading', () => {
+    mockUseMyMembership.mockReturnValue({ roles: [], isSuperAdmin: false, isManager: false, loading: true })
+    renderAt('/chamas/7/members')
+    expect(screen.queryByRole('link', { name: /documents/i })).toBeNull()
+    expect(screen.queryByText('Member')).toBeNull()
   })
 })

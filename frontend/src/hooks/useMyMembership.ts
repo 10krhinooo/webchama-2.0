@@ -8,6 +8,8 @@ export interface MyMembership {
   isSuperAdmin: boolean
   isChairperson: boolean
   isTreasurer: boolean
+  isSecretary: boolean
+  isManager: boolean
   loading: boolean
 }
 
@@ -47,12 +49,17 @@ export function useMyMembership(chamaId: number | undefined): MyMembership {
   }, [chamaId, isSuperAdmin])
 
   const roles = member?.roles ?? []
+  const isChairperson = isSuperAdmin || roles.includes('CHAIRPERSON')
+  const isTreasurer = isSuperAdmin || roles.includes('TREASURER')
+  const isSecretary = isSuperAdmin || roles.includes('SECRETARY')
   return {
     member,
     roles,
     isSuperAdmin,
-    isChairperson: isSuperAdmin || roles.includes('CHAIRPERSON'),
-    isTreasurer: isSuperAdmin || roles.includes('TREASURER'),
+    isChairperson,
+    isTreasurer,
+    isSecretary,
+    isManager: isChairperson || isTreasurer,
     loading,
   }
 }

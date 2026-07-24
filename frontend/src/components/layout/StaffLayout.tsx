@@ -4,6 +4,20 @@ import { useKeycloak } from '@react-keycloak/web'
 import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
+import { useMyMembership } from '../../hooks/useMyMembership'
+
+const ROLE_LABELS: Record<string, string> = {
+  CHAIRPERSON: 'Chairperson',
+  TREASURER: 'Treasurer',
+  SECRETARY: 'Secretary',
+  MEMBER: 'Member',
+}
+
+function roleBadgeText(isSuperAdmin: boolean, roles: string[]): string {
+  if (isSuperAdmin) return 'Platform admin'
+  if (roles.length === 0) return 'Member'
+  return roles.map((r) => ROLE_LABELS[r] ?? r).join(', ')
+}
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -38,6 +52,9 @@ export default function StaffLayout() {
   const { keycloak } = useKeycloak()
   const { chamaId } = useParams<{ chamaId?: string }>()
   const chama = useChamaName(chamaId ? Number(chamaId) : undefined)
+  const { roles, isSuperAdmin, isManager, loading: roleLoading } = useMyMembership(
+    chamaId ? Number(chamaId) : undefined,
+  )
 
   const tokenParsed = keycloak.tokenParsed as { name?: string; preferred_username?: string; email?: string } | undefined
   const displayName = tokenParsed?.name ?? tokenParsed?.preferred_username ?? 'Account'
@@ -64,9 +81,14 @@ export default function StaffLayout() {
 
           {chamaId && (
             <>
-              <p className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-paper/40">
-                This chama
-              </p>
+              <div className="px-3 pb-1 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-paper/40">This chama</p>
+                {!roleLoading && (
+                  <span className="mt-1 inline-block rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper/70">
+                    {roleBadgeText(isSuperAdmin, roles)}
+                  </span>
+                )}
+              </div>
               <NavLink to={`/chamas/${chamaId}/dashboard`} className={navLinkClass}>
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard
@@ -87,10 +109,12 @@ export default function StaffLayout() {
                 <RotateCw className="h-4 w-4" />
                 Payouts
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass}>
-                <FileText className="h-4 w-4" />
-                Documents
-              </NavLink>
+              {!roleLoading && isManager && (
+                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass}>
+                  <FileText className="h-4 w-4" />
+                  Documents
+                </NavLink>
+              )}
             </>
           )}
         </nav>

@@ -28,6 +28,8 @@ describe('useMyMembership', () => {
     expect(result.current.isSuperAdmin).toBe(true)
     expect(result.current.isChairperson).toBe(true)
     expect(result.current.isTreasurer).toBe(true)
+    expect(result.current.isSecretary).toBe(true)
+    expect(result.current.isManager).toBe(true)
     expect(mockGetMyMembership).not.toHaveBeenCalled()
   })
 
@@ -42,6 +44,29 @@ describe('useMyMembership', () => {
     expect(mockGetMyMembership).toHaveBeenCalledWith(5)
     expect(result.current.isTreasurer).toBe(true)
     expect(result.current.isChairperson).toBe(false)
+    expect(result.current.isManager).toBe(true)
+  })
+
+  it('marks a secretary as neither chairperson, treasurer, nor manager', async () => {
+    mockUseKeycloak.mockReturnValue({ keycloak: { hasRealmRole: () => false } })
+    mockGetMyMembership.mockResolvedValue({ id: 2, roles: ['SECRETARY'] })
+
+    const { result } = renderHook(() => useMyMembership(5))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.isSecretary).toBe(true)
+    expect(result.current.isChairperson).toBe(false)
+    expect(result.current.isTreasurer).toBe(false)
+    expect(result.current.isManager).toBe(false)
+  })
+
+  it('marks a plain member as no role and not a manager', async () => {
+    mockUseKeycloak.mockReturnValue({ keycloak: { hasRealmRole: () => false } })
+    mockGetMyMembership.mockResolvedValue({ id: 3, roles: ['MEMBER'] })
+
+    const { result } = renderHook(() => useMyMembership(5))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.isManager).toBe(false)
+    expect(result.current.isSecretary).toBe(false)
   })
 
   it('resolves to no roles when the lookup fails (e.g. not a member)', async () => {
