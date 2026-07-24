@@ -16,6 +16,7 @@ import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.ChamaDto;
 import org.chama.dto.CreateChamaDto;
+import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.security.CurrentUser;
@@ -42,6 +43,12 @@ public class ChamaResource {
     @GET
     public List<ChamaDto> list() {
         return chamaService.listForUser(currentUser).stream().map(ChamaDto::from).toList();
+    }
+
+    @GET
+    @Path("/mine")
+    public List<MyChamaDto> mine() {
+        return chamaService.listMineWithRoles(currentUser);
     }
 
     @GET

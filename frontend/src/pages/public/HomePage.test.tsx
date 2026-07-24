@@ -47,6 +47,6 @@ describe('HomePage', () => {
 
   it('links Sign In to the staff area', () => {
     renderPage()
-    expect(screen.getByText('Sign In').closest('a')).toHaveAttribute('href', '/chamas')
+    expect(screen.getByText('Sign In').closest('a')).toHaveAttribute('href', '/my-chamas')
   })
 })

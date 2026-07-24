@@ -108,6 +108,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- Polls for the async invite email in MemberResourceTest, since
+                 MemberInvitationEmailService now sends off the request thread. -->
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <!-- Quarkus tests load application classes through Quarkus's own
                  runtime classloader, which the plain jacoco-maven-plugin agent
                  does not see. This extension is the documented fix so

@@ -5,19 +5,7 @@ import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoi
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
-
-const ROLE_LABELS: Record<string, string> = {
-  CHAIRPERSON: 'Chairperson',
-  TREASURER: 'Treasurer',
-  SECRETARY: 'Secretary',
-  MEMBER: 'Member',
-}
-
-function roleBadgeText(isSuperAdmin: boolean, roles: string[]): string {
-  if (isSuperAdmin) return 'Platform admin'
-  if (roles.length === 0) return 'Member'
-  return roles.map((r) => ROLE_LABELS[r] ?? r).join(', ')
-}
+import { roleBadgeText } from '../../utils/roleBadges'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -74,9 +62,9 @@ export default function StaffLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          <NavLink to="/chamas" end className={navLinkClass}>
+          <NavLink to="/my-chamas" end className={navLinkClass}>
             <Building2 className="h-4 w-4" />
-            Chamas
+            My Chamas
           </NavLink>
 
           {chamaId && (
@@ -137,8 +125,8 @@ export default function StaffLayout() {
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-ink/10 bg-white px-6 py-3">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
-            <Link to="/chamas" className="font-medium text-muted hover:text-ink">
-              Chamas
+            <Link to="/my-chamas" className="font-medium text-muted hover:text-ink">
+              My Chamas
             </Link>
             {chama && (
               <>

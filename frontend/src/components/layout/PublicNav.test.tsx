@@ -27,6 +27,6 @@ describe('PublicNav', () => {
 
   it('links Sign In to the staff area, which redirects to Keycloak login', () => {
     renderNav()
-    expect(screen.getByText('Sign In').closest('a')).toHaveAttribute('href', '/chamas')
+    expect(screen.getByText('Sign In').closest('a')).toHaveAttribute('href', '/my-chamas')
   })
 })

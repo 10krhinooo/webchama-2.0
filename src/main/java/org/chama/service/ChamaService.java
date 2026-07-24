@@ -9,6 +9,7 @@ import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.dto.CreateChamaDto;
+import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.repository.ChamaRepository;
@@ -26,6 +27,7 @@ import org.chama.repository.PenaltyRepository;
 import org.chama.security.CurrentUser;
 
 import java.util.List;
+import java.util.Map;
 
 @ApplicationScoped
 public class ChamaService {
@@ -75,6 +77,23 @@ public class ChamaService {
             .map(m -> m.chama.id)
             .toList();
         return chamaIds.isEmpty() ? List.of() : chamaRepository.findByIds(chamaIds);
+    }
+
+    /** For the My Chamas picker: each chama the caller belongs to, plus their role(s) in it. */
+    public List<MyChamaDto> listMineWithRoles(CurrentUser user) {
+        List<Chama> chamas = listForUser(user);
+        if (chamas.isEmpty()) {
+            return List.of();
+        }
+        if (user.isSuperAdmin()) {
+            return chamas.stream().map(c -> MyChamaDto.from(c, List.of(), true)).toList();
+        }
+        List<Long> chamaIds = chamas.stream().map(c -> c.id).toList();
+        Map<Long, List<MemberRoleType>> rolesByChama =
+            memberRoleRepository.findRoleTypesForKeycloakUserGroupedByChama(user.getKeycloakUserId(), chamaIds);
+        return chamas.stream()
+            .map(c -> MyChamaDto.from(c, rolesByChama.getOrDefault(c.id, List.of()), false))
+            .toList();
     }
 
     public SavingsProgressDto getSavingsProgress(Long id) {

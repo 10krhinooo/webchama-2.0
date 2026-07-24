@@ -111,18 +111,18 @@ public class DocumentEmailService {
         return """
             <!doctype html>
             <html>
-              <body style="margin:0;padding:0;background:#F2EBD9;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
-                <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#F2EBD9;padding:24px 0;">
+              <body style="margin:0;padding:0;background:#EDE1CC;font-family:'Public Sans',Helvetica,Arial,sans-serif;">
+                <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#EDE1CC;padding:24px 0;">
                   <tr>
                     <td align="center">
-                      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#FBF7EE;border-radius:8px;overflow:hidden;">
+                      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#F7F0E4;border-radius:8px;overflow:hidden;">
                         <tr>
-                          <td style="background:#3D3A6B;padding:20px 32px;">
-                            <span style="color:#FBF7EE;font-size:20px;font-weight:700;letter-spacing:0.5px;">WEBCHAMA</span>
+                          <td style="background:#1B4D45;padding:20px 32px;">
+                            <span style="color:#F7F0E4;font-size:20px;font-family:'Archivo',Helvetica,Arial,sans-serif;font-weight:700;letter-spacing:0.5px;">WEBCHAMA</span>
                           </td>
                         </tr>
                         <tr>
-                          <td style="padding:32px;color:#1C1A17;">
+                          <td style="padding:32px;color:#241E1A;">
                             <p style="margin:0 0 16px;font-size:16px;">Hi %s,</p>
                             <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">
                               Attached is your %s from %s, document number <strong>%s</strong>.
@@ -133,8 +133,8 @@ public class DocumentEmailService {
                           </td>
                         </tr>
                         <tr>
-                          <td style="background:#3D3A6B;padding:16px 32px;">
-                            <span style="color:rgba(251,247,238,0.6);font-size:12px;">
+                          <td style="background:#1B4D45;padding:16px 32px;">
+                            <span style="color:rgba(247,240,228,0.6);font-size:12px;">
                               You are receiving this because you are a member of %s on Webchama.
                             </span>
                           </td>

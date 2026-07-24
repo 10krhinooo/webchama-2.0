@@ -21,7 +21,7 @@ export default function PublicNav() {
           </a>
         </div>
         <div className="flex items-center gap-4">
-          <Link to="/chamas" className="text-sm font-semibold text-ink/70 hover:text-ink">
+          <Link to="/my-chamas" className="text-sm font-semibold text-ink/70 hover:text-ink">
             Sign In
           </Link>
           <a

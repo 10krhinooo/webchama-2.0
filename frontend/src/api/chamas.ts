@@ -34,6 +34,20 @@ export interface CreateChamaRequest extends UpdateChamaRequest {
   creatorPhone: string
 }
 
+export type MemberRoleType = 'CHAIRPERSON' | 'TREASURER' | 'SECRETARY' | 'MEMBER'
+
+export interface MyChama {
+  id: number
+  name: string
+  description: string | null
+  type: ChamaType
+  currency: string
+  contributionFrequency: ContributionFrequency
+  contributionAmount: number
+  roles: MemberRoleType[]
+  superAdmin: boolean
+}
+
 export interface SavingsProgress {
   target: number | null
   totalPaid: number
@@ -41,6 +55,11 @@ export interface SavingsProgress {
 
 export async function getChamas(): Promise<Chama[]> {
   const { data } = await client.get<Chama[]>('/chamas')
+  return data
+}
+
+export async function getMyChamas(): Promise<MyChama[]> {
+  const { data } = await client.get<MyChama[]>('/chamas/mine')
   return data
 }
 
