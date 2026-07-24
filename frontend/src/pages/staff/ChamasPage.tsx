@@ -33,6 +33,7 @@ const EMPTY_FORM = {
   contributionFrequency: 'MONTHLY' as Chama['contributionFrequency'],
   contributionAmount: '',
   meetingDay: '',
+  savingsTarget: '',
   creatorFullName: '',
   creatorPhone: '',
 }
@@ -74,6 +75,7 @@ export default function ChamasPage() {
       contributionFrequency: chama.contributionFrequency,
       contributionAmount: String(chama.contributionAmount),
       meetingDay: chama.meetingDay ?? '',
+      savingsTarget: chama.savingsTarget != null ? String(chama.savingsTarget) : '',
       creatorFullName: '',
       creatorPhone: '',
     })
@@ -94,6 +96,7 @@ export default function ChamasPage() {
         contributionFrequency: form.contributionFrequency,
         contributionAmount: Number(form.contributionAmount),
         meetingDay: form.meetingDay || undefined,
+        savingsTarget: form.savingsTarget ? Number(form.savingsTarget) : undefined,
       }
       if (editing) {
         await updateChama(editing.id, base)
@@ -240,6 +243,21 @@ export default function ChamasPage() {
                 value={form.meetingDay}
                 onChange={(e) => setForm({ ...form, meetingDay: e.target.value })}
                 placeholder="e.g. Last Saturday of the month"
+              />
+            </FormField>
+            <FormField
+              label="Savings target"
+              htmlFor="chama-savings-target"
+              hint="Optional lifetime savings goal, shown as progress on the dashboard."
+            >
+              <Input
+                id="chama-savings-target"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.savingsTarget}
+                onChange={(e) => setForm({ ...form, savingsTarget: e.target.value })}
+                placeholder="e.g. 500000"
               />
             </FormField>
 

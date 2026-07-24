@@ -55,6 +55,12 @@ public class Chama extends PanacheEntityBase {
     @Column(name = "approval_threshold")
     public BigDecimal approvalThreshold;
 
+    // Optional lifetime savings goal, distinct from contributionAmount (the per-cycle expected
+    // amount). Null means no goal is set. Progress against it sums amountPaid across every
+    // contribution the chama has ever had, not just the current cycle's rows.
+    @Column(name = "savings_target")
+    public BigDecimal savingsTarget;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "chama_status")

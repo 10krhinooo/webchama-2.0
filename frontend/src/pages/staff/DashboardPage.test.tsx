@@ -5,6 +5,7 @@ import DashboardPage from './DashboardPage'
 
 vi.mock('../../api/chamas', () => ({
   getChama: vi.fn(),
+  getSavingsProgress: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock('../../hooks/useActivityFeed', () => ({
   useActivityFeed: vi.fn(),
 }))
 
-import { getChama } from '../../api/chamas'
+import { getChama, getSavingsProgress } from '../../api/chamas'
 import { getMembers } from '../../api/members'
 import { getContributions, getMyContributions } from '../../api/contributions'
 import { getLoans, getMyLoans, getLoanRepayments } from '../../api/loans'
@@ -38,6 +39,7 @@ import { useMyMembership } from '../../hooks/useMyMembership'
 import { useActivityFeed } from '../../hooks/useActivityFeed'
 
 const mockGetChama = getChama as ReturnType<typeof vi.fn>
+const mockGetSavingsProgress = getSavingsProgress as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockGetContributions = getContributions as ReturnType<typeof vi.fn>
 const mockGetMyContributions = getMyContributions as ReturnType<typeof vi.fn>
@@ -78,6 +80,7 @@ describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetChama.mockResolvedValue(chama)
+    mockGetSavingsProgress.mockResolvedValue({ target: null, totalPaid: 0 })
     mockGetMembers.mockResolvedValue(members)
     mockGetLoans.mockResolvedValue([])
     mockGetMyLoans.mockResolvedValue([])
@@ -185,5 +188,27 @@ describe('DashboardPage', () => {
 
     await waitFor(() => expect(screen.getByText('Contributions by status')).toBeTruthy())
     expect(screen.queryByText('Recent activity')).toBeNull()
+  })
+
+  it('shows a savings goal card when the chama has a target set', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockGetSavingsProgress.mockResolvedValue({ target: 500000, totalPaid: 320000 })
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Savings goal')).toBeTruthy())
+    expect(screen.getByText('KES 320,000 of KES 500,000 saved')).toBeTruthy()
+  })
+
+  it('omits the savings goal card when no target is set', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockGetSavingsProgress.mockResolvedValue({ target: null, totalPaid: 0 })
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Tumaini Chama')).toBeTruthy())
+    expect(screen.queryByText('Savings goal')).toBeNull()
   })
 })

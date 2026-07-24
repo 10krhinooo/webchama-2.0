@@ -13,6 +13,7 @@ export interface Chama {
   contributionFrequency: ContributionFrequency
   contributionAmount: number
   meetingDay: string | null
+  savingsTarget: number | null
   status: ChamaStatus
   createdAt: string
 }
@@ -25,11 +26,17 @@ export interface UpdateChamaRequest {
   contributionFrequency: ContributionFrequency
   contributionAmount: number
   meetingDay?: string
+  savingsTarget?: number
 }
 
 export interface CreateChamaRequest extends UpdateChamaRequest {
   creatorFullName: string
   creatorPhone: string
+}
+
+export interface SavingsProgress {
+  target: number | null
+  totalPaid: number
 }
 
 export async function getChamas(): Promise<Chama[]> {
@@ -54,4 +61,9 @@ export async function updateChama(id: number, payload: UpdateChamaRequest): Prom
 
 export async function deleteChama(id: number): Promise<void> {
   await client.delete(`/chamas/${id}`)
+}
+
+export async function getSavingsProgress(id: number): Promise<SavingsProgress> {
+  const { data } = await client.get<SavingsProgress>(`/chamas/${id}/savings-progress`)
+  return data
 }

@@ -1,9 +1,16 @@
 package org.chama.rest;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.chama.domain.enums.ContributionStatus;
+import org.chama.domain.model.Chama;
+import org.chama.domain.model.Contribution;
+import org.chama.domain.model.Member;
+import org.chama.domain.model.MemberRole;
+import org.chama.domain.enums.MemberRoleType;
 import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
@@ -26,6 +33,9 @@ import org.chama.repository.PenaltyRepository;
 import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -198,5 +208,75 @@ class ChamaResourceTest {
             .body("{}")
             .when().post("/api/chamas")
             .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void savingsProgressHasNoTargetWhenNoneIsSet() {
+        int chamaId = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("id");
+
+        given()
+            .when().get("/api/chamas/{id}/savings-progress", chamaId)
+            .then()
+                .statusCode(200)
+                .body("target", equalTo(null))
+                .body("totalPaid", equalTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void savingsProgressSumsAllTimeContributionsAgainstTheSetTarget() {
+        int chamaId = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("id");
+
+        var updateBody = """
+            {"name":"Tumaini Chama","type":"MERRY_GO_ROUND","contributionFrequency":"MONTHLY",
+             "contributionAmount":1000,"savingsTarget":50000}
+            """;
+        given()
+            .contentType("application/json")
+            .body(updateBody)
+            .when().put("/api/chamas/{id}", chamaId)
+            .then().statusCode(200)
+            .body("savingsTarget", equalTo(50000));
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            Chama chama = chamaRepository.findById((long) chamaId);
+            Member member = memberRepository.list("chama.id", (long) chamaId).get(0);
+
+            Contribution first = new Contribution();
+            first.chama = chama;
+            first.member = member;
+            first.period = LocalDate.now().minusMonths(1);
+            first.amountDue = new BigDecimal("1000");
+            first.amountPaid = new BigDecimal("1000");
+            first.status = ContributionStatus.PAID;
+            contributionRepository.persist(first);
+
+            Contribution second = new Contribution();
+            second.chama = chama;
+            second.member = member;
+            second.period = LocalDate.now();
+            second.amountDue = new BigDecimal("1000");
+            second.amountPaid = new BigDecimal("400");
+            second.status = ContributionStatus.PARTIAL;
+            contributionRepository.persist(second);
+        });
+
+        given()
+            .when().get("/api/chamas/{id}/savings-progress", chamaId)
+            .then()
+                .statusCode(200)
+                .body("target", equalTo(50000))
+                .body("totalPaid", equalTo(1400.00f));
     }
 }

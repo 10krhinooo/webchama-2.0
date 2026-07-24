@@ -9,6 +9,7 @@ import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.dto.CreateChamaDto;
+import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
@@ -76,6 +77,11 @@ public class ChamaService {
         return chamaIds.isEmpty() ? List.of() : chamaRepository.findByIds(chamaIds);
     }
 
+    public SavingsProgressDto getSavingsProgress(Long id) {
+        Chama chama = get(id);
+        return new SavingsProgressDto(chama.savingsTarget, contributionRepository.sumAmountPaidForChama(id));
+    }
+
     public Chama get(Long id) {
         return chamaRepository.findByIdOptional(id).orElseThrow(NotFoundException::new);
     }
@@ -90,6 +96,7 @@ public class ChamaService {
         chama.contributionFrequency = dto.contributionFrequency();
         chama.contributionAmount = dto.contributionAmount();
         chama.meetingDay = dto.meetingDay();
+        chama.savingsTarget = dto.savingsTarget();
         chamaRepository.persist(chama);
 
         Member founder = new Member();
@@ -120,6 +127,7 @@ public class ChamaService {
         chama.contributionAmount = dto.contributionAmount();
         chama.meetingDay = dto.meetingDay();
         chama.approvalThreshold = dto.approvalThreshold();
+        chama.savingsTarget = dto.savingsTarget();
         return chama;
     }
 
