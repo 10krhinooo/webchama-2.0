@@ -29,6 +29,7 @@ import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MeetingRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
@@ -112,6 +113,9 @@ class MemberResourceTest {
     @Inject
     MockMailbox mailbox;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     private Long chamaId;
     private Long chairId;
 
@@ -134,6 +138,7 @@ class MemberResourceTest {
             loanRepaymentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
+            paymentRepository.deleteAll();
             contributionRepository.deleteAll();
             approvalRepository.deleteAll();
             welfareWithdrawalRepository.deleteAll();
@@ -367,6 +372,36 @@ class MemberResourceTest {
             .then()
                 .statusCode(502)
                 .body("userMessage", equalTo("Could not create the member's account right now. Try again shortly."));
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void memberCanOptInAndOutOfAutoPay() {
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":true}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaId)
+            .then()
+                .statusCode(200)
+                .body("autoPayEnabled", equalTo(true));
+
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":false}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaId)
+            .then()
+                .statusCode(200)
+                .body("autoPayEnabled", equalTo(false));
+    }
+
+    @Test
+    @TestSecurity(user = "not-a-member")
+    void nonMemberCannotToggleAutoPay() {
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":true}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaId)
+            .then().statusCode(403);
     }
 
     @Test

@@ -13,6 +13,7 @@ export interface Member {
   joinDate: string
   status: MemberStatus
   roles: MemberRoleType[]
+  autoPayEnabled: boolean
 }
 
 export interface UpdateMemberRequest {
@@ -70,6 +71,12 @@ export async function updateMember(chamaId: number, id: number, payload: UpdateM
 
 export async function updateMemberStatus(chamaId: number, id: number, status: MemberStatus): Promise<Member> {
   const { data } = await client.put<Member>(`/chamas/${chamaId}/members/${id}/status`, { status })
+  return data
+}
+
+/** Self-service: opt in/out of the scheduled auto-STK-push job for the caller's own contributions. */
+export async function updateMyAutoPay(chamaId: number, autoPayEnabled: boolean): Promise<Member> {
+  const { data } = await client.put<Member>(`/chamas/${chamaId}/members/mine/auto-pay`, { autoPayEnabled })
   return data
 }
 

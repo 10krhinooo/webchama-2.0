@@ -17,8 +17,10 @@ import org.chama.domain.model.MemberRole;
 import org.chama.repository.ActivityLogRepository;
 import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
+import org.chama.repository.ContributionRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +51,12 @@ class ApprovalResourceTest {
     @Inject
     MemberRoleRepository memberRoleRepository;
 
+    @Inject
+    ContributionRepository contributionRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
+
     private Long chamaId;
     private Long beneficiaryId;
 
@@ -56,6 +64,8 @@ class ApprovalResourceTest {
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
             approvalRepository.deleteAll();
+            paymentRepository.deleteAll();
+            contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();

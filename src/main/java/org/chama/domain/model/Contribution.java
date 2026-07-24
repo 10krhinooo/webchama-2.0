@@ -65,4 +65,9 @@ public class Contribution extends PanacheEntityBase {
 
     @Column(name = "paid_at")
     public Instant paidAt;
+
+    // Set by the auto-STK-push scheduler (issue #60) the moment it fires an unattended push for
+    // this contribution, so a subsequent sweep the same day skips it rather than double-firing.
+    @Column(name = "last_auto_push_at")
+    public Instant lastAutoPushAt;
 }

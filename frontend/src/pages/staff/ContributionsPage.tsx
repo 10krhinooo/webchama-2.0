@@ -11,7 +11,7 @@ import {
   type Contribution,
   type PaymentMethod,
 } from '../../api/contributions'
-import { getMembers, type Member } from '../../api/members'
+import { getMembers, updateMyAutoPay, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -61,7 +61,13 @@ export default function ContributionsPage() {
   const [cardPayment, setCardPayment] = useState<Contribution | null>(null)
   const [cardEmail, setCardEmail] = useState('')
   const [startingCardCheckout, setStartingCardCheckout] = useState(false)
+  const [autoPayEnabled, setAutoPayEnabled] = useState(false)
+  const [autoPaySaving, setAutoPaySaving] = useState(false)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(contributions)
+
+  useEffect(() => {
+    setAutoPayEnabled(member?.autoPayEnabled ?? false)
+  }, [member])
 
   const refresh = () => {
     if (roleLoading) return
@@ -168,6 +174,25 @@ export default function ContributionsPage() {
     }
   }
 
+  const handleToggleAutoPay = async () => {
+    const next = !autoPayEnabled
+    setAutoPaySaving(true)
+    try {
+      const updated = await updateMyAutoPay(chamaId, next)
+      setAutoPayEnabled(updated.autoPayEnabled)
+      setNotice({
+        variant: 'success',
+        message: updated.autoPayEnabled
+          ? 'Auto-pay enabled. We will send an M-Pesa prompt automatically on your due date.'
+          : 'Auto-pay disabled.',
+      })
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setAutoPaySaving(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!deleting) return
     setDeleteLoading(true)
@@ -190,6 +215,18 @@ export default function ContributionsPage() {
           {canManage ? 'Contributions' : 'My Contributions'}
         </h1>
         {canManage && <Button onClick={openCreate}>+ New Contribution</Button>}
+        {!canManage && !roleLoading && (
+          <label className="flex items-center gap-2 text-sm text-ink/80">
+            <input
+              type="checkbox"
+              checked={autoPayEnabled}
+              disabled={autoPaySaving}
+              onChange={handleToggleAutoPay}
+              aria-label="Auto-pay via M-Pesa"
+            />
+            Auto-pay on due date
+          </label>
+        )}
       </div>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />

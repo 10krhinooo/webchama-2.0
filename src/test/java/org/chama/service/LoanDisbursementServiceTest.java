@@ -32,6 +32,7 @@ import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PenaltyRepository;
 import org.chama.repository.ActivityLogRepository;
@@ -107,6 +108,9 @@ class LoanDisbursementServiceTest {
     @Inject
     WelfareFundRepository welfareFundRepository;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     @InjectMock
     DarajaB2cClient b2cClient;
 
@@ -124,9 +128,11 @@ class LoanDisbursementServiceTest {
             loanRepository.deleteAll();
             approvalRepository.deleteAll();
             memberRoleRepository.deleteAll();
-            // Other test classes (e.g. AgmStatementServiceTest) may leave Contribution/Payout/Penalty
-            // rows tied to a Member that this class's own memberRepository.deleteAll() below would
-            // otherwise violate a foreign key on, since this class never creates any of those itself.
+            // Other test classes (e.g. AgmStatementServiceTest, ContributionAutoPushServiceTest) may
+            // leave Payment/Contribution/Payout/Penalty rows tied to a Member that this class's own
+            // memberRepository.deleteAll() below would otherwise violate a foreign key on, since this
+            // class never creates any of those itself.
+            paymentRepository.deleteAll();
             contributionRepository.deleteAll();
             payoutRepository.deleteAll();
             penaltyRepository.deleteAll();

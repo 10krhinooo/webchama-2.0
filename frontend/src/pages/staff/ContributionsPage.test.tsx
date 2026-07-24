@@ -14,6 +14,7 @@ vi.mock('../../api/contributions', () => ({
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
+  updateMyAutoPay: vi.fn(),
 }))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
@@ -31,7 +32,7 @@ import {
   payContributionWithMpesa,
   initiateCardPayment,
 } from '../../api/contributions'
-import { getMembers } from '../../api/members'
+import { getMembers, updateMyAutoPay } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 
@@ -43,6 +44,7 @@ const mockDeleteContribution = deleteContribution as ReturnType<typeof vi.fn>
 const mockPayContributionWithMpesa = payContributionWithMpesa as ReturnType<typeof vi.fn>
 const mockInitiateCardPayment = initiateCardPayment as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
+const mockUpdateMyAutoPay = updateMyAutoPay as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 const mockSavePendingCardPayment = savePendingCardPayment as ReturnType<typeof vi.fn>
 
@@ -84,6 +86,67 @@ describe('ContributionsPage', () => {
     expect(screen.getByText('500')).toBeTruthy()
     expect(screen.queryByText('+ New Contribution')).toBeNull()
     expect(mockGetContributions).not.toHaveBeenCalled()
+  })
+
+  it('does not show the auto-pay toggle for a treasurer managing contributions', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([contribution])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Contributions')).toBeTruthy())
+    expect(screen.queryByLabelText('Auto-pay via M-Pesa')).toBeNull()
+  })
+
+  it('shows the auto-pay toggle reflecting the member current opt-in state', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      loading: false,
+      member: { phone: '254700000002', autoPayEnabled: true },
+    })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByLabelText('Auto-pay via M-Pesa')).toBeTruthy())
+    expect(screen.getByLabelText('Auto-pay via M-Pesa')).toBeChecked()
+  })
+
+  it('toggles auto-pay on and shows a confirmation message', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      loading: false,
+      member: { phone: '254700000002', autoPayEnabled: false },
+    })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockUpdateMyAutoPay.mockResolvedValue({ id: 5, autoPayEnabled: true })
+    renderPage()
+
+    const toggle = await screen.findByLabelText('Auto-pay via M-Pesa')
+    expect(toggle).not.toBeChecked()
+    fireEvent.click(toggle)
+
+    await waitFor(() => expect(mockUpdateMyAutoPay).toHaveBeenCalledWith(3, true))
+    await waitFor(() => expect(toggle).toBeChecked())
+    expect(screen.getByText(/Auto-pay enabled/)).toBeTruthy()
+  })
+
+  it('shows an error notice when toggling auto-pay fails', async () => {
+    mockUseMyMembership.mockReturnValue({
+      isTreasurer: false,
+      isChairperson: false,
+      loading: false,
+      member: { phone: '254700000002', autoPayEnabled: false },
+    })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockUpdateMyAutoPay.mockRejectedValue(new Error('Could not save preference'))
+    renderPage()
+
+    const toggle = await screen.findByLabelText('Auto-pay via M-Pesa')
+    fireEvent.click(toggle)
+
+    await waitFor(() => expect(screen.getByText('Could not save preference')).toBeTruthy())
+    expect(toggle).not.toBeChecked()
   })
 
   it('shows the treasurer management view with full controls', async () => {

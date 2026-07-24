@@ -15,4 +15,5 @@ public enum ActivityEventType {
     WELFARE_CONTRIBUTION_PAID,
     WELFARE_FUND_WITHDRAWN,
     LOAN_REJECTED,
+    AUTO_STK_PUSH_SENT,
 }

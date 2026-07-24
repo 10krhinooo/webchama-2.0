@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
@@ -19,6 +20,7 @@ import org.chama.dto.CreateMemberDto;
 import org.chama.dto.CreditScoreDto;
 import org.chama.dto.MemberDto;
 import org.chama.dto.MemberInvitationDto;
+import org.chama.dto.UpdateAutoPayDto;
 import org.chama.dto.UpdateMemberDto;
 import org.chama.dto.UpdateMemberStatusDto;
 import org.chama.security.CurrentUser;
@@ -98,6 +100,15 @@ public class MemberResource {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
         var member = memberService.update(chamaId, id, dto);
         return MemberDto.from(member, memberService.rolesOf(member.id));
+    }
+
+    /** Self-service: opt in/out of the scheduled auto-STK-push job for the caller's own contributions. */
+    @PUT
+    @Path("/mine/auto-pay")
+    public MemberDto updateMyAutoPay(@PathParam("chamaId") Long chamaId, @Valid UpdateAutoPayDto dto) {
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        var updated = memberService.updateAutoPay(chamaId, member.id, dto.autoPayEnabled());
+        return MemberDto.from(updated, memberService.rolesOf(updated.id));
     }
 
     @PUT
