@@ -11,7 +11,7 @@ import {
   type LoanRepayment,
   type InterestMethod,
 } from '../../api/loans'
-import { getMembers, type Member } from '../../api/members'
+import { getMembers, getCreditScore, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
@@ -44,6 +44,12 @@ function repaymentStatusVariant(status: LoanRepayment['status']) {
   return 'muted' as const
 }
 
+function creditScoreVariant(score: number) {
+  if (score >= 70) return 'success' as const
+  if (score >= 40) return 'warning' as const
+  return 'danger' as const
+}
+
 export default function LoansPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
@@ -52,6 +58,7 @@ export default function LoansPage() {
 
   const [loans, setLoans] = useState<Loan[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [creditScores, setCreditScores] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
@@ -77,8 +84,21 @@ export default function LoansPage() {
       .then(([l, m]) => {
         setLoans(l)
         setMembers(m)
+        if (canManage) loadCreditScores(l)
       })
       .finally(() => setLoading(false))
+  }
+
+  // A data-backed signal for the chairperson/treasurer reviewing a loan request, not a hard gate
+  // (issue #59). Fetched per distinct member on the current page of loans, a missing entry just
+  // means the lookup hasn't resolved yet.
+  const loadCreditScores = (currentLoans: Loan[]) => {
+    const memberIds = [...new Set(currentLoans.map((l) => l.memberId))]
+    Promise.all(memberIds.map((id) => getCreditScore(chamaId, id).then((s) => [id, s.score] as const)))
+      .then((entries) => setCreditScores(Object.fromEntries(entries)))
+      .catch(() => {
+        /* Non-critical signal, a failed lookup just leaves that loan's score blank. */
+      })
   }
 
   useEffect(refresh, [chamaId, canManage, roleLoading])
@@ -171,6 +191,7 @@ export default function LoansPage() {
             <thead className="bg-paper-dim border-b border-black/10">
               <tr>
                 {canManage && <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>}
+                {canManage && <th className="text-left px-4 py-3 font-medium text-ink/80">Credit Score</th>}
                 <th className="text-left px-4 py-3 font-medium text-ink/80">Principal</th>
                 <th className="text-left px-4 py-3 font-medium text-ink/80">Interest</th>
                 <th className="text-left px-4 py-3 font-medium text-ink/80">Term</th>
@@ -180,11 +201,18 @@ export default function LoansPage() {
             </thead>
             <tbody className="divide-y divide-black/5">
               {loans.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted text-sm">No loans yet.</td></tr>
+                <tr><td colSpan={canManage ? 7 : 5} className="px-4 py-10 text-center text-muted text-sm">No loans yet.</td></tr>
               )}
               {pageItems.map((loan) => (
                 <tr key={loan.id} className="hover:bg-paper-dim/30">
                   {canManage && <td className="px-4 py-3 font-medium text-ink">{loan.memberName}</td>}
+                  {canManage && (
+                    <td className="px-4 py-3">
+                      {creditScores[loan.memberId] !== undefined
+                        ? <Badge label={String(creditScores[loan.memberId])} variant={creditScoreVariant(creditScores[loan.memberId])} />
+                        : <span className="text-muted text-xs">—</span>}
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-mono text-muted">{loan.principal.toLocaleString()}</td>
                   <td className="px-4 py-3 text-muted">
                     {loan.interestRate}% ({loan.interestMethod === 'FLAT' ? 'Flat' : 'Reducing balance'})

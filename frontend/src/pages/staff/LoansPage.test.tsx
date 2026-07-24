@@ -13,13 +13,14 @@ vi.mock('../../api/loans', () => ({
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
+  getCreditScore: vi.fn(),
 }))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
 import { getLoans, getMyLoans, createLoan, approveLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
-import { getMembers } from '../../api/members'
+import { getMembers, getCreditScore } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
 const mockGetLoans = getLoans as ReturnType<typeof vi.fn>
@@ -29,6 +30,7 @@ const mockApproveLoan = approveLoan as ReturnType<typeof vi.fn>
 const mockGetLoanRepayments = getLoanRepayments as ReturnType<typeof vi.fn>
 const mockRecordLoanRepayment = recordLoanRepayment as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
+const mockGetCreditScore = getCreditScore as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 const loan = {
@@ -72,6 +74,7 @@ describe('LoansPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
+    mockGetCreditScore.mockResolvedValue({ memberId: 5, score: 82 })
   })
 
   it('lists all loans for a treasurer/chairperson', async () => {
@@ -82,6 +85,25 @@ describe('LoansPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     expect(screen.getByText('Loans')).toBeTruthy()
     expect(mockGetMyLoans).not.toHaveBeenCalled()
+  })
+
+  it("shows the loan member's credit score to a manager", async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    renderPage()
+
+    await waitFor(() => expect(mockGetCreditScore).toHaveBeenCalledWith(3, 5))
+    await waitFor(() => expect(screen.getByText('82')).toBeTruthy())
+  })
+
+  it("does not show a credit score column to a plain member", async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, member: { id: 5 }, loading: false })
+    mockGetMyLoans.mockResolvedValue([loan])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('View Schedule')).toBeTruthy())
+    expect(mockGetCreditScore).not.toHaveBeenCalled()
+    expect(screen.queryByText('Credit Score')).toBeNull()
   })
 
   it("lists only the caller's own loans for a plain member", async () => {
