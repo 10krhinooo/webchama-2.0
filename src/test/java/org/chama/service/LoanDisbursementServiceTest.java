@@ -18,6 +18,7 @@ import org.chama.domain.model.Loan;
 import org.chama.domain.model.LoanDisbursement;
 import org.chama.domain.model.Member;
 import org.chama.dto.B2cResultCallbackDto;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
 import org.chama.repository.GeneratedDocumentRepository;
@@ -49,6 +50,9 @@ class LoanDisbursementServiceTest {
 
     @Inject
     LoanDisbursementService loanDisbursementService;
+
+    @Inject
+    ApprovalRepository approvalRepository;
 
     @Inject
     ChamaRepository chamaRepository;

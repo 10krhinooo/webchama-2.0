@@ -50,6 +50,11 @@ public class Chama extends PanacheEntityBase {
     @Column(name = "meeting_day")
     public String meetingDay;
 
+    // Null means "use ApprovalService's system-wide default". A loan disbursement or payout at or
+    // above this amount requires maker-checker dual sign-off (MIGRATION_PLAN.md section 9).
+    @Column(name = "approval_threshold")
+    public BigDecimal approvalThreshold;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "chama_status")

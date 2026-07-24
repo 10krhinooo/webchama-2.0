@@ -4,6 +4,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
@@ -30,6 +31,9 @@ class ChamaResourceTest {
 
     @Inject
     ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -87,6 +91,7 @@ class ChamaResourceTest {
         loanDisbursementRepository.deleteAll();
         loanRepository.deleteAll();
         contributionRepository.deleteAll();
+        approvalRepository.deleteAll();
         memberRoleRepository.deleteAll();
         memberRepository.deleteAll();
         activityLogRepository.deleteAll();

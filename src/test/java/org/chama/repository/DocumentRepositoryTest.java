@@ -38,6 +38,9 @@ class DocumentRepositoryTest {
     ActivityLogRepository activityLogRepository;
 
     @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
@@ -102,6 +105,7 @@ class DocumentRepositoryTest {
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
+            approvalRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();

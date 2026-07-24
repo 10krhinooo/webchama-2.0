@@ -12,6 +12,7 @@ import org.chama.domain.model.MemberRole;
 import org.chama.domain.enums.ChamaStatus;
 import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
@@ -46,6 +47,9 @@ class TenantIsolationTest {
 
     @Inject
     ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -95,6 +99,7 @@ class TenantIsolationTest {
     @BeforeEach
     void seedTwoChamas() {
         QuarkusTransaction.requiringNew().run(() -> {
+            approvalRepository.deleteAll();
             documentDeliveryAttemptRepository.deleteAll();
             generatedDocumentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
@@ -268,6 +273,27 @@ class TenantIsolationTest {
         given()
             .when().get("/api/chamas")
             .then().statusCode(200).body("size()", equalTo(2));
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotListChamaBApprovals() {
+        given()
+            .when().get("/api/chamas/{chamaId}/approvals", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotRequestApprovalForChamaB() {
+        var body = """
+            {"targetType":"LOAN_DISBURSEMENT","targetId":1,"memberId":1,"amount":150000}
+            """;
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/approvals", chamaBId)
+            .then().statusCode(403);
     }
 
     @Test

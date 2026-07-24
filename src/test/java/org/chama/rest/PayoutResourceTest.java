@@ -12,6 +12,7 @@ import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
@@ -45,6 +46,9 @@ class PayoutResourceTest {
 
     @Inject
     ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -115,6 +119,7 @@ class PayoutResourceTest {
             loanRepaymentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
+            approvalRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();
