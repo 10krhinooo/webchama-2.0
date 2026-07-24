@@ -21,6 +21,9 @@ import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
 import org.chama.repository.MeetingAttendanceRepository;
@@ -55,6 +58,15 @@ class PayoutResourceTest {
 
     @Inject
     MemberRepository memberRepository;
+
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
 
     @Inject
     MemberRoleRepository memberRoleRepository;
@@ -120,6 +132,9 @@ class PayoutResourceTest {
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
             approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();

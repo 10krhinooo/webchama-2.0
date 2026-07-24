@@ -22,6 +22,7 @@ import org.chama.domain.model.MeetingAttendance;
 import org.chama.domain.model.Member;
 import org.chama.dto.CreditScoreDto;
 import org.chama.repository.ApprovalRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
@@ -35,6 +36,9 @@ import org.chama.repository.MemberRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +56,9 @@ class CreditScoreServiceTest {
 
     @Inject
     ChamaRepository chamaRepository;
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     MemberRepository memberRepository;
@@ -92,6 +99,15 @@ class CreditScoreServiceTest {
     @Inject
     PenaltyRepository penaltyRepository;
 
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
     private Long chamaId;
     private Long otherChamaId;
     private Long memberId;
@@ -111,7 +127,11 @@ class CreditScoreServiceTest {
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
             approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = newChama("Credit Score Test Chama");

@@ -35,6 +35,9 @@ import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PenaltyRepository;
 import org.chama.repository.ActivityLogRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -95,6 +98,15 @@ class LoanDisbursementServiceTest {
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
 
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
     @InjectMock
     DarajaB2cClient b2cClient;
 
@@ -118,6 +130,9 @@ class LoanDisbursementServiceTest {
             contributionRepository.deleteAll();
             payoutRepository.deleteAll();
             penaltyRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();
             chamaRepository.deleteAll();

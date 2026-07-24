@@ -23,6 +23,7 @@ import org.chama.domain.model.Member;
 import org.chama.domain.model.Payout;
 import org.chama.domain.model.Penalty;
 import org.chama.dto.AgmStatementDto;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.LoanRepaymentRepository;
@@ -30,6 +31,9 @@ import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -57,6 +61,9 @@ class AgmStatementServiceTest {
     ChamaRepository chamaRepository;
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
     MemberRepository memberRepository;
 
     @Inject
@@ -74,6 +81,15 @@ class AgmStatementServiceTest {
     @Inject
     PenaltyRepository penaltyRepository;
 
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
     private Long chamaId;
     private Long memberId;
 
@@ -88,7 +104,11 @@ class AgmStatementServiceTest {
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -108,6 +108,10 @@ export default function StaffLayout() {
               <NavLink to={`/chamas/${chamaId}/payouts`} className={navLinkClass}>
                 <RotateCw className="h-4 w-4" />
                 Payouts
+              </NavLink>
+              <NavLink to={`/chamas/${chamaId}/welfare-fund`} className={navLinkClass}>
+                <HeartHandshake className="h-4 w-4" />
+                Welfare Fund
               </NavLink>
               <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass}>
                 <Vote className="h-4 w-4" />
