@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { getChama, type Chama } from '../../api/chamas'
+import { getChama, getSavingsProgress, type Chama, type SavingsProgress } from '../../api/chamas'
 import { getMembers } from '../../api/members'
 import { getContributions, getMyContributions, type Contribution, type ContributionStatus } from '../../api/contributions'
 import { getLoans, getMyLoans, getLoanRepayments, type Loan } from '../../api/loans'
@@ -41,6 +41,12 @@ function sumProgress(contributions: Contribution[], currency: string) {
   return { percent, sublabel: `${formatMoney(paid, currency)} of ${formatMoney(due, currency)} collected` }
 }
 
+function savingsGoalProgress(progress: SavingsProgress, currency: string) {
+  const target = progress.target ?? 0
+  const percent = target > 0 ? (progress.totalPaid / target) * 100 : 0
+  return { percent, sublabel: `${formatMoney(progress.totalPaid, currency)} of ${formatMoney(target, currency)} saved` }
+}
+
 function contributionStatusChartData(contributions: Contribution[]) {
   const counts: Record<ContributionStatus, number> = { PAID: 0, PARTIAL: 0, PENDING: 0, OVERDUE: 0 }
   for (const c of contributions) counts[c.status] += 1
@@ -63,6 +69,7 @@ export default function DashboardPage() {
   const isManager = isChairperson || isTreasurer
 
   const [chama, setChama] = useState<Chama | null>(null)
+  const [savingsProgress, setSavingsProgress] = useState<SavingsProgress | null>(null)
   const [memberCount, setMemberCount] = useState<number | null>(null)
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [outstandingLoanTotal, setOutstandingLoanTotal] = useState(0)
@@ -95,14 +102,16 @@ export default function DashboardPage() {
 
     Promise.all([
       getChama(chamaId),
+      getSavingsProgress(chamaId),
       getMembers(chamaId),
       isManager ? getContributions(chamaId) : getMyContributions(chamaId),
       loadOutstandingLoans(),
       isManager ? getPayouts(chamaId) : getMyPayouts(chamaId),
     ])
-      .then(([chamaData, members, contributionData, loanSummary, payouts]) => {
+      .then(([chamaData, savingsData, members, contributionData, loanSummary, payouts]) => {
         if (cancelled) return
         setChama(chamaData)
+        setSavingsProgress(savingsData)
         setMemberCount(members.length)
         setContributions(contributionData)
         setOutstandingLoanTotal(loanSummary.total)
@@ -147,6 +156,15 @@ export default function DashboardPage() {
       </div>
 
       <TransientAlert variant="error" message={error} onDismiss={() => setError(null)} />
+
+      {savingsProgress?.target != null && (() => {
+        const goal = savingsGoalProgress(savingsProgress, currency)
+        return (
+          <div className="rounded-2xl bg-white p-8 shadow-card">
+            <ContributionPot percent={goal.percent} label="Savings goal" sublabel={goal.sublabel} />
+          </div>
+        )
+      })()}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl bg-white p-8 shadow-card">

@@ -26,6 +26,7 @@ const chama = {
   contributionFrequency: 'MONTHLY' as const,
   contributionAmount: 500,
   meetingDay: null,
+  savingsTarget: null,
   status: 'ACTIVE' as const,
   createdAt: '2026-01-01T00:00:00Z',
 }
@@ -149,5 +150,45 @@ describe('ChamasPage', () => {
       currency: 'USD',
       meetingDay: 'Fridays',
     })
+  })
+
+  it('submits a savings target when set', async () => {
+    mockCreateChama.mockResolvedValue({ ...chama, id: 2 })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('+ New Chama'))
+    fireEvent.change(screen.getByLabelText(/^name \*/i), { target: { value: 'Upya' } })
+    fireEvent.change(screen.getByLabelText(/contribution amount/i), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText(/savings target/i), { target: { value: '500000' } })
+    fireEvent.change(screen.getByLabelText(/your full name/i), { target: { value: 'Jane' } })
+    fireEvent.click(screen.getByText('Create Chama'))
+
+    await waitFor(() => expect(mockCreateChama).toHaveBeenCalled())
+    expect(mockCreateChama.mock.calls[0][0]).toMatchObject({ savingsTarget: 500000 })
+  })
+
+  it('leaves the savings target unset when the field is left blank', async () => {
+    mockCreateChama.mockResolvedValue({ ...chama, id: 2 })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('+ New Chama'))
+    fireEvent.change(screen.getByLabelText(/^name \*/i), { target: { value: 'Upya' } })
+    fireEvent.change(screen.getByLabelText(/contribution amount/i), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText(/your full name/i), { target: { value: 'Jane' } })
+    fireEvent.click(screen.getByText('Create Chama'))
+
+    await waitFor(() => expect(mockCreateChama).toHaveBeenCalled())
+    expect(mockCreateChama.mock.calls[0][0].savingsTarget).toBeUndefined()
+  })
+
+  it('preloads the savings target when editing a chama that already has one', async () => {
+    mockGetChamas.mockResolvedValue([{ ...chama, savingsTarget: 250000 }])
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Edit'))
+    expect(screen.getByLabelText(/savings target/i)).toHaveValue(250000)
   })
 })

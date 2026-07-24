@@ -17,5 +17,7 @@ public record UpdateChamaDto(
     @NotNull ContributionFrequency contributionFrequency,
     @NotNull @Positive BigDecimal contributionAmount,
     String meetingDay,
-    @PositiveOrZero BigDecimal approvalThreshold) {
+    @PositiveOrZero BigDecimal approvalThreshold,
+    // Null means no lifetime savings goal is set.
+    @PositiveOrZero BigDecimal savingsTarget) {
 }

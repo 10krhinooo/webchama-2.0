@@ -17,6 +17,7 @@ import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.ChamaDto;
 import org.chama.dto.CreateChamaDto;
 import org.chama.dto.MyChamaDto;
+import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
@@ -55,6 +56,13 @@ public class ChamaResource {
     public ChamaDto get(@PathParam("id") Long id) {
         tenantAccessService.requireMembership(currentUser, id);
         return ChamaDto.from(chamaService.get(id));
+    }
+
+    @GET
+    @Path("/{id}/savings-progress")
+    public SavingsProgressDto savingsProgress(@PathParam("id") Long id) {
+        tenantAccessService.requireMembership(currentUser, id);
+        return chamaService.getSavingsProgress(id);
     }
 
     @POST
