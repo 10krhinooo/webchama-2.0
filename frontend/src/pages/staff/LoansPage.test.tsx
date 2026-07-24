@@ -8,6 +8,7 @@ vi.mock('../../api/loans', () => ({
   getMyLoans: vi.fn(),
   createLoan: vi.fn(),
   approveLoan: vi.fn(),
+  rejectLoan: vi.fn(),
   getLoanRepayments: vi.fn(),
   recordLoanRepayment: vi.fn(),
 }))
@@ -19,7 +20,7 @@ vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
-import { getLoans, getMyLoans, createLoan, approveLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
+import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
 import { getMembers, getCreditScore } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
@@ -27,6 +28,7 @@ const mockGetLoans = getLoans as ReturnType<typeof vi.fn>
 const mockGetMyLoans = getMyLoans as ReturnType<typeof vi.fn>
 const mockCreateLoan = createLoan as ReturnType<typeof vi.fn>
 const mockApproveLoan = approveLoan as ReturnType<typeof vi.fn>
+const mockRejectLoan = rejectLoan as ReturnType<typeof vi.fn>
 const mockGetLoanRepayments = getLoanRepayments as ReturnType<typeof vi.fn>
 const mockRecordLoanRepayment = recordLoanRepayment as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
@@ -214,22 +216,37 @@ describe('LoansPage', () => {
     await waitFor(() => expect(screen.getByText(/approved/i)).toBeTruthy())
   })
 
-  it('does not offer an Approve action once a loan is past REQUESTED', async () => {
+  it('lets a manager reject a requested loan', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    mockRejectLoan.mockResolvedValue({ ...loan, status: 'REJECTED' })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    fireEvent.click(screen.getByText('Reject'))
+
+    await waitFor(() => expect(mockRejectLoan).toHaveBeenCalledWith(3, 1))
+    await waitFor(() => expect(screen.getByText(/rejected/i)).toBeTruthy())
+  })
+
+  it('does not offer Approve/Reject actions once a loan is past REQUESTED', async () => {
     mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
     mockGetLoans.mockResolvedValue([{ ...loan, status: 'APPROVED' }])
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     expect(screen.queryByText('Approve')).toBeNull()
+    expect(screen.queryByText('Reject')).toBeNull()
   })
 
-  it('does not offer Approve to a plain member', async () => {
+  it('does not offer Approve/Reject to a plain member', async () => {
     mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, member: { id: 5 }, loading: false })
     mockGetMyLoans.mockResolvedValue([loan])
     renderPage()
 
     await waitFor(() => expect(screen.getByText('View Schedule')).toBeTruthy())
     expect(screen.queryByText('Approve')).toBeNull()
+    expect(screen.queryByText('Reject')).toBeNull()
   })
 
   it("does not offer Record Payment to a plain member viewing their own schedule", async () => {
