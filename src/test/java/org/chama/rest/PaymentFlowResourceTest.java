@@ -18,6 +18,7 @@ import org.chama.domain.model.Contribution;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.domain.model.Payment;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
@@ -52,6 +53,9 @@ class PaymentFlowResourceTest {
 
     @Inject
     ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -119,6 +123,7 @@ class PaymentFlowResourceTest {
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
+            approvalRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();

@@ -17,6 +17,7 @@ public record ChamaDto(
     ContributionFrequency contributionFrequency,
     BigDecimal contributionAmount,
     String meetingDay,
+    BigDecimal approvalThreshold,
     ChamaStatus status,
     Instant createdAt) {
 
@@ -30,6 +31,7 @@ public record ChamaDto(
             chama.contributionFrequency,
             chama.contributionAmount,
             chama.meetingDay,
+            chama.approvalThreshold,
             chama.status,
             chama.createdAt);
     }

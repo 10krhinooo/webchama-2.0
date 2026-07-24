@@ -119,6 +119,7 @@ public class ChamaService {
         chama.contributionFrequency = dto.contributionFrequency();
         chama.contributionAmount = dto.contributionAmount();
         chama.meetingDay = dto.meetingDay();
+        chama.approvalThreshold = dto.approvalThreshold();
         return chama;
     }
 
