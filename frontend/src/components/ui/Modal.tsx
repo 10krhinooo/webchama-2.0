@@ -13,6 +13,8 @@ const FOCUSABLE_SELECTOR =
 export default function Modal({ title, onClose, children }: Props) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null
@@ -20,7 +22,7 @@ export default function Modal({ title, onClose, children }: Props) {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key !== 'Tab' || !dialogRef.current) return
@@ -44,7 +46,10 @@ export default function Modal({ title, onClose, children }: Props) {
       document.removeEventListener('keydown', onKeyDown)
       previouslyFocused?.focus()
     }
-  }, [onClose])
+    // Mount-only: onClose is read via onCloseRef so this effect doesn't
+    // re-run (and re-steal focus from an active input) on every parent
+    // render caused by an inline onClose prop.
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
