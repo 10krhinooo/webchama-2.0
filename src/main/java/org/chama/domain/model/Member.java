@@ -58,4 +58,10 @@ public class Member extends PanacheEntityBase {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "member_status")
     public MemberStatus status = MemberStatus.ACTIVE;
+
+    // Explicit member opt-in for the scheduled auto-STK-push job (issue #60): when true, the
+    // contribution auto-push scheduler is allowed to fire an unattended STK push against this
+    // member's phone on their contribution due date, instead of waiting for them to pay manually.
+    @Column(name = "auto_pay_enabled", nullable = false)
+    public boolean autoPayEnabled = false;
 }

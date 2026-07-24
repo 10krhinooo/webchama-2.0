@@ -29,6 +29,7 @@ import org.chama.repository.ContributionRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PenaltyRepository;
 import org.chama.repository.WelfareContributionRepository;
@@ -90,6 +91,9 @@ class AgmStatementServiceTest {
     @Inject
     WelfareWithdrawalRepository welfareWithdrawalRepository;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     private Long chamaId;
     private Long memberId;
 
@@ -103,6 +107,7 @@ class AgmStatementServiceTest {
             payoutRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
+            paymentRepository.deleteAll();
             contributionRepository.deleteAll();
             welfareWithdrawalRepository.deleteAll();
             welfareContributionRepository.deleteAll();

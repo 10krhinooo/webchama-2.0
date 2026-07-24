@@ -135,6 +135,18 @@ public class MemberService {
         return member;
     }
 
+    /**
+     * Self-service opt-in/out of the auto-STK-push scheduler (issue #60). No role gate beyond
+     * "this is my own member row", enforced by the resource layer resolving {@code memberId} via
+     * {@code TenantAccessService.currentMember} rather than trusting a path parameter.
+     */
+    @Transactional
+    public Member updateAutoPay(Long chamaId, Long memberId, boolean autoPayEnabled) {
+        Member member = get(chamaId, memberId);
+        member.autoPayEnabled = autoPayEnabled;
+        return member;
+    }
+
     @Transactional
     public void delete(Long chamaId, Long memberId) {
         Member member = get(chamaId, memberId);

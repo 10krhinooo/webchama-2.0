@@ -33,6 +33,7 @@ import org.chama.repository.LoanRepository;
 import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MeetingRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
@@ -108,6 +109,9 @@ class CreditScoreServiceTest {
     @Inject
     WelfareWithdrawalRepository welfareWithdrawalRepository;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     private Long chamaId;
     private Long otherChamaId;
     private Long memberId;
@@ -125,6 +129,7 @@ class CreditScoreServiceTest {
             loanRepaymentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
+            paymentRepository.deleteAll();
             contributionRepository.deleteAll();
             approvalRepository.deleteAll();
             welfareWithdrawalRepository.deleteAll();

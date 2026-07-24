@@ -27,6 +27,7 @@ import org.chama.repository.WelfareContributionRepository;
 import org.chama.repository.WelfareFundRepository;
 import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
@@ -99,6 +100,9 @@ class ContributionResourceTest {
     @Inject
     MeetingRepository meetingRepository;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     private Long chamaId;
     private Long memberId;
 
@@ -115,6 +119,7 @@ class ContributionResourceTest {
             loanRepaymentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
+            paymentRepository.deleteAll();
             contributionRepository.deleteAll();
             approvalRepository.deleteAll();
             welfareWithdrawalRepository.deleteAll();

@@ -19,6 +19,7 @@ import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MeetingRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
@@ -89,6 +90,9 @@ class ChamaResourceTest {
     @Inject
     MeetingRepository meetingRepository;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     @BeforeEach
     @Transactional
     void cleanDatabase() {
@@ -102,6 +106,7 @@ class ChamaResourceTest {
         loanRepaymentRepository.deleteAll();
         loanDisbursementRepository.deleteAll();
         loanRepository.deleteAll();
+        paymentRepository.deleteAll();
         contributionRepository.deleteAll();
         approvalRepository.deleteAll();
         welfareWithdrawalRepository.deleteAll();

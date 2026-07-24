@@ -400,6 +400,16 @@ class TenantIsolationTest {
     }
 
     @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotToggleAutoPayForChamaB() {
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":true}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
     void anonymousCallerIsRejected() {
         given().when().get("/api/chamas").then().statusCode(401);
     }
