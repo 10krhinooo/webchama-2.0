@@ -101,6 +101,7 @@ class MemberResourceTest {
     MockMailbox mailbox;
 
     private Long chamaId;
+    private Long chairId;
 
     @BeforeEach
     void seed() throws Exception {
@@ -145,6 +146,7 @@ class MemberResourceTest {
             chair.phone = "254700000001";
             chair.status = org.chama.domain.enums.MemberStatus.ACTIVE;
             memberRepository.persist(chair);
+            chairId = chair.id;
             MemberRole role = new MemberRole();
             role.member = chair;
             role.role = MemberRoleType.CHAIRPERSON;
@@ -243,6 +245,43 @@ class MemberResourceTest {
     void mineReturns404ForSomeoneWithNoMemberRowInThisChama() {
         given()
             .when().get("/api/chamas/{chamaId}/members/mine", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void chairpersonCanViewAnyMembersCreditScore() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaId, chairId)
+            .then()
+                .statusCode(200)
+                .body("memberId", equalTo(chairId.intValue()))
+                .body("score", equalTo(100));
+    }
+
+    @Test
+    @TestSecurity(user = "new-member")
+    void aPlainMemberCanViewTheirOwnCreditScoreButNotAnotherMembers() {
+        Long plainId = QuarkusTransaction.requiringNew().call(() -> {
+            Member plain = new Member();
+            plain.chama = chamaRepository.findById(chamaId);
+            plain.keycloakUserId = "new-member";
+            plain.fullName = "Plain Member";
+            plain.phone = "254700000005";
+            memberRepository.persist(plain);
+            MemberRole role = new MemberRole();
+            role.member = plain;
+            role.role = MemberRoleType.MEMBER;
+            role.persist();
+            return plain.id;
+        });
+
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaId, plainId)
+            .then().statusCode(200);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaId, chairId)
             .then().statusCode(403);
     }
 

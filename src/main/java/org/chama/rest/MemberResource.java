@@ -16,12 +16,14 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.CreateMemberDto;
+import org.chama.dto.CreditScoreDto;
 import org.chama.dto.MemberDto;
 import org.chama.dto.MemberInvitationDto;
 import org.chama.dto.UpdateMemberDto;
 import org.chama.dto.UpdateMemberStatusDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
+import org.chama.service.CreditScoreService;
 import org.chama.service.MemberService;
 
 import java.util.List;
@@ -34,6 +36,9 @@ public class MemberResource {
 
     @Inject
     MemberService memberService;
+
+    @Inject
+    CreditScoreService creditScoreService;
 
     @Inject
     TenantAccessService tenantAccessService;
@@ -63,6 +68,18 @@ public class MemberResource {
         tenantAccessService.requireMembership(currentUser, chamaId);
         var member = memberService.get(chamaId, id);
         return MemberDto.from(member, memberService.rolesOf(member.id));
+    }
+
+    /** CHAIRPERSON/TREASURER, or the member themselves, can view their own credit score. */
+    @GET
+    @Path("/{id}/credit-score")
+    public CreditScoreDto creditScore(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        var self = tenantAccessService.currentMember(currentUser, chamaId);
+        boolean ownScore = self.isPresent() && self.get().id.equals(id);
+        if (!ownScore) {
+            tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        }
+        return creditScoreService.calculate(chamaId, id);
     }
 
     @POST

@@ -181,6 +181,14 @@ class TenantIsolationTest {
 
     @Test
     @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotViewAChamaBMembersCreditScore() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaBId, 999)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
     void chamaListOnlyReturnsChamasTheCallerBelongsTo() {
         given()
             .when().get("/api/chamas")
