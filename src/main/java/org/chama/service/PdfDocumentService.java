@@ -93,6 +93,7 @@ public class PdfDocumentService {
             case PAYOUT_RECEIPT -> "PAYOUT RECEIPT";
             case CUSTOM_INVOICE -> "INVOICE";
             case CUSTOM_RECEIPT -> "RECEIPT";
+            case AGM_STATEMENT -> "ANNUAL FINANCIAL STATEMENT";
         };
     }
 

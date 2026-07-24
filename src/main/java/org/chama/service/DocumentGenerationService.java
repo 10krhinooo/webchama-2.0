@@ -15,6 +15,7 @@ import org.chama.domain.model.GeneratedDocument;
 import org.chama.domain.model.Loan;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.Payout;
+import org.chama.dto.AgmStatementDto;
 import org.chama.dto.CustomDocumentLineItemRequest;
 import org.chama.dto.DocumentLineItemDto;
 import org.chama.dto.GenerateCustomDocumentRequest;
@@ -41,6 +42,7 @@ public class DocumentGenerationService {
 
     private static final DateTimeFormatter DOC_NUMBER_MONTH = DateTimeFormatter.ofPattern("yyyy-MM");
     private static final DateTimeFormatter BILLING_PERIOD_FORMAT = DateTimeFormatter.ofPattern("MMMM yyyy");
+    private static final DateTimeFormatter STATEMENT_DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy");
 
     @Inject
     GeneratedDocumentRepository generatedDocumentRepository;
@@ -56,6 +58,9 @@ public class DocumentGenerationService {
 
     @Inject
     MemberService memberService;
+
+    @Inject
+    AgmStatementService agmStatementService;
 
     @Inject
     PdfDocumentService pdfDocumentService;
@@ -151,6 +156,41 @@ public class DocumentGenerationService {
         return generate(doc, lineItems, totalAmount);
     }
 
+    /**
+     * Generates a chama-wide AGM/auditor annual financial statement (issue #66) for an arbitrary
+     * period (financial year or custom range). Unlike the record-derived types above, this isn't
+     * issued to a single member, but GeneratedDocument.member is NOT NULL (see V13's schema), so it
+     * is attributed to the requesting officer, same as how Loan/Payout approvals attribute a
+     * claim-once transition to whichever TREASURER/CHAIRPERSON performed it.
+     */
+    @Transactional
+    public GeneratedDocument generateAgmStatement(Long chamaId, Long generatedByMemberId, LocalDate periodStart, LocalDate periodEnd) {
+        Member officer = memberService.get(chamaId, generatedByMemberId);
+        AgmStatementDto statement = agmStatementService.aggregate(chamaId, periodStart, periodEnd);
+
+        String period = periodStart.format(STATEMENT_DATE_FORMAT) + " to " + periodEnd.format(STATEMENT_DATE_FORMAT);
+        List<DocumentLineItemDto> lineItems = List.of(
+            new DocumentLineItemDto("Opening balance as at " + periodStart.format(STATEMENT_DATE_FORMAT), statement.openingBalance()),
+            new DocumentLineItemDto("Total contributions received", statement.totalContributionsReceived()),
+            new DocumentLineItemDto("Total loan repayments received", statement.totalLoanRepaymentsReceived()),
+            new DocumentLineItemDto("Total penalties collected", statement.totalPenaltiesCollected()),
+            new DocumentLineItemDto("Total loans disbursed", statement.totalLoansDisbursed().negate()),
+            new DocumentLineItemDto("Total payouts disbursed", statement.totalPayoutsDisbursed().negate()));
+
+        GeneratedDocument doc = new GeneratedDocument();
+        doc.documentType = DocumentType.AGM_STATEMENT;
+        doc.chama = officer.chama;
+        doc.member = officer;
+        doc.memberName = "Annual General Meeting";
+        doc.memberPhone = officer.phone;
+        doc.billingPeriod = period;
+        doc.notes = "Prepared for AGM/auditor review by " + officer.fullName + ". Contributions, loan repayments, "
+            + "and approved penalties are recorded as inflows; loan disbursements and member payouts are recorded "
+            + "as outflows. The closing balance below carries forward as the next period's opening balance.";
+
+        return generate(doc, lineItems, statement.closingBalance());
+    }
+
     private GeneratedDocument newDocument(DocumentType type, Chama chama, org.chama.domain.model.Member member) {
         GeneratedDocument doc = new GeneratedDocument();
         doc.documentType = type;
@@ -178,8 +218,13 @@ public class DocumentGenerationService {
             doc.documentType, doc.documentNumber, doc.chama.name, doc.memberName,
             issueDate, lineItems, totalAmount, doc.billingPeriod, doc.notes);
 
-        activityLogService.log(doc.chama, ActivityEventType.DOCUMENT_GENERATED,
-            doc.documentNumber + " was generated for " + doc.memberName);
+        if (doc.documentType == DocumentType.AGM_STATEMENT) {
+            activityLogService.log(doc.chama, ActivityEventType.AGM_STATEMENT_GENERATED,
+                doc.documentNumber + " (" + doc.billingPeriod + ") was generated");
+        } else {
+            activityLogService.log(doc.chama, ActivityEventType.DOCUMENT_GENERATED,
+                doc.documentNumber + " was generated for " + doc.memberName);
+        }
         return doc;
     }
 

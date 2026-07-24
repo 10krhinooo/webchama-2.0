@@ -5,7 +5,8 @@ public enum DocumentType {
     LOAN_STATEMENT("LS"),
     PAYOUT_RECEIPT("PR"),
     CUSTOM_INVOICE("CI"),
-    CUSTOM_RECEIPT("CX");
+    CUSTOM_RECEIPT("CX"),
+    AGM_STATEMENT("AGM");
 
     private final String prefix;
 

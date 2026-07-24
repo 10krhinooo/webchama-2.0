@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import {
   getDocuments,
   generateCustomDocument,
+  generateAgmStatement,
   sendDocumentEmail,
   type GeneratedDocument,
   type DeliveryStatus,
@@ -62,6 +63,13 @@ export default function DocumentGeneratorPage() {
   const [generating, setGenerating] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [generated, setGenerated] = useState<GeneratedDocument | null>(null)
+
+  const currentYear = new Date().getFullYear()
+  const [agmFrom, setAgmFrom] = useState(`${currentYear}-01-01`)
+  const [agmTo, setAgmTo] = useState(`${currentYear}-12-31`)
+  const [agmGenerating, setAgmGenerating] = useState(false)
+  const [agmError, setAgmError] = useState<string | null>(null)
+  const [agmResult, setAgmResult] = useState<GeneratedDocument | null>(null)
 
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(documents)
 
@@ -162,6 +170,20 @@ export default function DocumentGeneratorPage() {
   const finishWizard = () => {
     setMode('list')
     refresh()
+  }
+
+  const handleGenerateAgmStatement = async () => {
+    setAgmGenerating(true)
+    setAgmError(null)
+    try {
+      const doc = await generateAgmStatement(chamaId, agmFrom, agmTo)
+      setAgmResult(doc)
+      refresh()
+    } catch (err) {
+      setAgmError(extractErrorMessage(err))
+    } finally {
+      setAgmGenerating(false)
+    }
   }
 
   if (!roleLoading && !canManage) {
@@ -351,6 +373,50 @@ export default function DocumentGeneratorPage() {
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">Documents</h1>
         <Button onClick={openWizard}>+ New Document</Button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-card p-6 space-y-4">
+        <div>
+          <h2 className="font-heading text-lg font-bold text-ink">AGM / Auditor Export</h2>
+          <p className="text-sm text-muted">
+            One-click bank-ready annual financial statement: contributions, loans, payouts, penalties, and the
+            opening/closing balance for a financial year or custom range.
+          </p>
+        </div>
+        {agmError && (
+          <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{agmError}</div>
+        )}
+        <div className="flex flex-wrap items-end gap-4">
+          <FormField label="From" htmlFor="agm-from">
+            <Input id="agm-from" type="date" value={agmFrom} onChange={(e) => setAgmFrom(e.target.value)} />
+          </FormField>
+          <FormField label="To" htmlFor="agm-to">
+            <Input id="agm-to" type="date" value={agmTo} onChange={(e) => setAgmTo(e.target.value)} />
+          </FormField>
+          <LoadingButton onClick={handleGenerateAgmStatement} loading={agmGenerating} loadingText="Generating…">
+            Generate AGM Statement
+          </LoadingButton>
+        </div>
+        {agmResult && (
+          <div className="space-y-3 border-t border-black/10 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted">{agmResult.documentNumber}</p>
+                <p className="font-mono text-xl font-bold text-primary">
+                  Closing balance: KES {agmResult.totalAmount.toLocaleString()}
+                </p>
+              </div>
+              <Button variant="secondary" onClick={() => setAgmResult(null)}>Dismiss</Button>
+            </div>
+            {agmResult.pdfBase64 && (
+              <iframe
+                title="AGM statement preview"
+                src={`data:application/pdf;base64,${agmResult.pdfBase64}`}
+                className="h-[500px] w-full rounded-xl border border-black/10"
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />

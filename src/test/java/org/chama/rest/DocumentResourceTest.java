@@ -361,6 +361,52 @@ class DocumentResourceTest {
     }
 
     @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void treasurerCanGenerateAnAgmStatementForAValidPeriod() {
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/agm-statement?from=2026-01-01&to=2026-12-31", chamaId)
+            .then()
+                .statusCode(201)
+                .body("documentType", equalTo("AGM_STATEMENT"))
+                .body("documentNumber", startsWith("AGM-"))
+                .body("memberName", equalTo("Annual General Meeting"))
+                .body("billingPeriod", notNullValue())
+                .body("pdfBase64", notNullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "doc-member-1")
+    void memberCannotGenerateAnAgmStatement() {
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/agm-statement?from=2026-01-01&to=2026-12-31", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void generatingAnAgmStatementWithoutAFromDateReturns400() {
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/agm-statement?to=2026-12-31", chamaId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void generatingAnAgmStatementWithAMalformedDateReturns400() {
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/agm-statement?from=not-a-date&to=2026-12-31", chamaId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-treasurer-1")
+    void generatingAnAgmStatementWithEndBeforeStartReturns400() {
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/agm-statement?from=2026-12-31&to=2026-01-01", chamaId)
+            .then().statusCode(400);
+    }
+
+    @Test
     @TestSecurity(user = "doc-member-1")
     void memberCannotGenerateACustomDocument() {
         String body = String.format(

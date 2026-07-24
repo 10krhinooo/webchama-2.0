@@ -8,7 +8,13 @@ vi.mock('./client', () => ({
 }))
 
 import { client } from './client'
-import { getDocuments, generateCustomDocument, sendDocumentEmail, type GenerateCustomDocumentRequest } from './documents'
+import {
+  getDocuments,
+  generateCustomDocument,
+  generateAgmStatement,
+  sendDocumentEmail,
+  type GenerateCustomDocumentRequest,
+} from './documents'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
 const mockPost = client.post as ReturnType<typeof vi.fn>
@@ -48,5 +54,16 @@ describe('documents api', () => {
     const result = await sendDocumentEmail(3, 9)
     expect(mockPost).toHaveBeenCalledWith('/chamas/3/documents/9/send/email', {})
     expect(result).toEqual({ id: 9, emailStatus: 'SENT' })
+  })
+
+  it('generateAgmStatement posts the period as query params and unwraps data', async () => {
+    mockPost.mockResolvedValue({ data: { id: 42, documentNumber: 'AGM-2026-07-0042' } })
+    const result = await generateAgmStatement(3, '2026-01-01', '2026-12-31')
+    expect(mockPost).toHaveBeenCalledWith(
+      '/chamas/3/documents/agm-statement',
+      {},
+      { params: { from: '2026-01-01', to: '2026-12-31' } },
+    )
+    expect(result).toEqual({ id: 42, documentNumber: 'AGM-2026-07-0042' })
   })
 })

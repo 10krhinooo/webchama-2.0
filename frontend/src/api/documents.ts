@@ -1,6 +1,12 @@
 import { client } from './client'
 
-export type DocumentType = 'CONTRIBUTION_RECEIPT' | 'LOAN_STATEMENT' | 'PAYOUT_RECEIPT' | 'CUSTOM_INVOICE' | 'CUSTOM_RECEIPT'
+export type DocumentType =
+  | 'CONTRIBUTION_RECEIPT'
+  | 'LOAN_STATEMENT'
+  | 'PAYOUT_RECEIPT'
+  | 'CUSTOM_INVOICE'
+  | 'CUSTOM_RECEIPT'
+  | 'AGM_STATEMENT'
 export type DeliveryStatus = 'PENDING' | 'SENT' | 'FAILED'
 
 export interface DocumentLineItem {
@@ -56,5 +62,15 @@ export async function generateCustomDocument(
 
 export async function sendDocumentEmail(chamaId: number, id: number): Promise<GeneratedDocument> {
   const { data } = await client.post<GeneratedDocument>(`/chamas/${chamaId}/documents/${id}/send/email`, {})
+  return data
+}
+
+/** One-click AGM/auditor annual financial statement export (issue #66) for a given period. */
+export async function generateAgmStatement(chamaId: number, from: string, to: string): Promise<GeneratedDocument> {
+  const { data } = await client.post<GeneratedDocument>(
+    `/chamas/${chamaId}/documents/agm-statement`,
+    {},
+    { params: { from, to } },
+  )
   return data
 }
