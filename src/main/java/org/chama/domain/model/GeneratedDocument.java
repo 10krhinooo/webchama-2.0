@@ -22,7 +22,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * A generated PDF statement/receipt, mirrors DondooHomes' GeneratedDocument: a denormalized
+ * A generated PDF statement/receipt: a denormalized
  * snapshot (member name/email/phone captured at generation time, not re-read live off member) so
  * a document still reads correctly even if the member's details change later, plus the rendered
  * PDF bytes and a last-write-wins status per delivery channel. The full per-attempt delivery

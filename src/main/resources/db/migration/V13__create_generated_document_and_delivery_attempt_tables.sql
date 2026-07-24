@@ -13,12 +13,11 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 
--- Generated PDF statements/receipts (contribution receipt, loan statement, payout receipt),
--- mirrors DondooHomes' GeneratedDocument: a denormalized snapshot (member name/email/phone
--- captured at generation time) holding the rendered PDF bytes plus a last-write-wins status per
--- delivery channel. Exactly one of contribution_id/loan_id/payout_id is populated depending on
--- document_type, same polymorphic-nullable-FK convention as the payment table (MIGRATION_PLAN.md
--- section 4/8, issue #41).
+-- Generated PDF statements/receipts (contribution receipt, loan statement, payout receipt):
+-- a denormalized snapshot (member name/email/phone captured at generation time) holding the
+-- rendered PDF bytes plus a last-write-wins status per delivery channel. Exactly one of
+-- contribution_id/loan_id/payout_id is populated depending on document_type, same
+-- polymorphic-nullable-FK convention as the payment table (issue #41).
 CREATE TABLE generated_document (
     id                 BIGSERIAL         PRIMARY KEY,
     chama_id           BIGINT            NOT NULL REFERENCES chama(id),
@@ -51,7 +50,7 @@ CREATE UNIQUE INDEX idx_generated_document_number ON generated_document(document
 
 -- Full per-attempt delivery ledger (every attempt, success or failure), distinct from
 -- generated_document's last-write-wins email_status/whatsapp_status which only reflect the most
--- recent attempt. Mirrors DondooHomes' DocumentDeliveryAttempt.
+-- recent attempt.
 CREATE TABLE document_delivery_attempt (
     id             BIGSERIAL        PRIMARY KEY,
     document_id    BIGINT           NOT NULL REFERENCES generated_document(id) ON DELETE CASCADE,
