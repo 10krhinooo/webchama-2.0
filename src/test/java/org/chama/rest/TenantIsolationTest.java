@@ -27,6 +27,8 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ResolutionRepository;
+import org.chama.repository.ResolutionVoteRepository;
 import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,12 +95,20 @@ class TenantIsolationTest {
     @Inject
     MeetingRepository meetingRepository;
 
+    @Inject
+    ResolutionVoteRepository resolutionVoteRepository;
+
+    @Inject
+    ResolutionRepository resolutionRepository;
+
     private Long chamaAId;
     private Long chamaBId;
 
     @BeforeEach
     void seedTwoChamas() {
         QuarkusTransaction.requiringNew().run(() -> {
+            resolutionVoteRepository.deleteAll();
+            resolutionRepository.deleteAll();
             approvalRepository.deleteAll();
             documentDeliveryAttemptRepository.deleteAll();
             generatedDocumentRepository.deleteAll();
@@ -257,6 +267,48 @@ class TenantIsolationTest {
     }
 
     @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotListChamaBResolutions() {
+        given()
+            .when().get("/api/chamas/{chamaId}/resolutions", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotOpenAResolutionInChamaB() {
+        var body = """
+            {"meetingId":1,"title":"Hijacked resolution"}
+            """;
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/resolutions", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotListChamaBApprovals() {
+        given()
+            .when().get("/api/chamas/{chamaId}/approvals", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotRequestApprovalForChamaB() {
+        var body = """
+            {"targetType":"LOAN_DISBURSEMENT","targetId":1,"memberId":1,"amount":150000}
+            """;
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/approvals", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
     @TestSecurity(user = "stranger")
     void nonMemberCannotReadEitherChama() {
         given().when().get("/api/chamas/{id}", chamaAId).then().statusCode(403);
@@ -281,27 +333,6 @@ class TenantIsolationTest {
         given()
             .when().get("/api/chamas")
             .then().statusCode(200).body("size()", equalTo(2));
-    }
-
-    @Test
-    @TestSecurity(user = "user-chair-a")
-    void chairOfChamaACannotListChamaBApprovals() {
-        given()
-            .when().get("/api/chamas/{chamaId}/approvals", chamaBId)
-            .then().statusCode(403);
-    }
-
-    @Test
-    @TestSecurity(user = "user-chair-a")
-    void chairOfChamaACannotRequestApprovalForChamaB() {
-        var body = """
-            {"targetType":"LOAN_DISBURSEMENT","targetId":1,"memberId":1,"amount":150000}
-            """;
-        given()
-            .contentType("application/json")
-            .body(body)
-            .when().post("/api/chamas/{chamaId}/approvals", chamaBId)
-            .then().statusCode(403);
     }
 
     @Test
