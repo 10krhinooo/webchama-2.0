@@ -30,10 +30,9 @@ import java.util.List;
  * Generates the three record-derived document types (contribution receipt, loan statement, payout
  * receipt) by reading their line items straight off the existing domain entity, plus a freeform
  * generator (issue #106, generateCustomDocument) for an ad-hoc invoice/receipt against any existing
- * chama member, the closer counterpart to DondooHomes' DocumentService which accepts an arbitrary
- * packet. Ported orchestration shape from DondooHomes' DocumentService.generate(): persist a
+ * chama member, rather than accepting an arbitrary packet. Persists a
  * placeholder document_number first (NOT NULL, but the id isn't known until the identity insert
- * happens), then rebuild the real number once the id is assigned, then render the PDF so the
+ * happens), then rebuilds the real number once the id is assigned, then renders the PDF so the
  * number can appear on it.
  */
 @ApplicationScoped

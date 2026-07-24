@@ -23,10 +23,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Renders a GeneratedDocument's PDF bytes with OpenPDF, ported from DondooHomes'
- * UniversalPdfDocumentService. One shared layout covers all three document types (contribution
- * receipt, loan statement, payout receipt), they only differ in title and line items, unlike
- * DondooHomes' invoice/receipt split which needed genuinely different layouts.
+ * Renders a GeneratedDocument's PDF bytes with OpenPDF. One shared layout covers all three
+ * document types (contribution receipt, loan statement, payout receipt), they only differ in
+ * title and line items.
  */
 @ApplicationScoped
 public class PdfDocumentService {

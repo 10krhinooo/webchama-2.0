@@ -21,9 +21,8 @@ import java.time.Instant;
  * GeneratedDocument/DocumentDeliveryAttempt were built for (issue #41), WhatsApp is issue #40.
  * Unlike MemberInvitationEmailService's credential email, a failure here is not swallowed: it is
  * recorded on the document (emailStatus/emailSentAt/emailError) and as its own
- * DocumentDeliveryAttempt row, mirroring DondooHomes' DocumentService.send(), so a treasurer can
- * see and retry a failed delivery from the document list rather than it silently vanishing into a
- * log line.
+ * DocumentDeliveryAttempt row, so a treasurer can see and retry a failed delivery from the
+ * document list rather than it silently vanishing into a log line.
  */
 @ApplicationScoped
 public class DocumentEmailService {

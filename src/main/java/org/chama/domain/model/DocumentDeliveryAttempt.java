@@ -23,7 +23,7 @@ import java.time.Instant;
 /**
  * The full per-attempt delivery ledger (every attempt, success or failure), distinct from
  * GeneratedDocument's emailStatus/whatsappStatus columns which only reflect the most recent
- * attempt. Append-only, mirrors DondooHomes' DocumentDeliveryAttempt (issue #41).
+ * attempt. Append-only (issue #41).
  */
 @Entity
 @Table(name = "document_delivery_attempt")
