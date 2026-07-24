@@ -57,8 +57,21 @@
 
 <body class="${properties.kcBodyClass!}">
 <div class="chama-layout">
-  <div class="chama-panel-left" aria-hidden="true">
-    <div class="chama-panel-motif">
+  <#assign chamaHomeUrl = (client?? && client.baseUrl?has_content)?then(client.baseUrl, properties.frontendUrl!'')>
+  <div class="chama-panel-left">
+    <#if chamaHomeUrl?has_content>
+    <a href="${chamaHomeUrl}" class="chama-panel-brand" aria-label="${msg('backToApplication')}">
+    <#else>
+    <div class="chama-panel-brand">
+    </#if>
+      <img src="${url.resourcesPath}/img/logo.svg" alt="" />
+      <span>Webchama</span>
+    <#if chamaHomeUrl?has_content>
+    </a>
+    <#else>
+    </div>
+    </#if>
+    <div class="chama-panel-motif" aria-hidden="true">
       <img src="${url.resourcesPath}/img/logo.svg" alt="" />
     </div>
     <p class="chama-tagline">Transparent contributions, trusted payouts.</p>
