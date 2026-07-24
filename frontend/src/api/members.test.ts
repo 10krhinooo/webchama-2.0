@@ -18,6 +18,7 @@ import {
   updateMember,
   updateMemberStatus,
   deleteMember,
+  getCreditScore,
   type CreateMemberRequest,
 } from './members'
 
@@ -85,5 +86,12 @@ describe('members api', () => {
     mockDelete.mockResolvedValue({})
     await deleteMember(3, 4)
     expect(mockDelete).toHaveBeenCalledWith('/chamas/3/members/4')
+  })
+
+  it('getCreditScore fetches and unwraps a member credit score', async () => {
+    mockGet.mockResolvedValue({ data: { memberId: 4, score: 82 } })
+    const result = await getCreditScore(3, 4)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/members/4/credit-score')
+    expect(result).toEqual({ memberId: 4, score: 82 })
   })
 })

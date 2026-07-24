@@ -32,6 +32,17 @@ export interface MemberInvitationResult {
   temporaryPassword: string | null
 }
 
+export interface CreditScore {
+  memberId: number
+  score: number
+  contributionConsistency: number
+  meetingAttendanceRate: number
+  loanRepaymentRate: number
+  contributionsConsidered: number
+  meetingsConsidered: number
+  loanRepaymentsConsidered: number
+}
+
 export async function getMembers(chamaId: number): Promise<Member[]> {
   const { data } = await client.get<Member[]>(`/chamas/${chamaId}/members`)
   return data
@@ -64,4 +75,9 @@ export async function updateMemberStatus(chamaId: number, id: number, status: Me
 
 export async function deleteMember(chamaId: number, id: number): Promise<void> {
   await client.delete(`/chamas/${chamaId}/members/${id}`)
+}
+
+export async function getCreditScore(chamaId: number, memberId: number): Promise<CreditScore> {
+  const { data } = await client.get<CreditScore>(`/chamas/${chamaId}/members/${memberId}/credit-score`)
+  return data
 }
