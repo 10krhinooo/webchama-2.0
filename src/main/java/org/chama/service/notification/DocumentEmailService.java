@@ -90,6 +90,7 @@ public class DocumentEmailService {
             case PAYOUT_RECEIPT -> "Your payout receipt from " + chamaName;
             case CUSTOM_INVOICE -> "Your invoice from " + chamaName;
             case CUSTOM_RECEIPT -> "Your receipt from " + chamaName;
+            case AGM_STATEMENT -> "AGM/auditor annual financial statement from " + chamaName;
         };
     }
 
@@ -100,6 +101,7 @@ public class DocumentEmailService {
             case PAYOUT_RECEIPT -> "payout receipt";
             case CUSTOM_INVOICE -> "invoice";
             case CUSTOM_RECEIPT -> "receipt";
+            case AGM_STATEMENT -> "AGM/auditor annual financial statement";
         };
     }
 

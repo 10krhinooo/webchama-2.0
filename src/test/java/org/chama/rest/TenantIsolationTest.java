@@ -206,6 +206,14 @@ class TenantIsolationTest {
 
     @Test
     @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotGenerateAnAgmStatementForChamaB() {
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/agm-statement?from=2026-01-01&to=2026-12-31", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
     void chairOfChamaACannotDeleteChamaB() {
         given()
             .when().delete("/api/chamas/{id}", chamaBId)

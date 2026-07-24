@@ -6,6 +6,7 @@ import DocumentGeneratorPage from './DocumentGeneratorPage'
 vi.mock('../../api/documents', () => ({
   getDocuments: vi.fn(),
   generateCustomDocument: vi.fn(),
+  generateAgmStatement: vi.fn(),
   sendDocumentEmail: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
@@ -15,12 +16,13 @@ vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
-import { getDocuments, generateCustomDocument, sendDocumentEmail } from '../../api/documents'
+import { getDocuments, generateCustomDocument, generateAgmStatement, sendDocumentEmail } from '../../api/documents'
 import { getMembers } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
 const mockGetDocuments = getDocuments as ReturnType<typeof vi.fn>
 const mockGenerateCustomDocument = generateCustomDocument as ReturnType<typeof vi.fn>
+const mockGenerateAgmStatement = generateAgmStatement as ReturnType<typeof vi.fn>
 const mockSendDocumentEmail = sendDocumentEmail as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
@@ -44,6 +46,25 @@ const document = {
   whatsappStatus: null,
   createdAt: '2026-07-01T00:00:00Z',
   pdfBase64: 'AAAA',
+}
+
+const agmDocument = {
+  id: 42,
+  chamaId: 3,
+  memberId: 5,
+  documentType: 'AGM_STATEMENT' as const,
+  documentNumber: 'AGM-2026-07-0042',
+  memberName: 'Annual General Meeting',
+  memberEmail: null,
+  memberPhone: '254700000501',
+  lineItems: [{ description: 'Opening balance as at 1 Jan 2026', amount: 0 }],
+  totalAmount: 15000,
+  billingPeriod: '1 Jan 2026 to 31 Dec 2026',
+  notes: 'Prepared for AGM/auditor review by Treasurer One.',
+  emailStatus: null,
+  whatsappStatus: null,
+  createdAt: '2026-07-01T00:00:00Z',
+  pdfBase64: 'BBBB',
 }
 
 function renderPage() {
@@ -197,5 +218,37 @@ describe('DocumentGeneratorPage', () => {
 
     fireEvent.click(screen.getAllByText('Remove')[0])
     expect(screen.getAllByLabelText('Description')).toHaveLength(1)
+  })
+
+  it('generates an AGM statement for the selected period', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetDocuments.mockResolvedValue([])
+    mockGenerateAgmStatement.mockResolvedValue(agmDocument)
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('AGM / Auditor Export')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-01-01' } })
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-12-31' } })
+    fireEvent.click(screen.getByText('Generate AGM Statement'))
+
+    await waitFor(() => expect(mockGenerateAgmStatement).toHaveBeenCalledWith(3, '2026-01-01', '2026-12-31'))
+    await waitFor(() => expect(screen.getByText('AGM-2026-07-0042')).toBeTruthy())
+    expect(screen.getByText(/Closing balance: KES 15,000/)).toBeTruthy()
+    expect(screen.getByTitle('AGM statement preview')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Dismiss'))
+    expect(screen.queryByText('AGM-2026-07-0042')).toBeNull()
+  })
+
+  it('shows the backend error message when AGM statement generation fails', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetDocuments.mockResolvedValue([])
+    mockGenerateAgmStatement.mockRejectedValue(new Error('Period end must not be before period start'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('AGM / Auditor Export')).toBeTruthy())
+    fireEvent.click(screen.getByText('Generate AGM Statement'))
+
+    await waitFor(() => expect(screen.getByText('Period end must not be before period start')).toBeTruthy())
   })
 })

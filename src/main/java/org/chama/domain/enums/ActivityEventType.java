@@ -9,4 +9,5 @@ public enum ActivityEventType {
     APPROVAL_REQUESTED,
     APPROVAL_APPROVED,
     APPROVAL_REJECTED,
+    AGM_STATEMENT_GENERATED,
 }

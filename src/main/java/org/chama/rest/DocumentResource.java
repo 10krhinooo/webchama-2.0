@@ -2,8 +2,10 @@ package org.chama.rest;
 
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
@@ -15,6 +17,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.GeneratedDocument;
+import org.chama.domain.model.Member;
 import org.chama.dto.GenerateCustomDocumentRequest;
 import org.chama.dto.GeneratedDocumentDto;
 import org.chama.repository.GeneratedDocumentRepository;
@@ -23,15 +26,18 @@ import org.chama.security.TenantAccessService;
 import org.chama.service.DocumentGenerationService;
 import org.chama.service.notification.DocumentEmailService;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
- * Generation and read endpoints for the three record-derived document types (issue #42), plus a
- * freeform generator (issue #106) for an ad-hoc invoice/receipt against any existing chama member.
- * Financial documents, generation and listing are TREASURER/CHAIRPERSON-only, same convention as
- * penalties/payouts. A member may still fetch their own document by id, self-service, same pattern
- * as PayoutResource's requireTreasuryRoleOrOwnDocument. Sending a generated document by email is
- * issue #38, WhatsApp (issue #40) is not wired up here yet.
+ * Generation and read endpoints for the three record-derived document types (issue #42), a
+ * freeform generator (issue #106) for an ad-hoc invoice/receipt against any existing chama member,
+ * and a one-click AGM/auditor annual financial statement export (issue #66). Financial documents,
+ * generation and listing are TREASURER/CHAIRPERSON-only, same convention as penalties/payouts. A
+ * member may still fetch their own document by id, self-service, same pattern as PayoutResource's
+ * requireTreasuryRoleOrOwnDocument. Sending a generated document by email is issue #38, WhatsApp
+ * (issue #40) is not wired up here yet.
  */
 @Path("/api/chamas/{chamaId}")
 @Authenticated
@@ -86,6 +92,18 @@ public class DocumentResource {
         return Response.status(Response.Status.CREATED).entity(GeneratedDocumentDto.from(doc, true)).build();
     }
 
+    @POST
+    @Path("/documents/agm-statement")
+    public Response generateAgmStatement(@PathParam("chamaId") Long chamaId,
+            @QueryParam("from") String from, @QueryParam("to") String to) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        Member officer = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        LocalDate periodStart = parseDate(from, "from");
+        LocalDate periodEnd = parseDate(to, "to");
+        GeneratedDocument doc = documentGenerationService.generateAgmStatement(chamaId, officer.id, periodStart, periodEnd);
+        return Response.status(Response.Status.CREATED).entity(GeneratedDocumentDto.from(doc, true)).build();
+    }
+
     @GET
     @Path("/documents")
     public List<GeneratedDocumentDto> list(@PathParam("chamaId") Long chamaId,
@@ -127,6 +145,17 @@ public class DocumentResource {
         boolean ownDocument = self.isPresent() && self.get().id.equals(doc.member.id);
         if (!ownDocument) {
             tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        }
+    }
+
+    private LocalDate parseDate(String value, String paramName) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException(paramName + " is required (an ISO date, yyyy-MM-dd)");
+        }
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException e) {
+            throw new BadRequestException(paramName + " must be an ISO date (yyyy-MM-dd)");
         }
     }
 }

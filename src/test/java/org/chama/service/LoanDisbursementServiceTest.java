@@ -24,6 +24,7 @@ import org.chama.domain.model.MemberRole;
 import org.chama.dto.B2cResultCallbackDto;
 import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
+import org.chama.repository.ContributionRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
 import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
@@ -31,6 +32,8 @@ import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PayoutRepository;
+import org.chama.repository.PenaltyRepository;
 import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,6 +78,15 @@ class LoanDisbursementServiceTest {
     MemberRoleRepository memberRoleRepository;
 
     @Inject
+    ContributionRepository contributionRepository;
+
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    PenaltyRepository penaltyRepository;
+
+    @Inject
     LoanRepository loanRepository;
 
     @Inject
@@ -100,6 +112,12 @@ class LoanDisbursementServiceTest {
             loanRepository.deleteAll();
             approvalRepository.deleteAll();
             memberRoleRepository.deleteAll();
+            // Other test classes (e.g. AgmStatementServiceTest) may leave Contribution/Payout/Penalty
+            // rows tied to a Member that this class's own memberRepository.deleteAll() below would
+            // otherwise violate a foreign key on, since this class never creates any of those itself.
+            contributionRepository.deleteAll();
+            payoutRepository.deleteAll();
+            penaltyRepository.deleteAll();
             memberRepository.deleteAll();
             activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
