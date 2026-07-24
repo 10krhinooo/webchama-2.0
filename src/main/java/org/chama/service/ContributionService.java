@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.ContributionStatus;
 import org.chama.domain.model.Contribution;
 import org.chama.domain.model.Member;
@@ -26,6 +27,9 @@ public class ContributionService {
 
     @Inject
     ChamaService chamaService;
+
+    @Inject
+    ActivityLogService activityLogService;
 
     public List<Contribution> listForChama(Long chamaId) {
         return contributionRepository.findByChama(chamaId);
@@ -69,6 +73,8 @@ public class ContributionService {
         contribution.status = contribution.amountPaid.compareTo(contribution.amountDue) >= 0
             ? ContributionStatus.PAID
             : ContributionStatus.PARTIAL;
+        activityLogService.log(contribution.chama, ActivityEventType.CONTRIBUTION_PAID,
+            contribution.member.fullName + " paid " + contribution.chama.currency + " " + amount + " towards their contribution");
         return contribution;
     }
 

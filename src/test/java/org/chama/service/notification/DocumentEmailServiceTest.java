@@ -30,6 +30,7 @@ import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.service.KeycloakAdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 @QuarkusTest
 class DocumentEmailServiceTest {
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     DocumentEmailService documentEmailService;
@@ -128,6 +132,7 @@ class DocumentEmailServiceTest {
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama c = new Chama();

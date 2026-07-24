@@ -18,6 +18,7 @@ import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +27,9 @@ import static org.hamcrest.Matchers.equalTo;
 
 @QuarkusTest
 class ChamaResourceTest {
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -85,6 +89,7 @@ class ChamaResourceTest {
         contributionRepository.deleteAll();
         memberRoleRepository.deleteAll();
         memberRepository.deleteAll();
+        activityLogRepository.deleteAll();
         chamaRepository.deleteAll();
     }
 

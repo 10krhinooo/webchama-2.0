@@ -32,6 +32,7 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.service.FlutterwaveService;
 import org.chama.service.MpesaService;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +49,9 @@ import static org.mockito.ArgumentMatchers.argThat;
 
 @QuarkusTest
 class PaymentFlowResourceTest {
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -117,6 +121,7 @@ class PaymentFlowResourceTest {
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();

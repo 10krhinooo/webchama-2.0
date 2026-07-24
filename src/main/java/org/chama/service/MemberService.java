@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
+import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.dto.CreateMemberDto;
@@ -45,6 +46,9 @@ public class MemberService {
 
     @Inject
     PayoutService payoutService;
+
+    @Inject
+    ActivityLogService activityLogService;
 
     public List<Member> listForChama(Long chamaId) {
         return memberRepository.findByChama(chamaId);
@@ -99,6 +103,7 @@ public class MemberService {
         if (temporaryPassword != null) {
             memberInvitationEmailService.sendCredentials(dto.email(), dto.fullName(), temporaryPassword);
         }
+        activityLogService.log(member.chama, ActivityEventType.MEMBER_INVITED, member.fullName + " was invited to the chama");
         return new MemberProvisioningResult(member, temporaryPassword);
     }
 

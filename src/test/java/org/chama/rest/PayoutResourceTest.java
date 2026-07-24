@@ -27,6 +27,7 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ import static org.hamcrest.Matchers.notNullValue;
 
 @QuarkusTest
 class PayoutResourceTest {
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -113,6 +117,7 @@ class PayoutResourceTest {
             loanRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();
