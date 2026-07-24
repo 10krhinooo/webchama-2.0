@@ -66,6 +66,11 @@ describe('StaffLayout', () => {
     expect(screen.getByRole('link', { name: /contributions/i })).toBeTruthy()
   })
 
+  it('shows the Resolutions nav link once a chama is in the URL', () => {
+    renderAt('/chamas/7/members')
+    expect(screen.getByRole('link', { name: /resolutions/i })).toBeTruthy()
+  })
+
   it('does not show the chama sub-nav on the top-level chamas list', () => {
     renderAt('/chamas')
     expect(screen.queryByText('This chama')).toBeNull()

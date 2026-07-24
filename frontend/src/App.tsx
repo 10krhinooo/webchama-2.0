@@ -12,6 +12,7 @@ import ContributionPaymentResultPage from './pages/staff/ContributionPaymentResu
 import LoansPage from './pages/staff/LoansPage'
 import PayoutsPage from './pages/staff/PayoutsPage'
 import ApprovalsPage from './pages/staff/ApprovalsPage'
+import ResolutionsPage from './pages/staff/ResolutionsPage'
 import DocumentGeneratorPage from './pages/staff/DocumentGeneratorPage'
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
             <Route path="/chamas/:chamaId/loans" element={<LoansPage />} />
             <Route path="/chamas/:chamaId/payouts" element={<PayoutsPage />} />
             <Route path="/chamas/:chamaId/approvals" element={<ApprovalsPage />} />
+            <Route path="/chamas/:chamaId/resolutions" element={<ResolutionsPage />} />
             <Route path="/chamas/:chamaId/documents" element={<DocumentGeneratorPage />} />
           </Route>
           <Route
