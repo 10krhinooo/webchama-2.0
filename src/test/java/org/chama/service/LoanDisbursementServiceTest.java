@@ -25,6 +25,7 @@ import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -42,6 +43,9 @@ import static org.mockito.ArgumentMatchers.eq;
 
 @QuarkusTest
 class LoanDisbursementServiceTest {
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     LoanDisbursementService loanDisbursementService;
@@ -83,6 +87,7 @@ class LoanDisbursementServiceTest {
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = newChama("B2C Test Chama");

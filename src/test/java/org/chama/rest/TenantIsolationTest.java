@@ -26,6 +26,7 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +43,9 @@ import static org.hamcrest.Matchers.equalTo;
  */
 @QuarkusTest
 class TenantIsolationTest {
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -104,6 +108,7 @@ class TenantIsolationTest {
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chamaA = newChama("Chama A");

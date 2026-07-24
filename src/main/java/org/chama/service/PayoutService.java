@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.enums.PayoutScheduleEntryStatus;
 import org.chama.domain.enums.PayoutStatus;
@@ -43,6 +44,9 @@ public class PayoutService {
 
     @Inject
     ChamaService chamaService;
+
+    @Inject
+    ActivityLogService activityLogService;
 
     public List<PayoutSchedule> listSchedule(Long chamaId) {
         return payoutScheduleRepository.findByChama(chamaId);
@@ -160,6 +164,8 @@ public class PayoutService {
         }
         payout.status = PayoutStatus.DISBURSED;
         payout.disbursedAt = Instant.now();
+        activityLogService.log(payout.chama, ActivityEventType.PAYOUT_DISBURSED,
+            payout.member.fullName + " received their round " + payout.roundNumber + " payout of " + payout.chama.currency + " " + payout.amount);
         return payout;
     }
 

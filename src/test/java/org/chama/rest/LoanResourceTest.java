@@ -30,6 +30,7 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.service.DarajaB2cClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 
 @QuarkusTest
 class LoanResourceTest {
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -115,6 +119,7 @@ class LoanResourceTest {
             loanRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();

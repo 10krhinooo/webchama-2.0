@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
+import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.DocumentType;
 import org.chama.domain.enums.LoanStatus;
 import org.chama.domain.enums.PayoutStatus;
@@ -61,6 +62,9 @@ public class DocumentGenerationService {
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    ActivityLogService activityLogService;
 
     @Transactional
     public GeneratedDocument generateContributionReceipt(Long chamaId, Long contributionId) {
@@ -174,6 +178,8 @@ public class DocumentGenerationService {
             doc.documentType, doc.documentNumber, doc.chama.name, doc.memberName,
             issueDate, lineItems, totalAmount, doc.billingPeriod, doc.notes);
 
+        activityLogService.log(doc.chama, ActivityEventType.DOCUMENT_GENERATED,
+            doc.documentNumber + " was generated for " + doc.memberName);
         return doc;
     }
 

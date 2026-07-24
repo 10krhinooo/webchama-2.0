@@ -35,6 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DocumentRepositoryTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
@@ -101,6 +104,7 @@ class DocumentRepositoryTest {
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();
