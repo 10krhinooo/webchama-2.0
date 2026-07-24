@@ -17,10 +17,12 @@ const mockGetActivityLog = getActivityLog as ReturnType<typeof vi.fn>
 
 class FakeEventSource {
   static instances: FakeEventSource[] = []
+  url: string
   onmessage: ((event: { data: string }) => void) | null = null
   onerror: (() => void) | null = null
   closed = false
-  constructor(public url: string) {
+  constructor(url: string) {
+    this.url = url
     FakeEventSource.instances.push(this)
   }
   close() {
