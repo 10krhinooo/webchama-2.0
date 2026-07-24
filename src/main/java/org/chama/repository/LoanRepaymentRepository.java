@@ -29,4 +29,8 @@ public class LoanRepaymentRepository implements PanacheRepository<LoanRepayment>
         return list("loan.chama.id = ?1 and scheduledDate between ?2 and ?3 and amountPaid > ?4",
             chamaId, start, end, BigDecimal.ZERO);
     }
+
+    public List<LoanRepayment> findByChamaAndMember(Long chamaId, Long memberId) {
+        return list("loan.chama.id = ?1 and loan.member.id = ?2", chamaId, memberId);
+    }
 }
