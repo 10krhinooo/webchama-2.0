@@ -103,6 +103,19 @@ public class LoanService {
         return loan;
     }
 
+    /** CHAIRPERSON/TREASURER-only: move a REQUESTED loan to REJECTED, a terminal state. */
+    @Transactional
+    public Loan reject(Long chamaId, Long loanId) {
+        Loan loan = get(chamaId, loanId);
+        if (loan.status != LoanStatus.REQUESTED) {
+            throw new BadRequestException("Only a requested loan can be rejected");
+        }
+        loan.status = LoanStatus.REJECTED;
+        activityLogService.log(loan.chama, ActivityEventType.LOAN_REJECTED,
+            loan.member.fullName + "'s loan of " + loan.chama.currency + " " + loan.principal + " was rejected");
+        return loan;
+    }
+
     @Transactional
     public LoanRepayment recordRepayment(Long chamaId, Long loanId, Long repaymentId, BigDecimal amount) {
         get(chamaId, loanId);

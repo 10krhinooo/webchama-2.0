@@ -5,6 +5,7 @@ import {
   getMyLoans,
   createLoan,
   approveLoan,
+  rejectLoan,
   getLoanRepayments,
   recordLoanRepayment,
   type Loan,
@@ -31,7 +32,7 @@ const EMPTY_PAYMENT_FORM = { amount: '' }
 
 function loanStatusVariant(status: Loan['status']) {
   if (status === 'CLOSED') return 'success' as const
-  if (status === 'DEFAULTED') return 'danger' as const
+  if (status === 'DEFAULTED' || status === 'REJECTED') return 'danger' as const
   if (status === 'REPAYING') return 'warning' as const
   if (status === 'APPROVED' || status === 'DISBURSED') return 'primary' as const
   return 'muted' as const
@@ -144,6 +145,19 @@ export default function LoansPage() {
     }
   }
 
+  const handleReject = async (loan: Loan) => {
+    setApprovingId(loan.id)
+    try {
+      await rejectLoan(chamaId, loan.id)
+      setNotice({ variant: 'success', message: `Loan for ${loan.memberName} rejected.` })
+      refresh()
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
   const openSchedule = (loan: Loan) => {
     setScheduleLoan(loan)
     setScheduleLoading(true)
@@ -228,6 +242,15 @@ export default function LoansPage() {
                           className="text-primary text-xs hover:underline disabled:opacity-50"
                         >
                           {approvingId === loan.id ? 'Approving…' : 'Approve'}
+                        </button>
+                      )}
+                      {canManage && loan.status === 'REQUESTED' && (
+                        <button
+                          onClick={() => handleReject(loan)}
+                          disabled={approvingId === loan.id}
+                          className="text-danger text-xs hover:underline disabled:opacity-50"
+                        >
+                          Reject
                         </button>
                       )}
                       <button onClick={() => openSchedule(loan)} className="text-primary text-xs hover:underline">View Schedule</button>

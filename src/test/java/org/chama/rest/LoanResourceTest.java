@@ -313,6 +313,63 @@ class LoanResourceTest {
     }
 
     @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void treasurerCanRejectARequestedLoanButNotTwice() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":4000,\"interestRate\":8,\"interestMethod\":\"FLAT\",\"termMonths\":4}",
+            borrowerId);
+        int loanId = given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/reject", chamaId, loanId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("REJECTED"));
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/reject", chamaId, loanId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "loan-treasurer-1")
+    void rejectingAnAlreadyApprovedLoanFails() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":4000,\"interestRate\":8,\"interestMethod\":\"FLAT\",\"termMonths\":4}",
+            borrowerId);
+        int loanId = given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/approve", chamaId, loanId)
+            .then().statusCode(200);
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/reject", chamaId, loanId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "loan-borrower-1")
+    void memberCannotRejectALoan() {
+        String body = String.format(
+            "{\"memberId\":%d,\"principal\":4000,\"interestRate\":8,\"interestMethod\":\"FLAT\",\"termMonths\":4}",
+            borrowerId);
+        int loanId = given().contentType("application/json").body(body)
+            .when().post("/api/chamas/{chamaId}/loans", chamaId)
+            .then().statusCode(201)
+            .extract().path("id");
+
+        given()
+            .when().put("/api/chamas/{chamaId}/loans/{id}/reject", chamaId, loanId)
+            .then().statusCode(403);
+    }
+
+    @Test
     @TestSecurity(user = "loan-borrower-1")
     void memberCannotApproveALoan() {
         String body = String.format(
