@@ -36,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -228,5 +229,57 @@ class ContributionResourceTest {
         given()
             .when().delete("/api/chamas/{chamaId}/contributions/{id}", chamaId, contributionId)
             .then().statusCode(204);
+    }
+
+    @Test
+    @TestSecurity(user = "payer-1")
+    void mineStreakIsZeroWithNoContributions() {
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaId)
+            .then()
+                .statusCode(200)
+                .body("streak", equalTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "payer-1")
+    void mineStreakCountsAContributionPaidOnOrBeforeItsDueDate() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            org.chama.domain.model.Contribution contribution = new org.chama.domain.model.Contribution();
+            contribution.chama = chamaRepository.findById(chamaId);
+            contribution.member = memberRepository.findById(memberId);
+            contribution.period = LocalDate.now();
+            contribution.amountDue = new BigDecimal("500");
+            contribution.amountPaid = new BigDecimal("500");
+            contribution.status = org.chama.domain.enums.ContributionStatus.PAID;
+            contribution.paidAt = java.time.Instant.now();
+            contributionRepository.persist(contribution);
+        });
+
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaId)
+            .then()
+                .statusCode(200)
+                .body("streak", equalTo(1));
+    }
+
+    @Test
+    @TestSecurity(user = "payer-1")
+    void mineStreakResetsToZeroOnAnOverdueUnpaidContribution() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            org.chama.domain.model.Contribution overdue = new org.chama.domain.model.Contribution();
+            overdue.chama = chamaRepository.findById(chamaId);
+            overdue.member = memberRepository.findById(memberId);
+            overdue.period = LocalDate.now().minusMonths(1);
+            overdue.amountDue = new BigDecimal("500");
+            overdue.status = org.chama.domain.enums.ContributionStatus.OVERDUE;
+            contributionRepository.persist(overdue);
+        });
+
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaId)
+            .then()
+                .statusCode(200)
+                .body("streak", equalTo(0));
     }
 }

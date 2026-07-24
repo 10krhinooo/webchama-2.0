@@ -6,6 +6,7 @@ import ContributionsPage from './ContributionsPage'
 vi.mock('../../api/contributions', () => ({
   getContributions: vi.fn(),
   getMyContributions: vi.fn(),
+  getMyContributionStreak: vi.fn(),
   createContribution: vi.fn(),
   recordPayment: vi.fn(),
   deleteContribution: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('../../lib/cardPaymentSession', () => ({
 import {
   getContributions,
   getMyContributions,
+  getMyContributionStreak,
   createContribution,
   recordPayment,
   deleteContribution,
@@ -38,6 +40,7 @@ import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 
 const mockGetContributions = getContributions as ReturnType<typeof vi.fn>
 const mockGetMyContributions = getMyContributions as ReturnType<typeof vi.fn>
+const mockGetMyContributionStreak = getMyContributionStreak as ReturnType<typeof vi.fn>
 const mockCreateContribution = createContribution as ReturnType<typeof vi.fn>
 const mockRecordPayment = recordPayment as ReturnType<typeof vi.fn>
 const mockDeleteContribution = deleteContribution as ReturnType<typeof vi.fn>
@@ -75,6 +78,7 @@ describe('ContributionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
+    mockGetMyContributionStreak.mockResolvedValue(0)
   })
 
   it('shows the member self-service view with no management controls', async () => {
@@ -95,6 +99,27 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('Contributions')).toBeTruthy())
     expect(screen.queryByLabelText('Auto-pay via M-Pesa')).toBeNull()
+    expect(mockGetMyContributionStreak).not.toHaveBeenCalled()
+  })
+
+  it('does not show a streak badge when the streak is zero', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockGetMyContributionStreak.mockResolvedValue(0)
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('My Contributions')).toBeTruthy())
+    expect(screen.queryByTestId('contribution-streak')).toBeNull()
+  })
+
+  it('shows the on-time streak badge for a member with a positive streak', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockGetMyContributionStreak.mockResolvedValue(3)
+    renderPage()
+
+    await waitFor(() => expect(screen.getByTestId('contribution-streak')).toBeTruthy())
+    expect(screen.getByTestId('contribution-streak').textContent).toContain('3')
   })
 
   it('shows the auto-pay toggle reflecting the member current opt-in state', async () => {

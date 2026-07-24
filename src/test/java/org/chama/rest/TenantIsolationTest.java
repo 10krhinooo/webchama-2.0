@@ -410,6 +410,14 @@ class TenantIsolationTest {
     }
 
     @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotSeeOwnStreakForChamaB() {
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
     void anonymousCallerIsRejected() {
         given().when().get("/api/chamas").then().statusCode(401);
     }

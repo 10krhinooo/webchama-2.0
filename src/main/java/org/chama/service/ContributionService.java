@@ -14,6 +14,8 @@ import org.chama.repository.MemberRepository;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @ApplicationScoped
@@ -37,6 +39,37 @@ public class ContributionService {
 
     public List<Contribution> listForMember(Long chamaId, Long memberId) {
         return contributionRepository.findByChamaAndMember(chamaId, memberId);
+    }
+
+    /**
+     * Consecutive count of contribution periods paid on or before their due date, most recent
+     * period first (issue #61). A period whose due date has not arrived yet is skipped rather
+     * than counted or treated as a break, only periods actually due count towards the streak.
+     * The first due period encountered (scanning from most recent) that is not fully paid on
+     * time, whether unpaid, partially paid, or paid late, ends the streak; nothing before it
+     * counts. Computed on read rather than persisted as a denormalized counter: one member's
+     * contribution history is small, so recomputing on every view is cheap and this can never
+     * drift out of sync with the underlying payment records the way a cached counter could.
+     */
+    public int currentStreak(Long chamaId, Long memberId) {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        int streak = 0;
+        for (Contribution contribution : contributionRepository.findByChamaAndMemberOrderByPeriodDesc(chamaId, memberId)) {
+            if (contribution.period.isAfter(today)) {
+                continue;
+            }
+            if (!isPaidOnTime(contribution)) {
+                break;
+            }
+            streak++;
+        }
+        return streak;
+    }
+
+    private boolean isPaidOnTime(Contribution contribution) {
+        return contribution.status == ContributionStatus.PAID
+            && contribution.paidAt != null
+            && !LocalDate.ofInstant(contribution.paidAt, ZoneOffset.UTC).isAfter(contribution.period);
     }
 
     public Contribution get(Long chamaId, Long contributionId) {

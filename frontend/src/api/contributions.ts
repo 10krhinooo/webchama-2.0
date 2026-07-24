@@ -32,6 +32,12 @@ export async function getMyContributions(chamaId: number): Promise<Contribution[
   return data
 }
 
+/** Self-service: the caller's own on-time contribution streak, a light engagement nudge. */
+export async function getMyContributionStreak(chamaId: number): Promise<number> {
+  const { data } = await client.get<{ streak: number }>(`/chamas/${chamaId}/contributions/mine/streak`)
+  return data.streak
+}
+
 export async function createContribution(chamaId: number, payload: CreateContributionRequest): Promise<Contribution> {
   const { data } = await client.post<Contribution>(`/chamas/${chamaId}/contributions`, payload)
   return data
