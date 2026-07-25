@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import HomePage from './HomePage'
+
+vi.mock('@react-keycloak/web', () => ({
+  useKeycloak: () => ({ keycloak: { register: vi.fn() } }),
+}))
 
 function renderPage() {
   return render(

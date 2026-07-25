@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import WeaveMark from "../marketing/WeaveMark"
+import StartChamaCta from "../marketing/StartChamaCta"
 
 const sectionLinks = [
   { href: "#how-it-works", label: "How it works" },
@@ -30,12 +31,9 @@ export default function PublicNav() {
           <Link to="/my-chamas" className="text-sm font-semibold text-ink/70 hover:text-ink">
             Sign In
           </Link>
-          <a
-            href="#join"
-            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-paper transition hover:bg-primary-dark"
-          >
+          <StartChamaCta className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-paper transition hover:bg-primary-dark">
             Start your chama
-          </a>
+          </StartChamaCta>
         </div>
         <button
           type="button"
@@ -59,13 +57,12 @@ export default function PublicNav() {
             <Link to="/my-chamas" className="font-semibold text-ink/70 hover:text-ink" onClick={() => setMenuOpen(false)}>
               Sign In
             </Link>
-            <a
-              href="#join"
-              onClick={() => setMenuOpen(false)}
+            <StartChamaCta
               className="rounded-full bg-primary px-4 py-2 text-center font-semibold text-paper transition hover:bg-primary-dark"
+              onClick={() => setMenuOpen(false)}
             >
               Start your chama
-            </a>
+            </StartChamaCta>
           </div>
         </div>
       )}

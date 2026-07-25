@@ -918,3 +918,88 @@ a:hover,
   font-family: 'Public Sans', 'Segoe UI', Helvetica, Arial, sans-serif;
   font-size: 0.875rem;
 }
+
+/*
+ * Registration (and any other user-profile-driven page: update-profile, idp-review-user-profile)
+ * renders its own field markup via the base theme's user-profile-commons.ftl macros, which we do
+ * not override, unlike login.ftl's hand-built form. These rules re-skin the PatternFly classes
+ * that markup emits so the two pages read as the same form, without touching Keycloak's
+ * user-profile rendering logic.
+ */
+
+#kc-register-form .form-group,
+#kc-update-profile-form .form-group {
+  margin-bottom: 1.25rem;
+}
+
+#kc-register-form .form-group > div:first-child,
+#kc-update-profile-form .form-group > div:first-child {
+  margin-bottom: 0.4rem;
+}
+
+#kc-register-form .pf-c-form__label-text,
+#kc-update-profile-form .pf-c-form__label-text {
+  font-size: 0.875rem;
+}
+
+#kc-register-form .required,
+#kc-update-profile-form .required {
+  color: var(--chama-danger);
+}
+
+#kc-register-form span[id^="input-error-"],
+#kc-update-profile-form span[id^="input-error-"] {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: 'Public Sans', 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 0.8rem;
+  color: var(--chama-danger);
+}
+
+#kc-register-form .pf-c-input-group,
+#kc-update-profile-form .pf-c-input-group {
+  position: relative;
+  display: block;
+}
+
+#kc-register-form .pf-c-input-group .pf-c-form-control,
+#kc-update-profile-form .pf-c-input-group .pf-c-form-control {
+  padding-right: 2.75rem;
+  width: 100%;
+}
+
+#kc-register-form .pf-c-input-group .pf-c-button.pf-m-control,
+#kc-update-profile-form .pf-c-input-group .pf-c-button.pf-m-control {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--chama-muted);
+}
+
+#kc-register-form .pf-c-input-group .pf-c-button.pf-m-control:hover,
+#kc-update-profile-form .pf-c-input-group .pf-c-button.pf-m-control:hover {
+  color: var(--chama-ink);
+  background: none;
+}
+
+#kc-register-form #kc-form-buttons,
+#kc-update-profile-form #kc-form-buttons {
+  margin-top: 1.5rem;
+}
+
+#kc-register-form #kc-form-options,
+#kc-update-profile-form #kc-form-options {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-family: 'Public Sans', 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 0.875rem;
+}
