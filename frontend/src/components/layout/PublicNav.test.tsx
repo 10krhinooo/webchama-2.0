@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PublicNav from './PublicNav'
 
@@ -28,5 +28,21 @@ describe('PublicNav', () => {
   it('links Sign In to the staff area, which redirects to Keycloak login', () => {
     renderNav()
     expect(screen.getByText('Sign In').closest('a')).toHaveAttribute('href', '/my-chamas')
+  })
+
+  it('reveals the section links and CTAs in a mobile menu when the toggle is opened', () => {
+    renderNav()
+    expect(screen.getAllByText('How it works')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+    expect(screen.getAllByText('How it works')).toHaveLength(2)
+    expect(screen.getAllByText('Sign In')).toHaveLength(2)
+  })
+
+  it('closes the mobile menu after a link inside it is clicked', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+    expect(screen.getAllByText('Trust')).toHaveLength(2)
+    fireEvent.click(screen.getAllByText('Trust')[1])
+    expect(screen.getAllByText('Trust')).toHaveLength(1)
   })
 })
