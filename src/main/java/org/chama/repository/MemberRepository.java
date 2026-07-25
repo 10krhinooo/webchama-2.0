@@ -2,6 +2,7 @@ package org.chama.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.model.Member;
 
 import java.util.List;
@@ -12,6 +13,11 @@ public class MemberRepository implements PanacheRepository<Member> {
 
     public List<Member> findByChama(Long chamaId) {
         return list("chama.id", chamaId);
+    }
+
+    /** Platform-wide membership count for the SUPER_ADMIN overview, one row per (person, chama). */
+    public long countByStatus(MemberStatus status) {
+        return count("status", status);
     }
 
     public Optional<Member> findByChamaAndKeycloakUserId(Long chamaId, String keycloakUserId) {

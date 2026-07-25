@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -66,6 +66,13 @@ export default function StaffLayout() {
             <Building2 className="h-4 w-4" />
             My Chamas
           </NavLink>
+
+          {keycloak.hasRealmRole('SUPER_ADMIN') && (
+            <NavLink to="/admin/overview" className={navLinkClass}>
+              <Gauge className="h-4 w-4" />
+              Platform Overview
+            </NavLink>
+          )}
 
           {chamaId && (
             <>
