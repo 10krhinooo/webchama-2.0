@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useKeycloak } from '@react-keycloak/web'
 import { getMyChamas, type MyChama } from '../../api/chamas'
 import { roleBadgeText } from '../../utils/roleBadges'
 import Badge from '../../components/ui/Badge'
@@ -8,10 +9,14 @@ export default function MyChamasPage() {
   const [chamas, setChamas] = useState<MyChama[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const { keycloak } = useKeycloak()
 
   useEffect(() => {
     getMyChamas().then(setChamas).finally(() => setLoading(false))
   }, [])
+
+  const tokenParsed = keycloak.tokenParsed as { given_name?: string; name?: string } | undefined
+  const firstName = tokenParsed?.given_name ?? tokenParsed?.name?.split(' ')[0]
 
   if (loading) {
     return (
@@ -25,6 +30,7 @@ export default function MyChamasPage() {
 
   return (
     <div className="space-y-4">
+      {firstName && <p className="text-sm text-muted">Hello, {firstName}</p>}
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">My Chamas</h1>
         <Link to="/chamas" className="text-sm font-semibold text-primary hover:underline">
