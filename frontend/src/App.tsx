@@ -16,6 +16,7 @@ import ApprovalsPage from './pages/staff/ApprovalsPage'
 import ResolutionsPage from './pages/staff/ResolutionsPage'
 import WelfareFundPage from './pages/staff/WelfareFundPage'
 import DocumentGeneratorPage from './pages/staff/DocumentGeneratorPage'
+import AdminOverviewPage from './pages/staff/AdminOverviewPage'
 
 function App() {
   return (
@@ -41,6 +42,15 @@ function App() {
             <Route path="/chamas/:chamaId/resolutions" element={<ResolutionsPage />} />
             <Route path="/chamas/:chamaId/welfare-fund" element={<WelfareFundPage />} />
             <Route path="/chamas/:chamaId/documents" element={<DocumentGeneratorPage />} />
+          </Route>
+          <Route
+            element={
+              <ProtectedRoute roles={['SUPER_ADMIN']}>
+                <StaffLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/admin/overview" element={<AdminOverviewPage />} />
           </Route>
           <Route
             path="/contribution-payment-result"

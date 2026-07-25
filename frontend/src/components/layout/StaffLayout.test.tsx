@@ -42,7 +42,11 @@ describe('StaffLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseKeycloak.mockReturnValue({
-      keycloak: { logout, tokenParsed: { name: 'Grace Wanjiru', email: 'grace@example.com' } },
+      keycloak: {
+        logout,
+        tokenParsed: { name: 'Grace Wanjiru', email: 'grace@example.com' },
+        hasRealmRole: vi.fn().mockReturnValue(false),
+      },
     })
     mockGetChama.mockResolvedValue({ id: 7, name: 'Tumaini Chama' })
     mockUseMyMembership.mockReturnValue({
@@ -133,6 +137,23 @@ describe('StaffLayout', () => {
     renderAt('/chamas/7/members')
     expect(screen.queryByRole('link', { name: /documents/i })).toBeNull()
     expect(screen.queryByText('Member')).toBeNull()
+  })
+
+  it('hides the Platform Overview link for a plain user', () => {
+    renderAt('/chamas')
+    expect(screen.queryByRole('link', { name: /platform overview/i })).toBeNull()
+  })
+
+  it('shows the Platform Overview link for a SUPER_ADMIN realm role holder', () => {
+    mockUseKeycloak.mockReturnValue({
+      keycloak: {
+        logout,
+        tokenParsed: { name: 'Grace Wanjiru', email: 'grace@example.com' },
+        hasRealmRole: vi.fn().mockReturnValue(true),
+      },
+    })
+    renderAt('/chamas')
+    expect(screen.getByRole('link', { name: /platform overview/i })).toBeTruthy()
   })
 
   it('opens the mobile nav backdrop from the header menu button and closes it from the drawer close button', () => {

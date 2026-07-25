@@ -49,6 +49,25 @@ public class ContributionRepository implements PanacheRepository<Contribution> {
         return total;
     }
 
+    /** Platform-wide lifetime total paid across every chama, for the SUPER_ADMIN overview. */
+    public BigDecimal sumAmountPaidAll() {
+        return getEntityManager()
+            .createQuery("select coalesce(sum(c.amountPaid), 0) from Contribution c", BigDecimal.class)
+            .getSingleResult();
+    }
+
+    /** Platform-wide total paid since a given instant (e.g. start of the current month). */
+    public BigDecimal sumAmountPaidSince(Instant since) {
+        return getEntityManager()
+            .createQuery("select coalesce(sum(c.amountPaid), 0) from Contribution c where c.paidAt >= :since", BigDecimal.class)
+            .setParameter("since", since)
+            .getSingleResult();
+    }
+
+    public long countByStatus(ContributionStatus status) {
+        return count("status", status);
+    }
+
     /**
      * Candidates for the auto-STK-push scheduler (issue #60): the member has opted in, the
      * contribution is due (period on or before today) and still unpaid, and no push has fired

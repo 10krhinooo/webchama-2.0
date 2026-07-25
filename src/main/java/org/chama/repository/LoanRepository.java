@@ -2,8 +2,10 @@ package org.chama.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.chama.domain.enums.LoanStatus;
 import org.chama.domain.model.Loan;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -12,6 +14,22 @@ public class LoanRepository implements PanacheRepository<Loan> {
 
     public List<Loan> findByChama(Long chamaId) {
         return list("chama.id", chamaId);
+    }
+
+    /** Platform-wide count of loans currently disbursed and not yet fully repaid, for the SUPER_ADMIN overview. */
+    public long countOutstanding() {
+        return count("status in (?1, ?2)", LoanStatus.DISBURSED, LoanStatus.REPAYING);
+    }
+
+    /** Platform-wide sum of principal for loans currently disbursed and not yet fully repaid. */
+    public BigDecimal sumOutstandingPrincipal() {
+        return getEntityManager()
+            .createQuery(
+                "select coalesce(sum(l.principal), 0) from Loan l where l.status in (:disbursed, :repaying)",
+                BigDecimal.class)
+            .setParameter("disbursed", LoanStatus.DISBURSED)
+            .setParameter("repaying", LoanStatus.REPAYING)
+            .getSingleResult();
     }
 
     public List<Loan> findByChamaAndMember(Long chamaId, Long memberId) {
