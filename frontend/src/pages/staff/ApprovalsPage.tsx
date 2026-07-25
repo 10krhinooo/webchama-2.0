@@ -17,8 +17,9 @@ import { usePagination } from '../../hooks/usePagination'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
-import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import ApprovalStampBadge from '../../components/marketing/ApprovalStampBadge'
+import SignOffTrail from '../../components/marketing/SignOffTrail'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -26,12 +27,6 @@ import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 
 const EMPTY_FORM = { targetType: 'LOAN_DISBURSEMENT' as ApprovalTargetType, targetId: '', memberId: '', amount: '', reason: '' }
-
-function approvalStatusVariant(status: Approval['status']) {
-  if (status === 'APPROVED') return 'success' as const
-  if (status === 'REJECTED') return 'danger' as const
-  return 'warning' as const
-}
 
 function targetTypeLabel(type: ApprovalTargetType) {
   return type === 'LOAN_DISBURSEMENT' ? 'Loan disbursement' : 'Payout disbursement'
@@ -166,10 +161,10 @@ export default function ApprovalsPage() {
                     <td className="px-4 py-3 text-muted">{targetTypeLabel(approval.targetType)}</td>
                     <td className="px-4 py-3 font-mono text-muted">{approval.amount.toLocaleString()}</td>
                     <td className="px-4 py-3 text-muted">{approval.reason || '—'}</td>
-                    <td className="px-4 py-3 text-muted text-xs">
-                      {approval.firstApproverName ? `${approval.firstApproverName} signed` : 'No signatory yet'}
+                    <td className="px-4 py-3">
+                      <SignOffTrail requestedByName={approval.requestedByName} firstApproverName={approval.firstApproverName} />
                     </td>
-                    <td className="px-4 py-3"><Badge label={approval.status} variant={approvalStatusVariant(approval.status)} /></td>
+                    <td className="px-4 py-3"><ApprovalStampBadge status={approval.status} /></td>
                     <td className="px-4 py-3">
                       {approval.status === 'PENDING' && (
                         <div className="flex items-center justify-end gap-3">

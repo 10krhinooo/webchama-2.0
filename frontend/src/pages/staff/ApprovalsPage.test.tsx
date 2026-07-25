@@ -85,7 +85,7 @@ describe('ApprovalsPage', () => {
     expect(screen.getByText('150,000')).toBeTruthy()
     expect(screen.getByText('School fees emergency')).toBeTruthy()
     expect(screen.getByText('Loan disbursement')).toBeTruthy()
-    expect(screen.getByText('PENDING')).toBeTruthy()
+    expect(screen.getByText('Pending')).toBeTruthy()
   })
 
   it('shows an empty state when there are no approval requests', async () => {
