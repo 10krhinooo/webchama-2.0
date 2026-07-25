@@ -23,6 +23,15 @@ vi.mock('../../api/payouts', () => ({
   getPayouts: vi.fn(),
   getMyPayouts: vi.fn(),
 }))
+vi.mock('../../api/approvals', () => ({
+  getPendingApprovals: vi.fn(),
+}))
+vi.mock('../../api/meetings', () => ({
+  getMeetings: vi.fn(),
+}))
+vi.mock('../../api/resolutions', () => ({
+  getResolutions: vi.fn(),
+}))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
@@ -35,6 +44,9 @@ import { getMembers } from '../../api/members'
 import { getContributions, getMyContributions } from '../../api/contributions'
 import { getLoans, getMyLoans, getLoanRepayments } from '../../api/loans'
 import { getPayouts, getMyPayouts } from '../../api/payouts'
+import { getPendingApprovals } from '../../api/approvals'
+import { getMeetings } from '../../api/meetings'
+import { getResolutions } from '../../api/resolutions'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { useActivityFeed } from '../../hooks/useActivityFeed'
 
@@ -48,6 +60,9 @@ const mockGetMyLoans = getMyLoans as ReturnType<typeof vi.fn>
 const mockGetLoanRepayments = getLoanRepayments as ReturnType<typeof vi.fn>
 const mockGetPayouts = getPayouts as ReturnType<typeof vi.fn>
 const mockGetMyPayouts = getMyPayouts as ReturnType<typeof vi.fn>
+const mockGetPendingApprovals = getPendingApprovals as ReturnType<typeof vi.fn>
+const mockGetMeetings = getMeetings as ReturnType<typeof vi.fn>
+const mockGetResolutions = getResolutions as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 const mockUseActivityFeed = useActivityFeed as ReturnType<typeof vi.fn>
 
@@ -87,6 +102,9 @@ describe('DashboardPage', () => {
     mockGetLoanRepayments.mockResolvedValue([])
     mockGetPayouts.mockResolvedValue([])
     mockGetMyPayouts.mockResolvedValue([])
+    mockGetPendingApprovals.mockResolvedValue([])
+    mockGetMeetings.mockResolvedValue([])
+    mockGetResolutions.mockResolvedValue([])
     mockUseActivityFeed.mockReturnValue({ entries: [], loading: false })
   })
 
@@ -210,5 +228,72 @@ describe('DashboardPage', () => {
 
     await waitFor(() => expect(screen.getByText('Tumaini Chama')).toBeTruthy())
     expect(screen.queryByText('Savings goal')).toBeNull()
+  })
+
+  it('shows the chairperson pending sign-offs and loans awaiting decision', async () => {
+    mockUseMyMembership.mockReturnValue({ member: { id: 6 }, isChairperson: true, isTreasurer: false, isSecretary: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockGetLoans.mockResolvedValue([loan(2000, 'REQUESTED'), loan(3000, 'REQUESTED'), loan(5000, 'DISBURSED')])
+    mockGetPendingApprovals.mockResolvedValue([{ id: 1, requestedByMemberId: 6 }, { id: 2, requestedByMemberId: 7 }])
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Awaiting your sign-off')).toBeTruthy())
+    expect(screen.getAllByText('2')).toHaveLength(2)
+    expect(screen.getByText('Loans awaiting decision')).toBeTruthy()
+  })
+
+  it("shows the treasurer's overdue contributions and their own pending requests", async () => {
+    mockUseMyMembership.mockReturnValue({ member: { id: 6 }, isChairperson: false, isTreasurer: true, isSecretary: false, loading: false })
+    mockGetContributions.mockResolvedValue([contribution(1000, 0, 'OVERDUE'), contribution(1000, 1000, 'PAID')])
+    mockGetPendingApprovals.mockResolvedValue([{ id: 1, requestedByMemberId: 6 }, { id: 2, requestedByMemberId: 7 }])
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Overdue contributions')).toBeTruthy())
+    expect(screen.getByText('Your pending requests')).toBeTruthy()
+  })
+
+  it('shows the secretary the next meeting and open resolution count', async () => {
+    mockUseMyMembership.mockReturnValue({ member: { id: 6 }, isChairperson: false, isTreasurer: false, isSecretary: true, loading: false })
+    mockGetMyContributions.mockResolvedValue([])
+    mockGetMeetings.mockResolvedValue([
+      { id: 1, chamaId: 3, meetingDate: '2099-01-01', agenda: 'Annual review', minutes: null, createdAt: '2026-01-01' },
+    ])
+    mockGetResolutions.mockResolvedValue([
+      { id: 1, status: 'OPEN' },
+      { id: 2, status: 'PASSED' },
+    ])
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Next meeting')).toBeTruthy())
+    expect(screen.getByText('2099-01-01')).toBeTruthy()
+    expect(screen.getByText('Annual review')).toBeTruthy()
+    expect(screen.getByText('Open resolutions')).toBeTruthy()
+    expect(screen.getByText('1')).toBeTruthy()
+  })
+
+  it('shows a no-meeting message for the secretary when nothing is scheduled', async () => {
+    mockUseMyMembership.mockReturnValue({ member: { id: 6 }, isChairperson: false, isTreasurer: false, isSecretary: true, loading: false })
+    mockGetMyContributions.mockResolvedValue([])
+    mockGetMeetings.mockResolvedValue([])
+    mockGetResolutions.mockResolvedValue([])
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('No meeting scheduled yet')).toBeTruthy())
+  })
+
+  it('does not show any role-focus tiles for a plain member', async () => {
+    mockUseMyMembership.mockReturnValue({ member: { id: 6 }, isChairperson: false, isTreasurer: false, isSecretary: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([])
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Tumaini Chama')).toBeTruthy())
+    expect(screen.queryByText('Awaiting your sign-off')).toBeNull()
+    expect(screen.queryByText('Overdue contributions')).toBeNull()
+    expect(screen.queryByText('Next meeting')).toBeNull()
   })
 })

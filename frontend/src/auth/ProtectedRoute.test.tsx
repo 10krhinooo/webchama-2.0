@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import ProtectedRoute from './ProtectedRoute'
 
 vi.mock('@react-keycloak/web', () => ({
@@ -61,6 +61,17 @@ describe('ProtectedRoute', () => {
     renderProtected(['TREASURER'])
     expect(screen.getByText(/access denied/i)).toBeTruthy()
     expect(screen.queryByText('Protected Content')).toBeNull()
+  })
+
+  it('logs out when Log out is clicked on the access-denied screen', () => {
+    const logout = vi.fn()
+    mockUseKeycloak.mockReturnValue({
+      keycloak: { authenticated: true, hasRealmRole: () => false, login: vi.fn(), logout },
+      initialized: true,
+    })
+    renderProtected(['SUPER_ADMIN'])
+    fireEvent.click(screen.getByText('Log out'))
+    expect(logout).toHaveBeenCalledTimes(1)
   })
 
   it('renders children when authenticated and holding one of the required roles', () => {
