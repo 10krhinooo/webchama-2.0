@@ -12,12 +12,20 @@ vi.mock('../../api/approvals', () => ({
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
 }))
+vi.mock('../../api/loans', () => ({
+  getLoans: vi.fn(),
+}))
+vi.mock('../../api/payouts', () => ({
+  getPayouts: vi.fn(),
+}))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
 import { getApprovals, requestApproval, approveApproval, rejectApproval } from '../../api/approvals'
 import { getMembers } from '../../api/members'
+import { getLoans } from '../../api/loans'
+import { getPayouts } from '../../api/payouts'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
 const mockGetApprovals = getApprovals as ReturnType<typeof vi.fn>
@@ -25,6 +33,8 @@ const mockRequestApproval = requestApproval as ReturnType<typeof vi.fn>
 const mockApproveApproval = approveApproval as ReturnType<typeof vi.fn>
 const mockRejectApproval = rejectApproval as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
+const mockGetLoans = getLoans as ReturnType<typeof vi.fn>
+const mockGetPayouts = getPayouts as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 const pendingApproval = {
@@ -62,6 +72,8 @@ describe('ApprovalsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
+    mockGetLoans.mockResolvedValue([{ id: 9, memberName: 'Jane Doe', principal: 150000 }])
+    mockGetPayouts.mockResolvedValue([])
     mockUseMyMembership.mockReturnValue({ member: { id: 6 }, loading: false })
   })
 
@@ -90,7 +102,7 @@ describe('ApprovalsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Approval'))
-    fireEvent.change(screen.getByLabelText(/loan id/i), { target: { value: '9' } })
+    fireEvent.change(screen.getByLabelText(/^loan\b/i), { target: { value: '9' } })
     fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '150000' } })
     fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))
@@ -111,7 +123,7 @@ describe('ApprovalsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Approval'))
-    fireEvent.change(screen.getByLabelText(/loan id/i), { target: { value: '9' } })
+    fireEvent.change(screen.getByLabelText(/^loan\b/i), { target: { value: '9' } })
     fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '150000' } })
     fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))
