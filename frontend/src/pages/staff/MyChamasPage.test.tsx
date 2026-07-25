@@ -7,9 +7,15 @@ vi.mock('../../api/chamas', () => ({
   getMyChamas: vi.fn(),
 }))
 
+vi.mock('@react-keycloak/web', () => ({
+  useKeycloak: vi.fn(),
+}))
+
 import { getMyChamas } from '../../api/chamas'
+import { useKeycloak } from '@react-keycloak/web'
 
 const mockGetMyChamas = getMyChamas as ReturnType<typeof vi.fn>
+const mockUseKeycloak = useKeycloak as ReturnType<typeof vi.fn>
 
 const myChama = {
   id: 1,
@@ -38,6 +44,9 @@ describe('MyChamasPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMyChamas.mockResolvedValue([myChama])
+    mockUseKeycloak.mockReturnValue({
+      keycloak: { tokenParsed: { given_name: 'Ann', name: 'Ann Wanjiru' } },
+    })
   })
 
   it('lists the chamas the user belongs to with a role badge', async () => {
@@ -45,6 +54,24 @@ describe('MyChamasPage', () => {
     await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
     expect(screen.getByText('Chairperson')).toBeTruthy()
     expect(screen.getByText(/A savings group/)).toBeTruthy()
+  })
+
+  it('greets the member by their first name', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Hello, Ann')).toBeTruthy())
+  })
+
+  it('falls back to splitting the full name when given_name is absent', async () => {
+    mockUseKeycloak.mockReturnValue({ keycloak: { tokenParsed: { name: 'Peter Otieno' } } })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Hello, Peter')).toBeTruthy())
+  })
+
+  it('omits the greeting when no name claim is present', async () => {
+    mockUseKeycloak.mockReturnValue({ keycloak: { tokenParsed: {} } })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+    expect(screen.queryByText(/^Hello,/)).toBeNull()
   })
 
   it('shows a platform-admin badge for super admin entries', async () => {

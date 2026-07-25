@@ -816,7 +816,26 @@ body.login-pf {
 .pf-c-form__label-text {
   font-family: 'Public Sans', 'Segoe UI', Helvetica, Arial, sans-serif;
   font-weight: 600;
+  font-size: 0.875rem;
   color: var(--chama-ink);
+}
+
+/* The register/update-profile forms lay each field out via user-profile-commons.ftl's
+   Bootstrap-style full-width grid column, whose default 15px side padding shrinks the
+   input relative to the hand-built chama-field/chama-pwd-wrapper fields (login, and the
+   password/confirm fields on register), so the two don't line up. Zero it out wherever
+   that column is used as a single full-width row rather than an actual multi-column grid. */
+.col-xs-12.col-sm-12.col-md-12.col-lg-12 {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Same field, different rhythm: user-profile-commons.ftl's form-group uses Bootstrap's
+   default 15px margin-bottom, chama-field (login.ftl's own fields, and the password/confirm
+   fields on register) uses 1.25rem/20px, so the vertical gap between fields visibly changes
+   partway down the register form. Match form-group to chama-field's spacing. */
+.form-group {
+  margin-bottom: 1.25rem;
 }
 
 .pf-c-form-control,
