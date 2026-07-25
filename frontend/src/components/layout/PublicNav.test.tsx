@@ -45,4 +45,18 @@ describe('PublicNav', () => {
     fireEvent.click(screen.getAllByText('Trust')[1])
     expect(screen.getAllByText('Trust')).toHaveLength(1)
   })
+
+  it('closes the mobile menu after the Sign In link inside it is clicked', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+    fireEvent.click(screen.getAllByText('Sign In')[1])
+    expect(screen.getAllByText('Sign In')).toHaveLength(1)
+  })
+
+  it('closes the mobile menu after the Start your chama CTA inside it is clicked', () => {
+    renderNav()
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+    fireEvent.click(screen.getAllByText('Start your chama')[1])
+    expect(screen.getAllByText('Start your chama')).toHaveLength(1)
+  })
 })
