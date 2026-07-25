@@ -1,7 +1,13 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PublicNav from './PublicNav'
+
+const register = vi.fn()
+
+vi.mock('@react-keycloak/web', () => ({
+  useKeycloak: () => ({ keycloak: { register } }),
+}))
 
 function renderNav() {
   return render(
@@ -20,9 +26,10 @@ describe('PublicNav', () => {
     expect(screen.getByText('Roles')).toBeTruthy()
   })
 
-  it('links the primary call to action to the join section', () => {
+  it('sends the primary call to action into Keycloak registration', () => {
     renderNav()
-    expect(screen.getByText('Start your chama').closest('a')).toHaveAttribute('href', '#join')
+    fireEvent.click(screen.getByText('Start your chama'))
+    expect(register).toHaveBeenCalledWith({ redirectUri: `${window.location.origin}/my-chamas` })
   })
 
   it('links Sign In to the staff area, which redirects to Keycloak login', () => {

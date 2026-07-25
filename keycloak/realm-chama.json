@@ -4,7 +4,7 @@
   "displayName": "Webchama",
   "loginTheme": "chama",
   "sslRequired": "external",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
