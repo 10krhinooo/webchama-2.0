@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Menu, X } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -39,10 +39,16 @@ function useChamaName(chamaId: number | undefined) {
 export default function StaffLayout() {
   const { keycloak } = useKeycloak()
   const { chamaId } = useParams<{ chamaId?: string }>()
+  const location = useLocation()
   const chama = useChamaName(chamaId ? Number(chamaId) : undefined)
   const { roles, isSuperAdmin, isManager, loading: roleLoading } = useMyMembership(
     chamaId ? Number(chamaId) : undefined,
   )
+  const [navOpen, setNavOpen] = useState(false)
+
+  useEffect(() => {
+    setNavOpen(false)
+  }, [location.pathname])
 
   const tokenParsed = keycloak.tokenParsed as { name?: string; preferred_username?: string; email?: string } | undefined
   const displayName = tokenParsed?.name ?? tokenParsed?.preferred_username ?? 'Account'
@@ -55,10 +61,32 @@ export default function StaffLayout() {
 
   return (
     <div className="flex min-h-screen bg-paper">
-      <aside className="flex w-64 shrink-0 flex-col bg-night text-paper">
-        <div className="flex items-center gap-2 border-b border-white/10 px-5 py-5">
-          <WeaveMark className="h-6 w-6 text-accent" />
-          <span className="font-heading text-lg font-bold">Webchama</span>
+      {navOpen && (
+        <div
+          data-testid="nav-backdrop"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto bg-night text-paper transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+          navOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-5 py-5">
+          <div className="flex items-center gap-2">
+            <WeaveMark className="h-6 w-6 text-accent" />
+            <span className="font-heading text-lg font-bold">Webchama</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNavOpen(false)}
+            className="rounded-lg p-1 text-paper/70 hover:bg-white/10 hover:text-paper lg:hidden"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
@@ -122,19 +150,29 @@ export default function StaffLayout() {
         </nav>
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-ink/10 bg-white px-6 py-3">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
-            <Link to="/my-chamas" className="font-medium text-muted hover:text-ink">
-              My Chamas
-            </Link>
-            {chama && (
-              <>
-                <span className="text-muted/50">/</span>
-                <span className="font-medium text-ink">{chama.name}</span>
-              </>
-            )}
-          </nav>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-ink/10 bg-white px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setNavOpen(true)}
+              className="rounded-lg p-1.5 text-muted hover:bg-paper-dim hover:text-ink lg:hidden"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
+              <Link to="/my-chamas" className="shrink-0 font-medium text-muted hover:text-ink">
+                My Chamas
+              </Link>
+              {chama && (
+                <>
+                  <span className="shrink-0 text-muted/50">/</span>
+                  <span className="truncate font-medium text-ink">{chama.name}</span>
+                </>
+              )}
+            </nav>
+          </div>
 
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-paper-dim [&::-webkit-details-marker]:hidden">

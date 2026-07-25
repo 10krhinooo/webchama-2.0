@@ -6,6 +6,9 @@ import { getMembers } from '../../api/members'
 import { getContributions, getMyContributions, type Contribution, type ContributionStatus } from '../../api/contributions'
 import { getLoans, getMyLoans, getLoanRepayments, type Loan } from '../../api/loans'
 import { getPayouts, getMyPayouts, type Payout } from '../../api/payouts'
+import { getPendingApprovals, type Approval } from '../../api/approvals'
+import { getMeetings, type Meeting } from '../../api/meetings'
+import { getResolutions } from '../../api/resolutions'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { useActivityFeed } from '../../hooks/useActivityFeed'
@@ -62,10 +65,17 @@ function nextScheduledPayout(payouts: Payout[]): Payout | null {
   return scheduled.reduce((soonest, p) => (p.scheduledDate < soonest.scheduledDate ? p : soonest))
 }
 
+function nextUpcomingMeeting(meetings: Meeting[]): Meeting | null {
+  const today = new Date().toISOString().slice(0, 10)
+  const upcoming = meetings.filter((m) => m.meetingDate >= today)
+  if (upcoming.length === 0) return null
+  return upcoming.reduce((soonest, m) => (m.meetingDate < soonest.meetingDate ? m : soonest))
+}
+
 export default function DashboardPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
-  const { isChairperson, isTreasurer, loading: roleLoading } = useMyMembership(chamaId)
+  const { member, isChairperson, isTreasurer, isSecretary, loading: roleLoading } = useMyMembership(chamaId)
   const isManager = isChairperson || isTreasurer
 
   const [chama, setChama] = useState<Chama | null>(null)
@@ -74,7 +84,11 @@ export default function DashboardPage() {
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [outstandingLoanTotal, setOutstandingLoanTotal] = useState(0)
   const [activeLoanCount, setActiveLoanCount] = useState(0)
+  const [loansAwaitingDecision, setLoansAwaitingDecision] = useState(0)
+  const [pendingApprovals, setPendingApprovals] = useState<Approval[]>([])
   const [nextPayout, setNextPayout] = useState<Payout | null>(null)
+  const [nextMeeting, setNextMeeting] = useState<Meeting | null>(null)
+  const [openResolutionCount, setOpenResolutionCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -85,19 +99,20 @@ export default function DashboardPage() {
     let cancelled = false
     setLoading(true)
 
-    async function loadOutstandingLoans(): Promise<{ total: number; count: number }> {
+    async function loadOutstandingLoans(): Promise<{ total: number; count: number; requested: number }> {
       const loans = isManager ? await getLoans(chamaId) : await getMyLoans(chamaId)
       const active = loans.filter((l) => ACTIVE_LOAN_STATUSES.includes(l.status))
-      if (active.length === 0) return { total: 0, count: 0 }
+      const requested = isChairperson ? loans.filter((l) => l.status === 'REQUESTED').length : 0
+      if (active.length === 0) return { total: 0, count: 0, requested }
       if (isManager) {
-        return { total: active.reduce((sum, l) => sum + l.principal, 0), count: active.length }
+        return { total: active.reduce((sum, l) => sum + l.principal, 0), count: active.length, requested }
       }
       const repaymentLists = await Promise.all(active.map((l) => getLoanRepayments(chamaId, l.id)))
       const total = repaymentLists.reduce(
         (sum, repayments) => sum + repayments.reduce((s, r) => s + (r.amountDue - r.amountPaid), 0),
         0,
       )
-      return { total, count: active.length }
+      return { total, count: active.length, requested }
     }
 
     Promise.all([
@@ -107,8 +122,11 @@ export default function DashboardPage() {
       isManager ? getContributions(chamaId) : getMyContributions(chamaId),
       loadOutstandingLoans(),
       isManager ? getPayouts(chamaId) : getMyPayouts(chamaId),
+      isManager ? getPendingApprovals(chamaId) : Promise.resolve([]),
+      isSecretary ? getMeetings(chamaId) : Promise.resolve([]),
+      isSecretary ? getResolutions(chamaId) : Promise.resolve([]),
     ])
-      .then(([chamaData, savingsData, members, contributionData, loanSummary, payouts]) => {
+      .then(([chamaData, savingsData, members, contributionData, loanSummary, payouts, approvals, meetings, resolutions]) => {
         if (cancelled) return
         setChama(chamaData)
         setSavingsProgress(savingsData)
@@ -116,7 +134,11 @@ export default function DashboardPage() {
         setContributions(contributionData)
         setOutstandingLoanTotal(loanSummary.total)
         setActiveLoanCount(loanSummary.count)
+        setLoansAwaitingDecision(loanSummary.requested)
         setNextPayout(nextScheduledPayout(payouts))
+        setPendingApprovals(approvals)
+        setNextMeeting(nextUpcomingMeeting(meetings))
+        setOpenResolutionCount(resolutions.filter((r) => r.status === 'OPEN').length)
         setError(null)
       })
       .catch((err) => {
@@ -128,7 +150,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [chamaId, isManager, roleLoading])
+  }, [chamaId, isManager, isChairperson, isSecretary, roleLoading])
 
   if (loading || roleLoading) {
     return (
@@ -217,6 +239,68 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {(isChairperson || isTreasurer || isSecretary) && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {isChairperson && (
+            <>
+              <div className="rounded-2xl bg-white p-6 shadow-card">
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
+                  Awaiting your sign-off
+                </p>
+                <p className="mt-2 font-mono text-3xl font-bold text-ink">{pendingApprovals.length}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-6 shadow-card">
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
+                  Loans awaiting decision
+                </p>
+                <p className="mt-2 font-mono text-3xl font-bold text-ink">{loansAwaitingDecision}</p>
+              </div>
+            </>
+          )}
+          {isTreasurer && (
+            <>
+              <div className="rounded-2xl bg-white p-6 shadow-card">
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
+                  Overdue contributions
+                </p>
+                <p className="mt-2 font-mono text-3xl font-bold text-ink">
+                  {contributions.filter((c) => c.status === 'OVERDUE').length}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white p-6 shadow-card">
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
+                  Your pending requests
+                </p>
+                <p className="mt-2 font-mono text-3xl font-bold text-ink">
+                  {pendingApprovals.filter((a) => a.requestedByMemberId === member?.id).length}
+                </p>
+              </div>
+            </>
+          )}
+          {isSecretary && (
+            <>
+              <div className="rounded-2xl bg-white p-6 shadow-card">
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">Next meeting</p>
+                {nextMeeting ? (
+                  <>
+                    <p className="mt-2 font-mono text-lg font-bold text-ink">{nextMeeting.meetingDate}</p>
+                    <p className="mt-1 text-xs text-muted line-clamp-2">{nextMeeting.agenda}</p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-muted">No meeting scheduled yet</p>
+                )}
+              </div>
+              <div className="rounded-2xl bg-white p-6 shadow-card">
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
+                  Open resolutions
+                </p>
+                <p className="mt-2 font-mono text-3xl font-bold text-ink">{openResolutionCount}</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className={isManager ? 'grid gap-6 lg:grid-cols-2' : ''}>
         <div className="rounded-2xl bg-white p-6 shadow-card">

@@ -9,6 +9,8 @@ import {
   type ApprovalTargetType,
 } from '../../api/approvals'
 import { getMembers, type Member } from '../../api/members'
+import { getLoans, type Loan } from '../../api/loans'
+import { getPayouts, type Payout } from '../../api/payouts'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
@@ -42,6 +44,8 @@ export default function ApprovalsPage() {
 
   const [approvals, setApprovals] = useState<Approval[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [loans, setLoans] = useState<Loan[]>([])
+  const [payouts, setPayouts] = useState<Payout[]>([])
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
@@ -54,10 +58,12 @@ export default function ApprovalsPage() {
   const refresh = () => {
     if (roleLoading) return
     setLoading(true)
-    Promise.all([getApprovals(chamaId), getMembers(chamaId)])
-      .then(([a, m]) => {
+    Promise.all([getApprovals(chamaId), getMembers(chamaId), getLoans(chamaId), getPayouts(chamaId)])
+      .then(([a, m, l, p]) => {
         setApprovals(a)
         setMembers(m)
+        setLoans(l)
+        setPayouts(p)
       })
       .finally(() => setLoading(false))
   }
@@ -205,15 +211,32 @@ export default function ApprovalsPage() {
             )}
             <FormField label="Type" htmlFor="approval-target-type" required>
               <Select id="approval-target-type" required value={form.targetType}
-                onChange={(e) => setForm({ ...form, targetType: e.target.value as ApprovalTargetType })}>
+                onChange={(e) => setForm({ ...form, targetType: e.target.value as ApprovalTargetType, targetId: '' })}>
                 <option value="LOAN_DISBURSEMENT">Loan disbursement</option>
                 <option value="PAYOUT_DISBURSEMENT">Payout disbursement</option>
               </Select>
             </FormField>
-            <FormField label={form.targetType === 'LOAN_DISBURSEMENT' ? 'Loan ID' : 'Payout ID'} htmlFor="approval-target-id" required>
-              <Input id="approval-target-id" required type="number" min="1" value={form.targetId}
-                onChange={(e) => setForm({ ...form, targetId: e.target.value })} />
-            </FormField>
+            {form.targetType === 'LOAN_DISBURSEMENT' ? (
+              <FormField label="Loan" htmlFor="approval-target-id" required>
+                <Select id="approval-target-id" required value={form.targetId}
+                  onChange={(e) => setForm({ ...form, targetId: e.target.value })}>
+                  <option value="" disabled>Select a loan</option>
+                  {loans.map((l) => (
+                    <option key={l.id} value={l.id}>{l.memberName} &middot; {l.principal.toLocaleString()}</option>
+                  ))}
+                </Select>
+              </FormField>
+            ) : (
+              <FormField label="Payout" htmlFor="approval-target-id" required>
+                <Select id="approval-target-id" required value={form.targetId}
+                  onChange={(e) => setForm({ ...form, targetId: e.target.value })}>
+                  <option value="" disabled>Select a payout</option>
+                  {payouts.map((p) => (
+                    <option key={p.id} value={p.id}>{p.memberName} &middot; round {p.roundNumber}</option>
+                  ))}
+                </Select>
+              </FormField>
+            )}
             <FormField label="Member" htmlFor="approval-member" required>
               <Select id="approval-member" required value={form.memberId} onChange={(e) => setForm({ ...form, memberId: e.target.value })}>
                 <option value="" disabled>Select a member</option>

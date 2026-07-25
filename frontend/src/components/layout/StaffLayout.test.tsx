@@ -134,4 +134,22 @@ describe('StaffLayout', () => {
     expect(screen.queryByRole('link', { name: /documents/i })).toBeNull()
     expect(screen.queryByText('Member')).toBeNull()
   })
+
+  it('opens the mobile nav backdrop from the header menu button and closes it from the drawer close button', () => {
+    renderAt('/chamas')
+    expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+    expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /close menu/i }))
+    expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeNull()
+  })
+
+  it('closes the mobile nav drawer when the backdrop is clicked', () => {
+    renderAt('/chamas')
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+    const backdrop = document.querySelector('[data-testid="nav-backdrop"]')
+    expect(backdrop).toBeTruthy()
+    fireEvent.click(backdrop as Element)
+    expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeNull()
+  })
 })
