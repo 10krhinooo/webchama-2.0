@@ -17,8 +17,11 @@ import java.util.Optional;
  * before touching that chama's data. A caller's role is never trusted from
  * the JWT for chama-scoped actions (see CurrentUser), it is always resolved
  * fresh from the member_role table for the specific chama in the request
- * path. SUPER_ADMIN bypasses every check here, by design, per
- * MIGRATION_PLAN.md section 5.
+ * path. SUPER_ADMIN gets no bypass here, per MIGRATION_PLAN.md section 5
+ * ("no operational access to any single chama's financial data by
+ * default"): a platform owner only reaches a chama's members/contributions
+ * if they hold an actual member row in it, exactly like anyone else. Their
+ * cross-chama view is the separate, aggregated PlatformOverviewResource.
  */
 @ApplicationScoped
 public class TenantAccessService {
@@ -30,13 +33,9 @@ public class TenantAccessService {
     MemberRoleRepository memberRoleRepository;
 
     /**
-     * Throws 403 unless the caller is SUPER_ADMIN or has a member row in
-     * this chama (any role).
+     * Throws 403 unless the caller has a member row in this chama (any role).
      */
     public void requireMembership(CurrentUser user, Long chamaId) {
-        if (user.isSuperAdmin()) {
-            return;
-        }
         if (user.getKeycloakUserId() == null
                 || memberRepository.findByChamaAndKeycloakUserId(chamaId, user.getKeycloakUserId()).isEmpty()) {
             throw new ForbiddenException("Not a member of this chama");
@@ -44,13 +43,10 @@ public class TenantAccessService {
     }
 
     /**
-     * Throws 403 unless the caller is SUPER_ADMIN or holds at least one of
-     * the given roles within this specific chama.
+     * Throws 403 unless the caller holds at least one of the given roles
+     * within this specific chama.
      */
     public void requireRole(CurrentUser user, Long chamaId, MemberRoleType... allowedRoles) {
-        if (user.isSuperAdmin()) {
-            return;
-        }
         if (user.getKeycloakUserId() == null) {
             throw new ForbiddenException("Not authenticated");
         }

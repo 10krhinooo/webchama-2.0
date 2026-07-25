@@ -20,17 +20,29 @@ describe('useMyMembership', () => {
     vi.clearAllMocks()
   })
 
-  it('treats SUPER_ADMIN as chairperson and treasurer everywhere without fetching a member row', async () => {
+  it('reports SUPER_ADMIN for display only, granting no chama roles without an actual member row', async () => {
     mockUseKeycloak.mockReturnValue({ keycloak: { hasRealmRole: (r: string) => r === 'SUPER_ADMIN' } })
+    mockGetMyMembership.mockRejectedValue(new Error('403'))
+    const { result } = renderHook(() => useMyMembership(1))
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.isSuperAdmin).toBe(true)
+    expect(result.current.isChairperson).toBe(false)
+    expect(result.current.isTreasurer).toBe(false)
+    expect(result.current.isSecretary).toBe(false)
+    expect(result.current.isManager).toBe(false)
+    expect(mockGetMyMembership).toHaveBeenCalledWith(1)
+  })
+
+  it('gives SUPER_ADMIN real roles when they hold an actual member row in the chama', async () => {
+    mockUseKeycloak.mockReturnValue({ keycloak: { hasRealmRole: (r: string) => r === 'SUPER_ADMIN' } })
+    mockGetMyMembership.mockResolvedValue({ id: 9, roles: ['CHAIRPERSON'] })
     const { result } = renderHook(() => useMyMembership(1))
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.isSuperAdmin).toBe(true)
     expect(result.current.isChairperson).toBe(true)
-    expect(result.current.isTreasurer).toBe(true)
-    expect(result.current.isSecretary).toBe(true)
     expect(result.current.isManager).toBe(true)
-    expect(mockGetMyMembership).not.toHaveBeenCalled()
   })
 
   it('fetches the member row and derives roles for a regular user', async () => {

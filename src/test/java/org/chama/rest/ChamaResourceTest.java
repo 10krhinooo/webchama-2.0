@@ -240,7 +240,7 @@ class ChamaResourceTest {
 
     @Test
     @TestSecurity(user = "admin", roles = "SUPER_ADMIN")
-    void mineShowsSuperAdminWithNoRolesForEveryChama() {
+    void mineShowsRealRolesForAChamaASuperAdminActuallyFounded() {
         given()
             .contentType("application/json")
             .body(CREATE_BODY)
@@ -252,7 +252,17 @@ class ChamaResourceTest {
             .then()
                 .statusCode(200)
                 .body("[0].superAdmin", equalTo(true))
-                .body("[0].roles.size()", equalTo(0));
+                .body("[0].roles[0]", equalTo("CHAIRPERSON"));
+    }
+
+    @Test
+    @TestSecurity(user = "admin2", roles = "SUPER_ADMIN")
+    void mineIsEmptyForASuperAdminWithNoChamaMembershipOfTheirOwn() {
+        given()
+            .when().get("/api/chamas/mine")
+            .then()
+                .statusCode(200)
+                .body("size()", equalTo(0));
     }
 
     @Test
