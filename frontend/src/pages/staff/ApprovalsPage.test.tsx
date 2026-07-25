@@ -116,6 +116,29 @@ describe('ApprovalsPage', () => {
     }))
   })
 
+  it('switches to a payout select when the type is changed to payout disbursement', async () => {
+    mockGetApprovals.mockResolvedValue([])
+    mockGetPayouts.mockResolvedValue([{ id: 4, memberName: 'Jane Doe', roundNumber: 2 }])
+    mockRequestApproval.mockResolvedValue({ ...pendingApproval, id: 3, targetType: 'PAYOUT_DISBURSEMENT' })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
+    fireEvent.click(screen.getByText('+ Request Approval'))
+    fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'PAYOUT_DISBURSEMENT' } })
+    fireEvent.change(screen.getByLabelText(/^payout\b/i), { target: { value: '4' } })
+    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '10000' } })
+    fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))
+
+    await waitFor(() => expect(mockRequestApproval).toHaveBeenCalledWith(3, {
+      targetType: 'PAYOUT_DISBURSEMENT',
+      targetId: 4,
+      memberId: 5,
+      amount: 10000,
+      reason: undefined,
+    }))
+  })
+
   it('shows the backend error message when requesting approval fails', async () => {
     mockGetApprovals.mockResolvedValue([])
     mockRequestApproval.mockRejectedValue(new Error('An approval request is already pending for this item'))
