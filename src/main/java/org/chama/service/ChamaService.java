@@ -68,10 +68,12 @@ public class ChamaService {
     @Inject
     MeetingRepository meetingRepository;
 
+    /**
+     * SUPER_ADMIN gets no special treatment here, per MIGRATION_PLAN.md section 5 ("no operational
+     * access to any single chama's financial data by default"), only chamas they actually hold a
+     * member row in, same as any other user.
+     */
     public List<Chama> listForUser(CurrentUser user) {
-        if (user.isSuperAdmin()) {
-            return chamaRepository.listAll();
-        }
         List<Long> chamaIds = memberRepository.findByKeycloakUserId(user.getKeycloakUserId())
             .stream()
             .map(m -> m.chama.id)
@@ -85,14 +87,11 @@ public class ChamaService {
         if (chamas.isEmpty()) {
             return List.of();
         }
-        if (user.isSuperAdmin()) {
-            return chamas.stream().map(c -> MyChamaDto.from(c, List.of(), true)).toList();
-        }
         List<Long> chamaIds = chamas.stream().map(c -> c.id).toList();
         Map<Long, List<MemberRoleType>> rolesByChama =
             memberRoleRepository.findRoleTypesForKeycloakUserGroupedByChama(user.getKeycloakUserId(), chamaIds);
         return chamas.stream()
-            .map(c -> MyChamaDto.from(c, rolesByChama.getOrDefault(c.id, List.of()), false))
+            .map(c -> MyChamaDto.from(c, rolesByChama.getOrDefault(c.id, List.of()), user.isSuperAdmin()))
             .toList();
     }
 

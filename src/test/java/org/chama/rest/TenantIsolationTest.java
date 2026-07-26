@@ -391,12 +391,12 @@ class TenantIsolationTest {
 
     @Test
     @TestSecurity(user = "platform-owner", roles = "SUPER_ADMIN")
-    void superAdminBypassesTenantScopingForBothChamas() {
-        given().when().get("/api/chamas/{id}", chamaAId).then().statusCode(200);
-        given().when().get("/api/chamas/{id}", chamaBId).then().statusCode(200);
+    void superAdminHasNoDefaultAccessToChamaDetails() {
+        given().when().get("/api/chamas/{id}", chamaAId).then().statusCode(403);
+        given().when().get("/api/chamas/{id}", chamaBId).then().statusCode(403);
         given()
             .when().get("/api/chamas")
-            .then().statusCode(200).body("size()", equalTo(2));
+            .then().statusCode(200).body("size()", equalTo(0));
     }
 
     @Test
