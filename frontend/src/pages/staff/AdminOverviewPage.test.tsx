@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import AdminOverviewPage from './AdminOverviewPage'
 
 vi.mock('../../api/admin', () => ({
@@ -71,5 +71,41 @@ describe('AdminOverviewPage', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Forbidden')).toBeTruthy())
+  })
+
+  it('renders chart sections once loaded', async () => {
+    mockGetPlatformOverview.mockResolvedValue(overview)
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Chamas by status')).toBeTruthy())
+    expect(screen.getByText('Memberships by status')).toBeTruthy()
+    expect(screen.getByText('Payments by rail')).toBeTruthy()
+  })
+
+  it('exports the overview as a CSV download when the export button is clicked', async () => {
+    mockGetPlatformOverview.mockResolvedValue(overview)
+
+    const clickSpy = vi.fn()
+    const originalCreateElement = document.createElement.bind(document)
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreateElement(tag)
+      if (tag === 'a') el.click = clickSpy
+      return el
+    })
+    const createObjectUrlSpy = vi.fn().mockReturnValue('blob:mock')
+    const revokeObjectUrlSpy = vi.fn()
+    URL.createObjectURL = createObjectUrlSpy
+    URL.revokeObjectURL = revokeObjectUrlSpy
+
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Export CSV')).toBeTruthy())
+    fireEvent.click(screen.getByText('Export CSV'))
+
+    expect(createObjectUrlSpy).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:mock')
+
+    createElementSpy.mockRestore()
   })
 })
