@@ -12,13 +12,15 @@ vi.mock('../../api/members', () => ({
 }))
 vi.mock('../../api/chamas', () => ({
   getChama: vi.fn(),
+  regenerateJoinCode: vi.fn(),
+  inviteToChama: vi.fn(),
 }))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
 import { getMembers, createMember, updateMember, updateMemberStatus, deleteMember } from '../../api/members'
-import { getChama } from '../../api/chamas'
+import { getChama, regenerateJoinCode, inviteToChama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
@@ -27,6 +29,8 @@ const mockUpdateMember = updateMember as ReturnType<typeof vi.fn>
 const mockUpdateMemberStatus = updateMemberStatus as ReturnType<typeof vi.fn>
 const mockDeleteMember = deleteMember as ReturnType<typeof vi.fn>
 const mockGetChama = getChama as ReturnType<typeof vi.fn>
+const mockRegenerateJoinCode = regenerateJoinCode as ReturnType<typeof vi.fn>
+const mockInviteToChama = inviteToChama as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 const member = {
@@ -54,7 +58,7 @@ function renderPage(path = '/chamas/3/members') {
 describe('MembersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetChama.mockResolvedValue({ id: 3, name: 'Tumaini' })
+    mockGetChama.mockResolvedValue({ id: 3, name: 'Tumaini', joinCode: 'AB12CD34' })
     mockGetMembers.mockResolvedValue([member])
   })
 
@@ -89,7 +93,7 @@ describe('MembersPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
 
     fireEvent.click(screen.getByText('+ Invite Member'))
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'new.member@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^email/i), { target: { value: 'new.member@example.com' } })
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'New Member' } })
     fireEvent.click(screen.getByText('Add Member'))
 
@@ -110,7 +114,7 @@ describe('MembersPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
 
     fireEvent.click(screen.getByText('+ Invite Member'))
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'existing@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^email/i), { target: { value: 'existing@example.com' } })
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Existing Person' } })
     fireEvent.click(screen.getByText('Add Member'))
 
@@ -200,7 +204,7 @@ describe('MembersPage', () => {
     fireEvent.click(memberCheckbox)
     fireEvent.click(treasurerCheckbox)
 
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'new.member@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^email/i), { target: { value: 'new.member@example.com' } })
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'New Member' } })
     fireEvent.change(screen.getByLabelText(/national id/i), { target: { value: '12345' } })
     fireEvent.change(screen.getByLabelText(/next of kin/i), { target: { value: 'Someone' } })
@@ -243,5 +247,65 @@ describe('MembersPage', () => {
     fireEvent.click(screen.getByText('Remove'))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
     expect(mockDeleteMember).not.toHaveBeenCalled()
+  })
+
+  it('hides the join code panel for a non-chairperson', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: false, loading: false })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    expect(screen.queryByText('Join code')).toBeNull()
+  })
+
+  it('shows the chama join code to a chairperson and copies it to the clipboard', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    expect(screen.getByDisplayValue('AB12CD34')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('AB12CD34'))
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy()
+  })
+
+  it('regenerates the join code and reflects the new value', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockRegenerateJoinCode.mockResolvedValue({ id: 3, name: 'Tumaini', joinCode: 'ZZ99YY88' })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: /regenerate code/i }))
+
+    await waitFor(() => expect(mockRegenerateJoinCode).toHaveBeenCalledWith(3))
+    await waitFor(() => expect(screen.getByDisplayValue('ZZ99YY88')).toBeTruthy())
+  })
+
+  it('sends a join-code invite by email', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockInviteToChama.mockResolvedValue(undefined)
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    fireEvent.change(screen.getByLabelText(/invite by email/i), { target: { value: 'prospect@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /send invite/i }))
+
+    await waitFor(() =>
+      expect(mockInviteToChama).toHaveBeenCalledWith(3, { email: 'prospect@example.com' }),
+    )
+    await waitFor(() => expect(screen.getByText(/invite sent to prospect@example.com/i)).toBeTruthy())
+  })
+
+  it('shows an error when the join-code invite fails', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockInviteToChama.mockRejectedValue(new Error('mail server unavailable'))
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    fireEvent.change(screen.getByLabelText(/invite by email/i), { target: { value: 'prospect@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /send invite/i }))
+
+    await waitFor(() => expect(screen.getByText('mail server unavailable')).toBeTruthy())
   })
 })
