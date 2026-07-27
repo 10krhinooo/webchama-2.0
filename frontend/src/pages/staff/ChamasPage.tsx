@@ -5,6 +5,8 @@ import {
   createChama,
   updateChama,
   deleteChama,
+  regenerateJoinCode,
+  inviteToChama,
   type Chama,
   type CreateChamaRequest,
   type UpdateChamaRequest,
@@ -49,6 +51,11 @@ export default function ChamasPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleting, setDeleting] = useState<Chama | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(chamas)
 
   const refresh = () => {
@@ -80,7 +87,48 @@ export default function ChamasPage() {
       creatorPhone: '',
     })
     setModalNotice(null)
+    setCopied(false)
+    setInviteEmail('')
+    setInviteNotice(null)
     setShowModal(true)
+  }
+
+  const handleCopyJoinCode = async () => {
+    if (!editing) return
+    await navigator.clipboard.writeText(editing.joinCode)
+    setCopied(true)
+  }
+
+  const handleRegenerateJoinCode = async () => {
+    if (!editing) return
+    setRegenerating(true)
+    try {
+      const updated = await regenerateJoinCode(editing.id)
+      setEditing(updated)
+      setChamas((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      setCopied(false)
+      setNotice({ variant: 'success', message: 'Join code regenerated. The old code no longer works.' })
+    } catch (err) {
+      setModalNotice(extractErrorMessage(err))
+    } finally {
+      setRegenerating(false)
+    }
+  }
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editing) return
+    setInviting(true)
+    setInviteNotice(null)
+    try {
+      await inviteToChama(editing.id, { email: inviteEmail })
+      setNotice({ variant: 'success', message: `Invite sent to ${inviteEmail}.` })
+      setInviteEmail('')
+    } catch (err) {
+      setInviteNotice(extractErrorMessage(err))
+    } finally {
+      setInviting(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -282,6 +330,41 @@ export default function ChamasPage() {
               {editing ? 'Save Changes' : 'Create Chama'}
             </LoadingButton>
           </form>
+
+          {editing && (
+            <div className="mt-6 border-t border-ink/10 pt-4 space-y-3">
+              <h3 className="text-sm font-semibold text-ink">Join code</h3>
+              <p className="text-xs text-muted">
+                Share this code so an already-registered user can join this chama themselves, or email it to them directly.
+              </p>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={editing.joinCode} className="font-mono uppercase tracking-widest" />
+                <Button type="button" variant="secondary" onClick={handleCopyJoinCode}>
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+              </div>
+              <LoadingButton type="button" variant="secondary" loading={regenerating} loadingText="Regenerating…" onClick={handleRegenerateJoinCode}>
+                Regenerate code
+              </LoadingButton>
+
+              <form onSubmit={handleInvite} className="flex items-end gap-2 pt-2">
+                <FormField label="Invite by email" htmlFor="chama-invite-email" hint={inviteNotice ?? undefined}>
+                  <Input
+                    id="chama-invite-email"
+                    type="email"
+                    required
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="member@example.com"
+                    invalid={!!inviteNotice}
+                  />
+                </FormField>
+                <LoadingButton type="submit" loading={inviting} loadingText="Sending…">
+                  Send invite
+                </LoadingButton>
+              </form>
+            </div>
+          )}
         </Modal>
       )}
 

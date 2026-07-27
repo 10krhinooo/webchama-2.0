@@ -10,7 +10,18 @@ vi.mock('./client', () => ({
 }))
 
 import { client } from './client'
-import { getChamas, getChama, createChama, updateChama, deleteChama, type CreateChamaRequest } from './chamas'
+import {
+  getChamas,
+  getChama,
+  createChama,
+  updateChama,
+  deleteChama,
+  joinChama,
+  regenerateJoinCode,
+  inviteToChama,
+  type CreateChamaRequest,
+  type JoinChamaRequest,
+} from './chamas'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
 const mockPost = client.post as ReturnType<typeof vi.fn>
@@ -63,5 +74,30 @@ describe('chamas api', () => {
     mockDelete.mockResolvedValue({})
     await deleteChama(9)
     expect(mockDelete).toHaveBeenCalledWith('/chamas/9')
+  })
+
+  it('joinChama posts the join payload and unwraps data', async () => {
+    const joinPayload: JoinChamaRequest = {
+      joinCode: 'ABCD1234',
+      fullName: 'Jane Doe',
+      phone: '+254700000000',
+    }
+    mockPost.mockResolvedValue({ data: { id: 3, fullName: 'Jane Doe' } })
+    const result = await joinChama(joinPayload)
+    expect(mockPost).toHaveBeenCalledWith('/chamas/join', joinPayload)
+    expect(result).toEqual({ id: 3, fullName: 'Jane Doe' })
+  })
+
+  it('regenerateJoinCode posts to the chama id and unwraps data', async () => {
+    mockPost.mockResolvedValue({ data: { id: 9, joinCode: 'NEWCODE1' } })
+    const result = await regenerateJoinCode(9)
+    expect(mockPost).toHaveBeenCalledWith('/chamas/9/join-code/regenerate')
+    expect(result).toEqual({ id: 9, joinCode: 'NEWCODE1' })
+  })
+
+  it('inviteToChama posts the email payload', async () => {
+    mockPost.mockResolvedValue({})
+    await inviteToChama(9, { email: 'prospect@example.com' })
+    expect(mockPost).toHaveBeenCalledWith('/chamas/9/join-code/invite', { email: 'prospect@example.com' })
   })
 })
