@@ -20,6 +20,7 @@ import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import ApprovalStampBadge from '../../components/marketing/ApprovalStampBadge'
 import SignOffTrail from '../../components/marketing/SignOffTrail'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -136,62 +137,60 @@ export default function ApprovalsPage() {
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Amount</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Reason</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Sign-off</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {approvals.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted text-sm">No approval requests yet.</td></tr>
-              )}
-              {pageItems.map((approval) => {
-                const alreadySignedByMe = member != null && approval.firstApproverMemberId === member.id
-                return (
-                  <tr key={approval.id} className="hover:bg-paper-dim/30">
-                    <td className="px-4 py-3 font-medium text-ink">{approval.memberName}</td>
-                    <td className="px-4 py-3 text-muted">{targetTypeLabel(approval.targetType)}</td>
-                    <td className="px-4 py-3 font-mono text-muted">{approval.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-muted">{approval.reason || '—'}</td>
-                    <td className="px-4 py-3">
-                      <SignOffTrail requestedByName={approval.requestedByName} firstApproverName={approval.firstApproverName} />
-                    </td>
-                    <td className="px-4 py-3"><ApprovalStampBadge status={approval.status} /></td>
-                    <td className="px-4 py-3">
-                      {approval.status === 'PENDING' && (
-                        <div className="flex items-center justify-end gap-3">
-                          <button
-                            onClick={() => handleApprove(approval)}
-                            disabled={actingId === approval.id || alreadySignedByMe}
-                            title={alreadySignedByMe ? 'A different signatory must provide the second sign-off' : undefined}
-                            className="text-primary text-xs hover:underline disabled:opacity-50"
-                          >
-                            {actingId === approval.id ? 'Signing…' : 'Sign off'}
-                          </button>
-                          <button
-                            onClick={() => handleReject(approval)}
-                            disabled={actingId === approval.id}
-                            className="text-danger text-xs hover:underline disabled:opacity-50"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Member</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>Sign-off</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {approvals.length === 0 && (
+              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted">No approval requests yet.</TableCell></TableRow>
+            )}
+            {pageItems.map((approval) => {
+              const alreadySignedByMe = member != null && approval.firstApproverMemberId === member.id
+              return (
+                <TableRow key={approval.id}>
+                  <TableCell className="font-medium text-ink">{approval.memberName}</TableCell>
+                  <TableCell className="text-muted">{targetTypeLabel(approval.targetType)}</TableCell>
+                  <TableCell className="font-mono text-muted">{approval.amount.toLocaleString()}</TableCell>
+                  <TableCell className="text-muted">{approval.reason || '—'}</TableCell>
+                  <TableCell>
+                    <SignOffTrail requestedByName={approval.requestedByName} firstApproverName={approval.firstApproverName} />
+                  </TableCell>
+                  <TableCell><ApprovalStampBadge status={approval.status} /></TableCell>
+                  <TableCell>
+                    {approval.status === 'PENDING' && (
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => handleApprove(approval)}
+                          disabled={actingId === approval.id || alreadySignedByMe}
+                          title={alreadySignedByMe ? 'A different signatory must provide the second sign-off' : undefined}
+                          className="text-primary text-xs hover:underline disabled:opacity-50"
+                        >
+                          {actingId === approval.id ? 'Signing…' : 'Sign off'}
+                        </button>
+                        <button
+                          onClick={() => handleReject(approval)}
+                          disabled={actingId === approval.id}
+                          className="text-danger text-xs hover:underline disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
       )}
 
       {!loading && !roleLoading && (

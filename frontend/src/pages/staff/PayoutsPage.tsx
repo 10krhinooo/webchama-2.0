@@ -18,6 +18,7 @@ import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
@@ -169,31 +170,29 @@ export default function PayoutsPage() {
               <h2 className="font-heading text-lg font-semibold text-ink">Rotation Schedule</h2>
               {canManage && <Button onClick={openScheduleModal}>Generate Schedule</Button>}
             </div>
-            <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-paper-dim border-b border-black/10">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Position</th>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Order</th>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {schedule.length === 0 && (
-                    <tr><td colSpan={4} className="px-4 py-10 text-center text-muted text-sm">No rotation schedule generated yet.</td></tr>
-                  )}
-                  {schedule.map((entry) => (
-                    <tr key={entry.id} className={member && entry.memberId === member.id ? 'bg-primary-light/40' : 'hover:bg-paper-dim/30'}>
-                      <td className="px-4 py-3 font-mono text-muted">{entry.sequencePosition}</td>
-                      <td className="px-4 py-3 font-medium text-ink">{entry.memberName}</td>
-                      <td className="px-4 py-3 text-muted">{entry.rotationOrderType}</td>
-                      <td className="px-4 py-3"><Badge label={entry.status} variant={scheduleStatusVariant(entry.status)} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Position</TableHead>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {schedule.length === 0 && (
+                  <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted">No rotation schedule generated yet.</TableCell></TableRow>
+                )}
+                {schedule.map((entry) => (
+                  <TableRow key={entry.id} className={member && entry.memberId === member.id ? 'bg-primary-light/40 hover:bg-primary-light/40' : undefined}>
+                    <TableCell className="font-mono text-muted">{entry.sequencePosition}</TableCell>
+                    <TableCell className="font-medium text-ink">{entry.memberName}</TableCell>
+                    <TableCell className="text-muted">{entry.rotationOrderType}</TableCell>
+                    <TableCell><Badge label={entry.status} variant={scheduleStatusVariant(entry.status)} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </section>
 
           <section className="space-y-3">
@@ -201,41 +200,39 @@ export default function PayoutsPage() {
               <h2 className="font-heading text-lg font-semibold text-ink">{canManage ? 'Payouts' : 'My Payouts'}</h2>
               {canManage && <Button onClick={openPayoutModal}>Create Next Payout</Button>}
             </div>
-            <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-paper-dim border-b border-black/10">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Round</th>
-                    {canManage && <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>}
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Scheduled</th>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Amount</th>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {payouts.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-10 text-center text-muted text-sm">No payouts yet.</td></tr>
-                  )}
-                  {payouts.map((payout) => (
-                    <tr key={payout.id} className="hover:bg-paper-dim/30">
-                      <td className="px-4 py-3 font-mono text-muted">{payout.roundNumber}</td>
-                      {canManage && <td className="px-4 py-3 font-medium text-ink">{payout.memberName}</td>}
-                      <td className="px-4 py-3 text-muted">{payout.scheduledDate}</td>
-                      <td className="px-4 py-3 font-mono text-muted">{payout.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3"><Badge label={payout.status} variant={payoutStatusVariant(payout.status)} /></td>
-                      <td className="px-4 py-3 text-right">
-                        {canManage && payout.status === 'SCHEDULED' && (
-                          <button onClick={() => setDisbursingPayout(payout)} className="text-primary text-xs hover:underline">
-                            Disburse
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Round</TableHead>
+                  {canManage && <TableHead>Member</TableHead>}
+                  <TableHead>Scheduled</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payouts.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No payouts yet.</TableCell></TableRow>
+                )}
+                {payouts.map((payout) => (
+                  <TableRow key={payout.id}>
+                    <TableCell className="font-mono text-muted">{payout.roundNumber}</TableCell>
+                    {canManage && <TableCell className="font-medium text-ink">{payout.memberName}</TableCell>}
+                    <TableCell className="text-muted">{payout.scheduledDate}</TableCell>
+                    <TableCell className="font-mono text-muted">{payout.amount.toLocaleString()}</TableCell>
+                    <TableCell><Badge label={payout.status} variant={payoutStatusVariant(payout.status)} /></TableCell>
+                    <TableCell className="text-right">
+                      {canManage && payout.status === 'SCHEDULED' && (
+                        <button onClick={() => setDisbursingPayout(payout)} className="text-primary text-xs hover:underline">
+                          Disburse
+                        </button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </section>
         </>
       )}

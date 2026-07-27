@@ -3,6 +3,7 @@ import { getSecurityEvents, type SecurityEvent } from '../../api/securityEvents'
 import { extractErrorMessage } from '../../api/client'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import Badge from '../../components/ui/Badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import TransientAlert from '../../components/ui/TransientAlert'
 import Pagination from '../../components/ui/Pagination'
 import { usePagination } from '../../hooks/usePagination'
@@ -82,41 +83,39 @@ export default function SecurityEventsPage() {
       {loading ? (
         <TablePageSkeleton withButton={false} withFilter={false} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Time</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Source</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">User</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">IP address</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Error</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {events.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted text-sm">No security events found.</td></tr>
-              )}
-              {pageItems.map((event) => (
-                <tr key={event.id} className={event.error === SUSPICIOUS_ERROR ? 'bg-danger/5' : 'hover:bg-paper-dim/30'}>
-                  <td className="px-4 py-3 font-mono text-muted whitespace-nowrap">{formatTime(event.eventTime)}</td>
-                  <td className="px-4 py-3"><Badge label={event.source} variant={event.source === 'ADMIN' ? 'primary' : 'muted'} /></td>
-                  <td className="px-4 py-3 font-medium text-ink">{event.type}</td>
-                  <td className="px-4 py-3 font-mono text-muted">{event.keycloakUserId ?? '—'}</td>
-                  <td className="px-4 py-3 font-mono text-muted">{event.ipAddress ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    {event.error ? (
-                      <Badge label={event.error} variant={event.error === SUSPICIOUS_ERROR ? 'danger' : 'warning'} />
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Time</TableHead>
+              <TableHead>Source</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>User</TableHead>
+              <TableHead>IP address</TableHead>
+              <TableHead>Error</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {events.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No security events found.</TableCell></TableRow>
+            )}
+            {pageItems.map((event) => (
+              <TableRow key={event.id} className={event.error === SUSPICIOUS_ERROR ? 'bg-danger/5 hover:bg-danger/5' : undefined}>
+                <TableCell className="font-mono text-muted whitespace-nowrap">{formatTime(event.eventTime)}</TableCell>
+                <TableCell><Badge label={event.source} variant={event.source === 'ADMIN' ? 'primary' : 'muted'} /></TableCell>
+                <TableCell className="font-medium text-ink">{event.type}</TableCell>
+                <TableCell className="font-mono text-muted">{event.keycloakUserId ?? '—'}</TableCell>
+                <TableCell className="font-mono text-muted">{event.ipAddress ?? '—'}</TableCell>
+                <TableCell>
+                  {event.error ? (
+                    <Badge label={event.error} variant={event.error === SUSPICIOUS_ERROR ? 'danger' : 'warning'} />
+                  ) : (
+                    '—'
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {!loading && <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} label="events" />}

@@ -27,6 +27,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 
 const EMPTY_CONTRIBUTION_FORM = { memberId: '', period: '', amountDue: '' }
@@ -254,53 +255,51 @@ export default function ContributionsPage() {
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={canManage} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                {canManage && <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>}
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Period</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Due</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Paid</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {contributions.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted text-sm">No contributions yet.</td></tr>
-              )}
-              {pageItems.map((c) => (
-                <tr key={c.id} className="hover:bg-paper-dim/30">
-                  {canManage && <td className="px-4 py-3 font-medium text-ink">{c.memberName}</td>}
-                  <td className="px-4 py-3 text-muted">{c.period}</td>
-                  <td className="px-4 py-3 font-mono text-muted">{c.amountDue.toLocaleString()}</td>
-                  <td className="px-4 py-3 font-mono text-muted">{c.amountPaid.toLocaleString()}</td>
-                  <td className="px-4 py-3"><Badge label={c.status} variant={statusVariant(c.status)} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-3">
-                      {canManage ? (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              {canManage && <TableHead>Member</TableHead>}
+              <TableHead>Period</TableHead>
+              <TableHead>Due</TableHead>
+              <TableHead>Paid</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {contributions.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No contributions yet.</TableCell></TableRow>
+            )}
+            {pageItems.map((c) => (
+              <TableRow key={c.id}>
+                {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
+                <TableCell className="text-muted">{c.period}</TableCell>
+                <TableCell className="font-mono text-muted">{c.amountDue.toLocaleString()}</TableCell>
+                <TableCell className="font-mono text-muted">{c.amountPaid.toLocaleString()}</TableCell>
+                <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-end gap-3">
+                    {canManage ? (
+                      <>
+                        {c.status !== 'PAID' && (
+                          <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
+                        )}
+                        <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+                      </>
+                    ) : (
+                      c.status !== 'PAID' && (
                         <>
-                          {c.status !== 'PAID' && (
-                            <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
-                          )}
-                          <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+                          <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                          <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
                         </>
-                      ) : (
-                        c.status !== 'PAID' && (
-                          <>
-                            <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
-                            <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
-                          </>
-                        )
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      )
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {!loading && !roleLoading && (
