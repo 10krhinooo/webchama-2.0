@@ -64,4 +64,27 @@ class SecurityAlertEmailServiceWithRecipientsTest {
             assertTrue(toOwner1.get(0).getSubject().contains("LOGIN_ERROR"));
         });
     }
+
+    @Test
+    void stripsNewlinesFromTheSubjectSoAnEventCannotInjectMailHeaders() {
+        KeycloakSecurityEvent event = new KeycloakSecurityEvent();
+        event.source = KeycloakEventSource.LOGIN;
+        event.eventTime = Instant.now();
+        event.type = "LOGIN_ERROR\r\nBcc: attacker@example.com";
+        event.error = "user_temporarily_disabled";
+        event.keycloakUserId = "user-1";
+        event.ipAddress = "10.0.0.5";
+        event.dedupeKey = "test-lockout-row-3";
+
+        service.alertSuspiciousEvent(event);
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<Mail> toOwner1 = mailbox.getMailsSentTo("owner1@example.com");
+            assertEquals(1, toOwner1.size());
+            String subject = toOwner1.get(0).getSubject();
+            assertTrue(subject.contains("LOGIN_ERROR"));
+            assertTrue(subject.indexOf('\r') < 0);
+            assertTrue(subject.indexOf('\n') < 0);
+        });
+    }
 }

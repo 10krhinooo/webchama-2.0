@@ -56,7 +56,7 @@ public class SecurityAlertEmailService {
             try {
                 Mail mail = new Mail()
                     .addTo(recipients.toArray(new String[0]))
-                    .setSubject("Webchama security alert: " + event.type)
+                    .setSubject("Webchama security alert: " + stripControlChars(nz(event.type)))
                     .setHtml(buildHtml(event));
                 mailer.send(mail);
             } catch (Exception e) {
@@ -104,14 +104,32 @@ public class SecurityAlertEmailService {
             </html>
             """.formatted(
                 event.source,
-                nz(event.type),
-                nz(event.error),
-                nz(event.keycloakUserId),
-                nz(event.ipAddress),
+                escapeHtml(nz(event.type)),
+                escapeHtml(nz(event.error)),
+                escapeHtml(nz(event.keycloakUserId)),
+                escapeHtml(nz(event.ipAddress)),
                 event.eventTime);
     }
 
     private static String nz(String value) {
         return value != null ? value : "unknown";
+    }
+
+    // event.type feeds the mail subject line, strip CR/LF so a crafted event can't inject
+    // extra headers into the outgoing message.
+    private static String stripControlChars(String value) {
+        return value.replaceAll("[\\r\\n]", " ");
+    }
+
+    // type/error/keycloakUserId/ipAddress all ultimately come from Keycloak's own event log,
+    // which itself reflects whatever a caller sent (e.g. a crafted username or X-Forwarded-For
+    // value), so they are not safe to embed in this HTML email unescaped.
+    private static String escapeHtml(String value) {
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;");
     }
 }

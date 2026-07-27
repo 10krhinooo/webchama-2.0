@@ -64,4 +64,18 @@ class SecurityAlertEmailServiceTest {
         assertTrue(html.contains("10.0.0.5"));
         assertTrue(html.contains("LOGIN_ERROR"));
     }
+
+    @Test
+    void buildHtmlEscapesEventFieldsSoAKeycloakLoggedValueCannotInjectMarkup() {
+        KeycloakSecurityEvent event = lockoutEvent();
+        event.keycloakUserId = "<script>alert(1)</script>";
+        event.ipAddress = "\"><img src=x onerror=alert(1)>";
+
+        String html = service.buildHtml(event);
+
+        assertTrue(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assertTrue(html.contains("&quot;&gt;&lt;img src=x onerror=alert(1)&gt;"));
+        assertTrue(html.indexOf("<script>") < 0);
+        assertTrue(html.indexOf("<img") < 0);
+    }
 }
