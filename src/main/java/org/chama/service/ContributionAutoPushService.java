@@ -7,8 +7,10 @@ import jakarta.inject.Inject;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.model.Contribution;
 import org.chama.repository.ContributionRepository;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -45,13 +47,23 @@ public class ContributionAutoPushService {
     @Inject
     ActivityLogService activityLogService;
 
+    @ConfigProperty(name = "contribution.auto-push.enabled", defaultValue = "true")
+    boolean autoPushEnabled;
+
+    // The shortest autoPushRetryHours a chama can configure (see UpdateAutoPushSettingsDto), used
+    // as a broad pre-filter in the repository query; the exact per-chama interval is checked here.
+    private static final int MIN_RETRY_HOURS = 1;
+
     @Scheduled(every = "1h", identity = "contribution-auto-stk-push")
     void fireDueAutoPushes() {
+        if (!autoPushEnabled) {
+            return;
+        }
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        Instant startOfToday = today.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant earliestPossibleRetry = Instant.now().minus(Duration.ofHours(MIN_RETRY_HOURS));
 
         List<Long> dueContributionIds = QuarkusTransaction.requiringNew().call(() ->
-            contributionRepository.findDueForAutoPush(today, startOfToday).stream().map(c -> c.id).toList());
+            contributionRepository.findDueForAutoPush(today, earliestPossibleRetry).stream().map(c -> c.id).toList());
 
         for (Long contributionId : dueContributionIds) {
             try {
@@ -65,6 +77,10 @@ public class ContributionAutoPushService {
     private void pushOne(Long contributionId) {
         Contribution contribution = contributionRepository.findById(contributionId);
         if (contribution == null) {
+            return;
+        }
+        Instant retryCutoff = Instant.now().minus(Duration.ofHours(contribution.chama.autoPushRetryHours));
+        if (contribution.lastAutoPushAt != null && contribution.lastAutoPushAt.isAfter(retryCutoff)) {
             return;
         }
         paymentService.initiateMpesaPayment(contribution.chama.id, contribution.id, contribution.member);

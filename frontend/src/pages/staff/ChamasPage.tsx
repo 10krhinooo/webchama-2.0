@@ -5,6 +5,7 @@ import {
   createChama,
   updateChama,
   deleteChama,
+  updateAutoPushSettings,
   type Chama,
   type CreateChamaRequest,
   type UpdateChamaRequest,
@@ -50,6 +51,10 @@ export default function ChamasPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleting, setDeleting] = useState<Chama | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [autoPushEnabled, setAutoPushEnabled] = useState(true)
+  const [autoPushRetryHours, setAutoPushRetryHours] = useState('24')
+  const [autoPushSaving, setAutoPushSaving] = useState(false)
+  const [autoPushNotice, setAutoPushNotice] = useState<string | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(chamas)
 
   const refresh = () => {
@@ -80,8 +85,30 @@ export default function ChamasPage() {
       creatorFullName: '',
       creatorPhone: '',
     })
+    setAutoPushEnabled(chama.autoPushEnabled)
+    setAutoPushRetryHours(String(chama.autoPushRetryHours))
+    setAutoPushNotice(null)
     setModalNotice(null)
     setShowModal(true)
+  }
+
+  const handleSaveAutoPushSettings = async () => {
+    if (!editing) return
+    setAutoPushSaving(true)
+    setAutoPushNotice(null)
+    try {
+      const updated = await updateAutoPushSettings(editing.id, {
+        autoPushEnabled,
+        autoPushRetryHours: Number(autoPushRetryHours),
+      })
+      setEditing(updated)
+      setChamas((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      setNotice({ variant: 'success', message: 'Auto-push settings saved.' })
+    } catch (err) {
+      setAutoPushNotice(extractErrorMessage(err))
+    } finally {
+      setAutoPushSaving(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -259,6 +286,53 @@ export default function ChamasPage() {
                 placeholder="e.g. 500000"
               />
             </FormField>
+
+            {editing && (
+              <div className="border-t border-ink/10 pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-ink">Auto-push settings</h3>
+                <p className="text-xs text-muted">
+                  Controls the automatic M-Pesa prompt sent to members who have opted in to
+                  auto-pay on their contribution's due date.
+                </p>
+                {autoPushNotice && (
+                  <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{autoPushNotice}</div>
+                )}
+                <label className="flex items-center gap-2 text-sm text-ink/80">
+                  <input
+                    type="checkbox"
+                    checked={autoPushEnabled}
+                    onChange={(e) => setAutoPushEnabled(e.target.checked)}
+                    aria-label="Enable auto-push"
+                  />
+                  Enable automatic M-Pesa prompts
+                </label>
+                <FormField
+                  label="Retry after (hours)"
+                  htmlFor="chama-auto-push-retry-hours"
+                  hint="How long to wait before re-sending a prompt to a member who hasn't paid yet."
+                >
+                  <Input
+                    id="chama-auto-push-retry-hours"
+                    type="number"
+                    min="1"
+                    max="168"
+                    step="1"
+                    value={autoPushRetryHours}
+                    onChange={(e) => setAutoPushRetryHours(e.target.value)}
+                    disabled={!autoPushEnabled}
+                  />
+                </FormField>
+                <LoadingButton
+                  type="button"
+                  variant="secondary"
+                  loading={autoPushSaving}
+                  loadingText="Saving…"
+                  onClick={handleSaveAutoPushSettings}
+                >
+                  Save Auto-Push Settings
+                </LoadingButton>
+              </div>
+            )}
 
             {!editing && (
               <>

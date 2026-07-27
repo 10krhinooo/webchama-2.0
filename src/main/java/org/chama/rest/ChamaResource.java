@@ -18,6 +18,7 @@ import org.chama.dto.ChamaDto;
 import org.chama.dto.CreateChamaDto;
 import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
+import org.chama.dto.UpdateAutoPushSettingsDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
@@ -76,6 +77,13 @@ public class ChamaResource {
     public ChamaDto update(@PathParam("id") Long id, @Valid UpdateChamaDto dto) {
         tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON);
         return ChamaDto.from(chamaService.update(id, dto));
+    }
+
+    @PUT
+    @Path("/{id}/auto-push-settings")
+    public ChamaDto updateAutoPushSettings(@PathParam("id") Long id, @Valid UpdateAutoPushSettingsDto dto) {
+        tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON, MemberRoleType.TREASURER);
+        return ChamaDto.from(chamaService.updateAutoPushSettings(id, dto));
     }
 
     @DELETE

@@ -1,5 +1,7 @@
 package org.chama.service;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -16,15 +18,26 @@ import org.chama.domain.model.WelfareContribution;
 import org.chama.dto.FlutterwaveCallbackDto;
 import org.chama.dto.MpesaCallbackDto;
 import org.chama.repository.PaymentRepository;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 @ApplicationScoped
 public class PaymentService {
 
     private static final Logger LOG = Logger.getLogger(PaymentService.class);
+
+    /**
+     * Window a PENDING M-Pesa payment is left alone before {@link #reconcileStalePendingMpesaPayments()}
+     * re-queries Daraja for it. Also doubles as the "already pending" window {@link #initiateMpesaPayment}
+     * and {@link #initiateMpesaWelfareContribution} check, so a member can't fire a second STK push to
+     * the same phone while the first one is still awaiting a PIN.
+     */
+    private static final Duration RECONCILE_TIMEOUT = Duration.ofMinutes(5);
 
     @Inject
     PaymentRepository paymentRepository;
@@ -41,11 +54,19 @@ public class PaymentService {
     @Inject
     FlutterwaveService flutterwaveService;
 
+    @ConfigProperty(name = "payment.mpesa-reconciliation.enabled", defaultValue = "true")
+    boolean reconciliationEnabled;
+
     public record CardPaymentInit(Payment payment, String paymentLink) {}
 
     @Transactional
     public Payment initiateMpesaPayment(Long chamaId, Long contributionId, Member caller) {
         Contribution contribution = contributionFor(chamaId, contributionId, caller);
+        paymentRepository.findPendingByContribution(contributionId).ifPresent(existing -> {
+            throw new BadRequestException(
+                "An M-Pesa payment request was already sent for this contribution. "
+                    + "Check your phone, or wait a few minutes and try again.");
+        });
         BigDecimal remaining = remainingBalance(contribution);
 
         Payment payment = newPendingPayment(contribution, caller, PaymentMethod.MPESA);
@@ -65,6 +86,11 @@ public class PaymentService {
     /** Self-service: a member tops up the chama's welfare fund by an amount of their own choosing, via M-Pesa STK push. */
     @Transactional
     public Payment initiateMpesaWelfareContribution(Long chamaId, Member caller, BigDecimal amount) {
+        paymentRepository.findPendingWelfareByChamaAndMember(chamaId, caller.id).ifPresent(existing -> {
+            throw new BadRequestException(
+                "An M-Pesa payment request was already sent for your welfare fund contribution. "
+                    + "Check your phone, or wait a few minutes and try again.");
+        });
         WelfareContribution contribution = welfareContributionService.createPending(chamaId, caller, amount);
 
         Payment payment = new Payment();
@@ -214,6 +240,51 @@ public class PaymentService {
             contributionService.recordPayment(payment.chama.id, payment.contribution.id, payment.amount, payment.method);
         } else if (payment.welfareContribution != null) {
             welfareContributionService.markPaid(payment.chama.id, payment.welfareContribution.id, payment.method);
+        }
+    }
+
+    /**
+     * Sweeps M-Pesa payments still PENDING past {@link #RECONCILE_TIMEOUT} and re-queries Daraja's
+     * STK Query endpoint for each, so a lost or delayed callback still resolves the payment's real
+     * status in the database instead of leaving it PENDING forever (which is what previously forced
+     * members to fire repeat STK pushes to the same phone). Unlike the B2C disbursement
+     * reconciliation sweep, STK Query returns the result synchronously, so this applies it directly
+     * rather than just re-triggering an async callback.
+     */
+    @Scheduled(every = "5m", identity = "mpesa-stk-reconciliation")
+    void reconcileStalePendingMpesaPayments() {
+        if (!reconciliationEnabled) {
+            return;
+        }
+        Instant cutoff = Instant.now().minus(RECONCILE_TIMEOUT);
+        List<Long> staleIds = QuarkusTransaction.requiringNew().call(() ->
+            paymentRepository.findPendingOlderThan(PaymentMethod.MPESA, cutoff).stream().map(p -> p.id).toList());
+
+        for (Long paymentId : staleIds) {
+            try {
+                QuarkusTransaction.requiringNew().run(() -> reconcileOne(paymentId));
+            } catch (RuntimeException e) {
+                LOG.errorf(e, "[PAYMENT] M-Pesa reconciliation failed for payment %d", paymentId);
+            }
+        }
+    }
+
+    private void reconcileOne(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId);
+        if (payment == null || payment.status != PaymentStatus.PENDING || payment.providerReference == null) {
+            return;
+        }
+
+        MpesaService.StkQueryResult result = mpesaService.queryStkStatus(payment.providerReference);
+        if ("PENDING".equals(result.resultCode())) {
+            return;
+        }
+        if (result.isPaid()) {
+            markSuccess(payment, null);
+        } else {
+            payment.status = PaymentStatus.FAILED;
+            LOG.infof("[PAYMENT] M-Pesa reconciliation result %s (%s) for payment %d, marking failed",
+                result.resultCode(), result.resultDesc(), payment.id);
         }
     }
 }

@@ -13,6 +13,8 @@ vi.mock('../../api/contributions', () => ({
   deleteContribution: vi.fn(),
   payContributionWithMpesa: vi.fn(),
   initiateCardPayment: vi.fn(),
+  getPayments: vi.fn(),
+  getMyPayments: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),

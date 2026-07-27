@@ -69,16 +69,20 @@ public class ContributionRepository implements PanacheRepository<Contribution> {
     }
 
     /**
-     * Candidates for the auto-STK-push scheduler (issue #60): the member has opted in, the
-     * contribution is due (period on or before today) and still unpaid, and no push has fired
-     * for it yet today, {@code sinceStartOfToday} is the previous midnight so a sweep later in
-     * the same day does not double-fire.
+     * Candidates for the auto-STK-push scheduler (issue #60): the chama hasn't turned the sweep
+     * off, the member has opted in, the contribution is due (period on or before today) and
+     * still unpaid. {@code earliestPossibleRetry} is a broad pre-filter using the shortest
+     * per-chama retry interval allowed (1 hour), a superset of every chama's actual configured
+     * {@code autoPushRetryHours} (a per-row variable, awkward to express in JPQL); the caller
+     * ({@link org.chama.service.ContributionAutoPushService}) applies the exact per-chama
+     * interval afterwards in Java.
      */
-    public List<Contribution> findDueForAutoPush(LocalDate today, Instant sinceStartOfToday) {
-        return list("member.autoPayEnabled = true"
+    public List<Contribution> findDueForAutoPush(LocalDate today, Instant earliestPossibleRetry) {
+        return list("chama.autoPushEnabled = true"
+                + " and member.autoPayEnabled = true"
                 + " and status in (?1, ?2)"
                 + " and period <= ?3"
                 + " and (lastAutoPushAt is null or lastAutoPushAt < ?4)",
-            ContributionStatus.PENDING, ContributionStatus.OVERDUE, today, sinceStartOfToday);
+            ContributionStatus.PENDING, ContributionStatus.OVERDUE, today, earliestPossibleRetry);
     }
 }

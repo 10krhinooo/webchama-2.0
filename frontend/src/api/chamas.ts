@@ -15,7 +15,14 @@ export interface Chama {
   meetingDay: string | null
   savingsTarget: number | null
   status: ChamaStatus
+  autoPushEnabled: boolean
+  autoPushRetryHours: number
   createdAt: string
+}
+
+export interface UpdateAutoPushSettingsRequest {
+  autoPushEnabled: boolean
+  autoPushRetryHours: number
 }
 
 export interface UpdateChamaRequest {
@@ -80,6 +87,14 @@ export async function updateChama(id: number, payload: UpdateChamaRequest): Prom
 
 export async function deleteChama(id: number): Promise<void> {
   await client.delete(`/chamas/${id}`)
+}
+
+export async function updateAutoPushSettings(
+  id: number,
+  payload: UpdateAutoPushSettingsRequest,
+): Promise<Chama> {
+  const { data } = await client.put<Chama>(`/chamas/${id}/auto-push-settings`, payload)
+  return data
 }
 
 export async function getSavingsProgress(id: number): Promise<SavingsProgress> {

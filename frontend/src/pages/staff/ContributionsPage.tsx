@@ -9,7 +9,10 @@ import {
   deleteContribution,
   payContributionWithMpesa,
   initiateCardPayment,
+  getPayments,
+  getMyPayments,
   type Contribution,
+  type Payment,
   type PaymentMethod,
 } from '../../api/contributions'
 import { getMembers, updateMyAutoPay, type Member } from '../../api/members'
@@ -40,6 +43,20 @@ function statusVariant(status: Contribution['status']) {
   return 'muted' as const
 }
 
+function paymentStatusVariant(status: Payment['status']) {
+  if (status === 'SUCCESS') return 'success' as const
+  if (status === 'FAILED') return 'danger' as const
+  return 'warning' as const
+}
+
+/** Most recent payment attempt for a contribution, so an in-flight M-Pesa push is visible even
+ * though Contribution.status itself has no "push sent, awaiting PIN" state of its own. */
+function latestPaymentFor(payments: Payment[], contributionId: number): Payment | undefined {
+  return payments
+    .filter((p) => p.contributionId === contributionId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+}
+
 export default function ContributionsPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
@@ -66,6 +83,7 @@ export default function ContributionsPage() {
   const [autoPayEnabled, setAutoPayEnabled] = useState(false)
   const [autoPaySaving, setAutoPaySaving] = useState(false)
   const [streak, setStreak] = useState<number | null>(null)
+  const [payments, setPayments] = useState<Payment[]>([])
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(contributions)
 
   useEffect(() => {
@@ -76,10 +94,12 @@ export default function ContributionsPage() {
     if (roleLoading) return
     setLoading(true)
     const contributionsPromise = canManage ? getContributions(chamaId) : getMyContributions(chamaId)
-    Promise.all([contributionsPromise, canManage ? getMembers(chamaId) : Promise.resolve([])])
-      .then(([c, m]) => {
+    const paymentsPromise = canManage ? getPayments(chamaId) : getMyPayments(chamaId)
+    Promise.all([contributionsPromise, canManage ? getMembers(chamaId) : Promise.resolve([]), paymentsPromise])
+      .then(([c, m, p]) => {
         setContributions(c)
         setMembers(m)
+        setPayments(p)
       })
       .finally(() => setLoading(false))
 
@@ -263,41 +283,60 @@ export default function ContributionsPage() {
               <TableHead>Due</TableHead>
               <TableHead>Paid</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Payment</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {contributions.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No contributions yet.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted">No contributions yet.</TableCell></TableRow>
             )}
-            {pageItems.map((c) => (
-              <TableRow key={c.id}>
-                {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
-                <TableCell className="text-muted">{c.period}</TableCell>
-                <TableCell className="font-mono text-muted">{c.amountDue.toLocaleString()}</TableCell>
-                <TableCell className="font-mono text-muted">{c.amountPaid.toLocaleString()}</TableCell>
-                <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-3">
-                    {canManage ? (
-                      <>
-                        {c.status !== 'PAID' && (
-                          <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
-                        )}
-                        <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
-                      </>
+            {pageItems.map((c) => {
+              const latestPayment = latestPaymentFor(payments, c.id)
+              const mpesaPending = latestPayment?.method === 'MPESA' && latestPayment.status === 'PENDING'
+              return (
+                <TableRow key={c.id}>
+                  {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
+                  <TableCell className="text-muted">{c.period}</TableCell>
+                  <TableCell className="font-mono text-muted">{c.amountDue.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-muted">{c.amountPaid.toLocaleString()}</TableCell>
+                  <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
+                  <TableCell>
+                    {latestPayment ? (
+                      <Badge
+                        label={`${latestPayment.method} ${latestPayment.status}`}
+                        variant={paymentStatusVariant(latestPayment.status)}
+                      />
                     ) : (
-                      c.status !== 'PAID' && (
-                        <>
-                          <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
-                          <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
-                        </>
-                      )
+                      <span className="text-xs text-muted">—</span>
                     )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-3">
+                      {canManage ? (
+                        <>
+                          {c.status !== 'PAID' && (
+                            <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
+                          )}
+                          <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+                        </>
+                      ) : (
+                        c.status !== 'PAID' && (
+                          mpesaPending ? (
+                            <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
+                          ) : (
+                            <>
+                              <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                              <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
+                            </>
+                          )
+                        )
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       )}
