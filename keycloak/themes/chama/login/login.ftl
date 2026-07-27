@@ -21,9 +21,14 @@
                                    aria-invalid="<#if messagesPerField.existsError('username','password')>true</#if>"
                             />
                             <#if messagesPerField.existsError('username','password')>
-                                <span id="input-error" class="chama-input-error" aria-live="polite">
-                                        ${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}
-                                </span>
+                                <div id="input-error" class="chama-alert chama-alert-danger" role="alert" aria-live="polite">
+                                    <svg class="chama-alert-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                        <path d="M10 2 1.5 17h17L10 2Z" stroke-linejoin="round" />
+                                        <path d="M10 8v4" stroke-linecap="round" />
+                                        <circle cx="10" cy="14.5" r="0.75" fill="currentColor" stroke="none" />
+                                    </svg>
+                                    <span>${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}</span>
+                                </div>
                             </#if>
                         </div>
                     </#if>
@@ -47,9 +52,14 @@
                             </button>
                         </div>
                         <#if usernameHidden?? && messagesPerField.existsError('username','password')>
-                            <span id="input-error" class="chama-input-error" aria-live="polite">
-                                    ${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}
-                            </span>
+                            <div id="input-error" class="chama-alert chama-alert-danger" role="alert" aria-live="polite">
+                                <svg class="chama-alert-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                    <path d="M10 2 1.5 17h17L10 2Z" stroke-linejoin="round" />
+                                    <path d="M10 8v4" stroke-linecap="round" />
+                                    <circle cx="10" cy="14.5" r="0.75" fill="currentColor" stroke="none" />
+                                </svg>
+                                <span>${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}</span>
+                            </div>
                         </#if>
                     </div>
 
