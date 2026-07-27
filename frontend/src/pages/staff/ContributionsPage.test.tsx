@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ContributionsPage from './ContributionsPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/contributions', () => ({
   getContributions: vi.fn(),
@@ -12,6 +13,8 @@ vi.mock('../../api/contributions', () => ({
   deleteContribution: vi.fn(),
   payContributionWithMpesa: vi.fn(),
   initiateCardPayment: vi.fn(),
+  getPayments: vi.fn(),
+  getMyPayments: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
@@ -33,6 +36,8 @@ import {
   deleteContribution,
   payContributionWithMpesa,
   initiateCardPayment,
+  getPayments,
+  getMyPayments,
 } from '../../api/contributions'
 import { getMembers, updateMyAutoPay } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -46,6 +51,8 @@ const mockRecordPayment = recordPayment as ReturnType<typeof vi.fn>
 const mockDeleteContribution = deleteContribution as ReturnType<typeof vi.fn>
 const mockPayContributionWithMpesa = payContributionWithMpesa as ReturnType<typeof vi.fn>
 const mockInitiateCardPayment = initiateCardPayment as ReturnType<typeof vi.fn>
+const mockGetPayments = getPayments as ReturnType<typeof vi.fn>
+const mockGetMyPayments = getMyPayments as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUpdateMyAutoPay = updateMyAutoPay as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
@@ -79,6 +86,8 @@ describe('ContributionsPage', () => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
     mockGetMyContributionStreak.mockResolvedValue(0)
+    mockGetPayments.mockResolvedValue([])
+    mockGetMyPayments.mockResolvedValue([])
   })
 
   it('shows the member self-service view with no management controls', async () => {
@@ -186,6 +195,82 @@ describe('ContributionsPage', () => {
     expect(mockGetMyContributions).not.toHaveBeenCalled()
   })
 
+  it('shows a dash in the payment column when a contribution has no payment attempts', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([contribution])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    expect(screen.getByText('—')).toBeTruthy()
+  })
+
+  it('shows the latest payment attempt badge for a contribution, most recent first', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([contribution])
+    mockGetPayments.mockResolvedValue([
+      {
+        id: 1,
+        chamaId: 3,
+        memberId: 5,
+        contributionId: 1,
+        welfareContributionId: null,
+        purpose: 'CONTRIBUTION',
+        amount: 500,
+        method: 'MPESA',
+        status: 'FAILED',
+        providerReference: 'ref-1',
+        mpesaReceiptNumber: null,
+        paidAt: null,
+        createdAt: '2026-07-01T10:00:00Z',
+      },
+      {
+        id: 2,
+        chamaId: 3,
+        memberId: 5,
+        contributionId: 1,
+        welfareContributionId: null,
+        purpose: 'CONTRIBUTION',
+        amount: 500,
+        method: 'MPESA',
+        status: 'PENDING',
+        providerReference: 'ref-2',
+        mpesaReceiptNumber: null,
+        paidAt: null,
+        createdAt: '2026-07-02T10:00:00Z',
+      },
+    ])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    expect(screen.getByText('MPESA PENDING')).toBeTruthy()
+  })
+
+  it('shows the member self-service payment column from getMyPayments', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockGetMyPayments.mockResolvedValue([
+      {
+        id: 3,
+        chamaId: 3,
+        memberId: 5,
+        contributionId: 1,
+        welfareContributionId: null,
+        purpose: 'CONTRIBUTION',
+        amount: 500,
+        method: 'MPESA',
+        status: 'SUCCESS',
+        providerReference: 'ref-3',
+        mpesaReceiptNumber: 'ABC123',
+        paidAt: '2026-07-02T10:05:00Z',
+        createdAt: '2026-07-02T10:00:00Z',
+      },
+    ])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('MPESA SUCCESS')).toBeTruthy())
+    expect(mockGetPayments).not.toHaveBeenCalled()
+  })
+
   it('creates a new contribution through the modal', async () => {
     mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
     mockGetContributions.mockResolvedValue([contribution])
@@ -194,7 +279,7 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('+ New Contribution'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/period/i), { target: { value: '2026-08-01' } })
     fireEvent.change(screen.getByLabelText(/amount due/i), { target: { value: '750' } })
     fireEvent.click(screen.getByText('Create Contribution'))
@@ -265,7 +350,7 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('+ New Contribution'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/period/i), { target: { value: '2026-08-01' } })
     fireEvent.change(screen.getByLabelText(/amount due/i), { target: { value: '750' } })
     fireEvent.click(screen.getByText('Create Contribution'))
@@ -282,7 +367,7 @@ describe('ContributionsPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Record Payment'))
     fireEvent.change(screen.getByLabelText(/amount \*/i), { target: { value: '99999' } })
-    fireEvent.change(screen.getByLabelText(/method/i), { target: { value: 'CASH' } })
+    selectOption(/method/i, 'Cash')
     fireEvent.click(screen.getByText('Record Payment', { selector: 'button[type="submit"]' }))
 
     await waitFor(() => expect(screen.getByText('amount exceeds balance')).toBeTruthy())

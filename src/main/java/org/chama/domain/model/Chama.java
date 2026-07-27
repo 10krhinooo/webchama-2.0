@@ -66,6 +66,16 @@ public class Chama extends PanacheEntityBase {
     @Column(nullable = false, columnDefinition = "chama_status")
     public ChamaStatus status = ChamaStatus.ACTIVE;
 
+    // Chairperson/treasurer-controlled kill switch for ContributionAutoPushService's sweep,
+    // scoped to this chama only (distinct from the global contribution.auto-push.enabled config
+    // property, which is an operator-level kill switch for the whole deployment).
+    @Column(name = "auto_push_enabled", nullable = false)
+    public boolean autoPushEnabled = true;
+
+    // Hours since a contribution's last auto-push attempt before the sweep retries it.
+    @Column(name = "auto_push_retry_hours", nullable = false)
+    public int autoPushRetryHours = 24;
+
     @Column(name = "created_at", nullable = false)
     public Instant createdAt = Instant.now();
 }

@@ -20,6 +20,7 @@ import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
@@ -171,56 +172,52 @@ export default function WelfareFundPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-paper-dim border-b border-black/10">
-                <tr>
-                  {isManager && <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>}
-                  <th className="text-left px-4 py-3 font-medium text-ink/80">Amount</th>
-                  <th className="text-left px-4 py-3 font-medium text-ink/80">Method</th>
-                  <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5">
-                {contributions.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-10 text-center text-muted text-sm">No welfare contributions yet.</td></tr>
-                )}
-                {contributions.map((c) => (
-                  <tr key={c.id} className="hover:bg-paper-dim/30">
-                    {isManager && <td className="px-4 py-3 font-medium text-ink">{c.memberName}</td>}
-                    <td className="px-4 py-3 font-mono text-muted">{c.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-muted">{c.paymentMethod ?? '—'}</td>
-                    <td className="px-4 py-3"><Badge label={c.status} variant={contributionStatusVariant(c.status)} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                {isManager && <TableHead>Member</TableHead>}
+                <TableHead>Amount</TableHead>
+                <TableHead>Method</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contributions.length === 0 && (
+                <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted">No welfare contributions yet.</TableCell></TableRow>
+              )}
+              {contributions.map((c) => (
+                <TableRow key={c.id}>
+                  {isManager && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
+                  <TableCell className="font-mono text-muted">{c.amount.toLocaleString()}</TableCell>
+                  <TableCell className="text-muted">{c.paymentMethod ?? '—'}</TableCell>
+                  <TableCell><Badge label={c.status} variant={contributionStatusVariant(c.status)} /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
           {isManager && (
-            <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-paper-dim border-b border-black/10">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Amount</th>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Reason</th>
-                    <th className="text-left px-4 py-3 font-medium text-ink/80">Disbursed by</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {withdrawals.length === 0 && (
-                    <tr><td colSpan={3} className="px-4 py-10 text-center text-muted text-sm">No withdrawals yet.</td></tr>
-                  )}
-                  {withdrawals.map((w) => (
-                    <tr key={w.id} className="hover:bg-paper-dim/30">
-                      <td className="px-4 py-3 font-mono text-muted">{w.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-muted">{w.reason}</td>
-                      <td className="px-4 py-3 text-muted">{w.disbursedByName}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Disbursed by</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {withdrawals.length === 0 && (
+                  <TableRow><TableCell colSpan={3} className="py-10 text-center text-sm text-muted">No withdrawals yet.</TableCell></TableRow>
+                )}
+                {withdrawals.map((w) => (
+                  <TableRow key={w.id}>
+                    <TableCell className="font-mono text-muted">{w.amount.toLocaleString()}</TableCell>
+                    <TableCell className="text-muted">{w.reason}</TableCell>
+                    <TableCell className="text-muted">{w.disbursedByName}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </>
       )}
@@ -251,7 +248,7 @@ export default function WelfareFundPage() {
             )}
             <FormField label="Member" htmlFor="welfare-record-member" required>
               <Select id="welfare-record-member" required value={recordForm.memberId}
-                onChange={(e) => setRecordForm({ ...recordForm, memberId: e.target.value })}>
+                onChange={(v) => setRecordForm({ ...recordForm, memberId: v })}>
                 <option value="" disabled>Select a member</option>
                 {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
               </Select>
@@ -262,7 +259,7 @@ export default function WelfareFundPage() {
             </FormField>
             <FormField label="Method" htmlFor="welfare-record-method" required>
               <Select id="welfare-record-method" value={recordForm.method}
-                onChange={(e) => setRecordForm({ ...recordForm, method: e.target.value as PaymentMethod })}>
+                onChange={(v) => setRecordForm({ ...recordForm, method: v as PaymentMethod })}>
                 <option value="CASH">Cash</option>
                 <option value="BANK">Bank</option>
                 <option value="MPESA">M-Pesa</option>

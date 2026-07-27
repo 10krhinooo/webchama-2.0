@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import WelfareFundPage from './WelfareFundPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/welfareFund', () => ({
   getWelfareFund: vi.fn(),
@@ -129,7 +130,7 @@ describe('WelfareFundPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no welfare contributions yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Record Contribution'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '300' } })
     fireEvent.click(screen.getByText('Record Contribution', { selector: 'button[type="submit"]' }))
 
@@ -169,7 +170,7 @@ describe('WelfareFundPage', () => {
     await waitFor(() => expect(screen.getByText(/no welfare contributions yet/i)).toBeTruthy())
 
     fireEvent.click(screen.getByText('+ Record Contribution'))
-    fireEvent.change(screen.getByLabelText(/method/i), { target: { value: 'BANK' } })
+    selectOption(/method/i, 'Bank')
     fireEvent.click(screen.getByLabelText(/close/i))
     expect(screen.queryByText('Record Contribution', { selector: 'h2, [role="heading"]' })).toBeNull()
 

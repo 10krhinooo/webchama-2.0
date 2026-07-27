@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ApprovalsPage from './ApprovalsPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/approvals', () => ({
   getApprovals: vi.fn(),
@@ -102,8 +103,8 @@ describe('ApprovalsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Approval'))
-    fireEvent.change(screen.getByLabelText(/^loan\b/i), { target: { value: '9' } })
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/^loan\b/i, 'Jane Doe · 150,000')
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '150000' } })
     fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))
 
@@ -124,9 +125,9 @@ describe('ApprovalsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Approval'))
-    fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'PAYOUT_DISBURSEMENT' } })
-    fireEvent.change(screen.getByLabelText(/^payout\b/i), { target: { value: '4' } })
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/type/i, 'Payout disbursement')
+    selectOption(/^payout\b/i, 'Jane Doe · round 2')
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '10000' } })
     fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))
 
@@ -146,8 +147,8 @@ describe('ApprovalsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Approval'))
-    fireEvent.change(screen.getByLabelText(/^loan\b/i), { target: { value: '9' } })
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/^loan\b/i, 'Jane Doe · 150,000')
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '150000' } })
     fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))
 

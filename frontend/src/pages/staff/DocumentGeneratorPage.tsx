@@ -15,6 +15,7 @@ import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -232,14 +233,14 @@ export default function DocumentGeneratorPage() {
                 <Select
                   id="doc-type"
                   value={documentType}
-                  onChange={(e) => setDocumentType(e.target.value as CustomDocumentType)}
+                  onChange={(v) => setDocumentType(v as CustomDocumentType)}
                 >
                   <option value="CUSTOM_INVOICE">Invoice</option>
                   <option value="CUSTOM_RECEIPT">Receipt</option>
                 </Select>
               </FormField>
               <FormField label="Member" htmlFor="doc-member" required>
-                <Select id="doc-member" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+                <Select id="doc-member" value={memberId} onChange={setMemberId}>
                   <option value="" disabled>Select a member</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                 </Select>
@@ -424,39 +425,37 @@ export default function DocumentGeneratorPage() {
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Number</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Total</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Email</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {documents.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted text-sm">No documents generated yet.</td></tr>
-              )}
-              {pageItems.map((doc) => (
-                <tr key={doc.id} className="hover:bg-paper-dim/30">
-                  <td className="px-4 py-3 font-mono text-ink">{doc.documentNumber}</td>
-                  <td className="px-4 py-3 text-muted">{doc.documentType}</td>
-                  <td className="px-4 py-3 font-medium text-ink">{doc.memberName}</td>
-                  <td className="px-4 py-3 font-mono text-muted">{doc.totalAmount.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    {doc.emailStatus ? (
-                      <Badge label={doc.emailStatus} variant={statusVariant(doc.emailStatus)} />
-                    ) : (
-                      <span className="text-muted text-xs">Not sent</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Number</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Member</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Email</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {documents.length === 0 && (
+              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">No documents generated yet.</TableCell></TableRow>
+            )}
+            {pageItems.map((doc) => (
+              <TableRow key={doc.id}>
+                <TableCell className="font-mono text-ink">{doc.documentNumber}</TableCell>
+                <TableCell className="text-muted">{doc.documentType}</TableCell>
+                <TableCell className="font-medium text-ink">{doc.memberName}</TableCell>
+                <TableCell className="font-mono text-muted">{doc.totalAmount.toLocaleString()}</TableCell>
+                <TableCell>
+                  {doc.emailStatus ? (
+                    <Badge label={doc.emailStatus} variant={statusVariant(doc.emailStatus)} />
+                  ) : (
+                    <span className="text-muted text-xs">Not sent</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {!loading && !roleLoading && (

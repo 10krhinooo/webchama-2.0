@@ -2,20 +2,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ChamasPage from './ChamasPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/chamas', () => ({
   getChamas: vi.fn(),
   createChama: vi.fn(),
   updateChama: vi.fn(),
   deleteChama: vi.fn(),
+  updateAutoPushSettings: vi.fn(),
 }))
 
-import { getChamas, createChama, updateChama, deleteChama } from '../../api/chamas'
+import { getChamas, createChama, updateChama, deleteChama, updateAutoPushSettings } from '../../api/chamas'
 
 const mockGetChamas = getChamas as ReturnType<typeof vi.fn>
 const mockCreateChama = createChama as ReturnType<typeof vi.fn>
 const mockUpdateChama = updateChama as ReturnType<typeof vi.fn>
 const mockDeleteChama = deleteChama as ReturnType<typeof vi.fn>
+const mockUpdateAutoPushSettings = updateAutoPushSettings as ReturnType<typeof vi.fn>
 
 const chama = {
   id: 1,
@@ -29,6 +32,8 @@ const chama = {
   savingsTarget: null,
   status: 'ACTIVE' as const,
   createdAt: '2026-01-01T00:00:00Z',
+  autoPushEnabled: true,
+  autoPushRetryHours: 24,
 }
 
 function renderPage() {
@@ -134,8 +139,8 @@ describe('ChamasPage', () => {
     fireEvent.click(screen.getByText('+ New Chama'))
     fireEvent.change(screen.getByLabelText(/^name \*/i), { target: { value: 'Upya' } })
     fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'A savings group' } })
-    fireEvent.change(screen.getByLabelText(/^type/i), { target: { value: 'TABLE_BANKING' } })
-    fireEvent.change(screen.getByLabelText(/frequency/i), { target: { value: 'WEEKLY' } })
+    selectOption(/^type/i, 'Table banking')
+    selectOption(/frequency/i, 'Weekly')
     fireEvent.change(screen.getByLabelText(/currency/i), { target: { value: 'USD' } })
     fireEvent.change(screen.getByLabelText(/meeting day/i), { target: { value: 'Fridays' } })
     fireEvent.change(screen.getByLabelText(/contribution amount/i), { target: { value: '1000' } })
@@ -190,5 +195,52 @@ describe('ChamasPage', () => {
 
     fireEvent.click(screen.getByText('Edit'))
     expect(screen.getByLabelText(/savings target/i)).toHaveValue(250000)
+  })
+
+  it('does not show auto-push settings when creating a new chama', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('+ New Chama'))
+    expect(screen.queryByText('Auto-push settings')).toBeNull()
+  })
+
+  it('preloads auto-push settings when editing and saves changes', async () => {
+    mockUpdateAutoPushSettings.mockResolvedValue({ ...chama, autoPushEnabled: false, autoPushRetryHours: 48 })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Edit'))
+    expect(screen.getByLabelText('Enable auto-push')).toBeChecked()
+    expect(screen.getByLabelText(/retry after/i)).toHaveValue(24)
+
+    fireEvent.click(screen.getByLabelText('Enable auto-push'))
+    fireEvent.change(screen.getByLabelText(/retry after/i), { target: { value: '48' } })
+    fireEvent.click(screen.getByText('Save Auto-Push Settings'))
+
+    await waitFor(() =>
+      expect(mockUpdateAutoPushSettings).toHaveBeenCalledWith(1, { autoPushEnabled: false, autoPushRetryHours: 48 }),
+    )
+    await waitFor(() => expect(screen.getByText('Auto-push settings saved.')).toBeTruthy())
+  })
+
+  it('shows an error inside the modal when saving auto-push settings fails', async () => {
+    mockUpdateAutoPushSettings.mockRejectedValue(new Error('could not save settings'))
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Edit'))
+    fireEvent.click(screen.getByText('Save Auto-Push Settings'))
+
+    await waitFor(() => expect(screen.getByText('could not save settings')).toBeTruthy())
+  })
+
+  it('disables the retry-hours field while auto-push is off', async () => {
+    mockGetChamas.mockResolvedValue([{ ...chama, autoPushEnabled: false }])
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Edit'))
+    expect(screen.getByLabelText(/retry after/i)).toBeDisabled()
   })
 })
