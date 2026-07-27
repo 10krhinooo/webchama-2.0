@@ -275,7 +275,7 @@ export default function LoansPage() {
             )}
             {canManage && (
               <FormField label="Member" htmlFor="loan-member" required>
-                <Select id="loan-member" required value={form.memberId} onChange={(e) => setForm({ ...form, memberId: e.target.value })}>
+                <Select id="loan-member" required value={form.memberId} onChange={(v) => setForm({ ...form, memberId: v })}>
                   <option value="" disabled>Select a member</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                 </Select>
@@ -292,7 +292,7 @@ export default function LoansPage() {
               </FormField>
               <FormField label="Interest method" htmlFor="loan-method" required>
                 <Select id="loan-method" value={form.interestMethod}
-                  onChange={(e) => setForm({ ...form, interestMethod: e.target.value as InterestMethod })}>
+                  onChange={(v) => setForm({ ...form, interestMethod: v as InterestMethod })}>
                   <option value="FLAT">Flat</option>
                   <option value="REDUCING_BALANCE">Reducing balance</option>
                 </Select>

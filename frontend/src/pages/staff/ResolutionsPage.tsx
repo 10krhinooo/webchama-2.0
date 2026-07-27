@@ -211,7 +211,7 @@ export default function ResolutionsPage() {
             )}
             <FormField label="Meeting" htmlFor="resolution-meeting" required>
               <Select id="resolution-meeting" required value={form.meetingId}
-                onChange={(e) => setForm({ ...form, meetingId: e.target.value })}>
+                onChange={(v) => setForm({ ...form, meetingId: v })}>
                 <option value="" disabled>Select a meeting</option>
                 {meetings.map((m) => <option key={m.id} value={m.id}>{m.meetingDate} — {m.agenda}</option>)}
               </Select>

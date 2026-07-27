@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ChamasPage from './ChamasPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/chamas', () => ({
   getChamas: vi.fn(),
@@ -134,8 +135,8 @@ describe('ChamasPage', () => {
     fireEvent.click(screen.getByText('+ New Chama'))
     fireEvent.change(screen.getByLabelText(/^name \*/i), { target: { value: 'Upya' } })
     fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'A savings group' } })
-    fireEvent.change(screen.getByLabelText(/^type/i), { target: { value: 'TABLE_BANKING' } })
-    fireEvent.change(screen.getByLabelText(/frequency/i), { target: { value: 'WEEKLY' } })
+    selectOption(/^type/i, 'Table banking')
+    selectOption(/frequency/i, 'Weekly')
     fireEvent.change(screen.getByLabelText(/currency/i), { target: { value: 'USD' } })
     fireEvent.change(screen.getByLabelText(/meeting day/i), { target: { value: 'Fridays' } })
     fireEvent.change(screen.getByLabelText(/contribution amount/i), { target: { value: '1000' } })

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import LoansPage from './LoansPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/loans', () => ({
   getLoans: vi.fn(),
@@ -134,7 +135,7 @@ describe('LoansPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no loans yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Loan'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/principal/i), { target: { value: '10000' } })
     fireEvent.change(screen.getByLabelText(/interest rate/i), { target: { value: '12' } })
     fireEvent.change(screen.getByLabelText(/term/i), { target: { value: '6' } })
@@ -176,7 +177,7 @@ describe('LoansPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no loans yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Loan'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/principal/i), { target: { value: '10000' } })
     fireEvent.change(screen.getByLabelText(/interest rate/i), { target: { value: '12' } })
     fireEvent.change(screen.getByLabelText(/term/i), { target: { value: '6' } })

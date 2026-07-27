@@ -251,7 +251,7 @@ export default function PayoutsPage() {
               <Select
                 id="payout-rotation-type"
                 value={scheduleForm.rotationOrderType}
-                onChange={(e) => setScheduleForm({ rotationOrderType: e.target.value as RotationOrderType })}
+                onChange={(v) => setScheduleForm({ rotationOrderType: v as RotationOrderType })}
               >
                 <option value="SENIORITY">Seniority (by join date)</option>
                 <option value="RANDOM">Random</option>

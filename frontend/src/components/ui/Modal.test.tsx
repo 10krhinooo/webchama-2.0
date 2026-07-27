@@ -41,7 +41,7 @@ describe('Modal', () => {
     )
     const last = screen.getByText('Last')
     last.focus()
-    fireEvent.keyDown(document, { key: 'Tab' })
+    fireEvent.keyDown(last, { key: 'Tab' })
     expect(screen.getByLabelText('Close')).toBe(document.activeElement)
   })
 
@@ -53,8 +53,9 @@ describe('Modal', () => {
         <button>Last</button>
       </Modal>,
     )
-    screen.getByLabelText('Close').focus()
-    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    const closeButton = screen.getByLabelText('Close')
+    closeButton.focus()
+    fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true })
     expect(screen.getByText('Last')).toBe(document.activeElement)
   })
 })

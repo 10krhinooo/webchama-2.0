@@ -251,7 +251,7 @@ export default function WelfareFundPage() {
             )}
             <FormField label="Member" htmlFor="welfare-record-member" required>
               <Select id="welfare-record-member" required value={recordForm.memberId}
-                onChange={(e) => setRecordForm({ ...recordForm, memberId: e.target.value })}>
+                onChange={(v) => setRecordForm({ ...recordForm, memberId: v })}>
                 <option value="" disabled>Select a member</option>
                 {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
               </Select>
@@ -262,7 +262,7 @@ export default function WelfareFundPage() {
             </FormField>
             <FormField label="Method" htmlFor="welfare-record-method" required>
               <Select id="welfare-record-method" value={recordForm.method}
-                onChange={(e) => setRecordForm({ ...recordForm, method: e.target.value as PaymentMethod })}>
+                onChange={(v) => setRecordForm({ ...recordForm, method: v as PaymentMethod })}>
                 <option value="CASH">Cash</option>
                 <option value="BANK">Bank</option>
                 <option value="MPESA">M-Pesa</option>

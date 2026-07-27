@@ -204,7 +204,7 @@ export default function ChamasPage() {
             </FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Type" htmlFor="chama-type" required>
-                <Select id="chama-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Chama['type'] })}>
+                <Select id="chama-type" value={form.type} onChange={(v) => setForm({ ...form, type: v as Chama['type'] })}>
                   <option value="MERRY_GO_ROUND">Merry-go-round</option>
                   <option value="TABLE_BANKING">Table banking</option>
                   <option value="INVESTMENT_GROUP">Investment group</option>
@@ -214,7 +214,7 @@ export default function ChamasPage() {
                 <Select
                   id="chama-frequency"
                   value={form.contributionFrequency}
-                  onChange={(e) => setForm({ ...form, contributionFrequency: e.target.value as Chama['contributionFrequency'] })}
+                  onChange={(v) => setForm({ ...form, contributionFrequency: v as Chama['contributionFrequency'] })}
                 >
                   <option value="WEEKLY">Weekly</option>
                   <option value="MONTHLY">Monthly</option>

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ContributionsPage from './ContributionsPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/contributions', () => ({
   getContributions: vi.fn(),
@@ -194,7 +195,7 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('+ New Contribution'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/period/i), { target: { value: '2026-08-01' } })
     fireEvent.change(screen.getByLabelText(/amount due/i), { target: { value: '750' } })
     fireEvent.click(screen.getByText('Create Contribution'))
@@ -265,7 +266,7 @@ describe('ContributionsPage', () => {
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('+ New Contribution'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/period/i), { target: { value: '2026-08-01' } })
     fireEvent.change(screen.getByLabelText(/amount due/i), { target: { value: '750' } })
     fireEvent.click(screen.getByText('Create Contribution'))
@@ -282,7 +283,7 @@ describe('ContributionsPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     fireEvent.click(screen.getByText('Record Payment'))
     fireEvent.change(screen.getByLabelText(/amount \*/i), { target: { value: '99999' } })
-    fireEvent.change(screen.getByLabelText(/method/i), { target: { value: 'CASH' } })
+    selectOption(/method/i, 'Cash')
     fireEvent.click(screen.getByText('Record Payment', { selector: 'button[type="submit"]' }))
 
     await waitFor(() => expect(screen.getByText('amount exceeds balance')).toBeTruthy())

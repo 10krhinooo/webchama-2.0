@@ -318,7 +318,7 @@ export default function ContributionsPage() {
                 id="contribution-member"
                 required
                 value={createForm.memberId}
-                onChange={(e) => setCreateForm({ ...createForm, memberId: e.target.value })}
+                onChange={(v) => setCreateForm({ ...createForm, memberId: v })}
               >
                 <option value="" disabled>Select a member</option>
                 {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
@@ -356,7 +356,7 @@ export default function ContributionsPage() {
               <Select
                 id="payment-method"
                 value={paymentForm.method}
-                onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value as PaymentMethod })}
+                onChange={(v) => setPaymentForm({ ...paymentForm, method: v as PaymentMethod })}
               >
                 <option value="MPESA">M-Pesa</option>
                 <option value="CARD">Card</option>

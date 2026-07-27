@@ -232,14 +232,14 @@ export default function DocumentGeneratorPage() {
                 <Select
                   id="doc-type"
                   value={documentType}
-                  onChange={(e) => setDocumentType(e.target.value as CustomDocumentType)}
+                  onChange={(v) => setDocumentType(v as CustomDocumentType)}
                 >
                   <option value="CUSTOM_INVOICE">Invoice</option>
                   <option value="CUSTOM_RECEIPT">Receipt</option>
                 </Select>
               </FormField>
               <FormField label="Member" htmlFor="doc-member" required>
-                <Select id="doc-member" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+                <Select id="doc-member" value={memberId} onChange={setMemberId}>
                   <option value="" disabled>Select a member</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                 </Select>
