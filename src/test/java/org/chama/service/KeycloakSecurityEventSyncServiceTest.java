@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import org.chama.domain.enums.KeycloakEventSource;
 import org.chama.domain.model.KeycloakSecurityEvent;
 import org.chama.repository.KeycloakSecurityEventRepository;
+import org.chama.service.notification.SecurityAlertEmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -31,9 +32,13 @@ class KeycloakSecurityEventSyncServiceTest {
     @InjectMock
     KeycloakAdminService keycloakAdminService;
 
+    @InjectMock
+    SecurityAlertEmailService securityAlertEmailService;
+
     @BeforeEach
     void clean() {
         QuarkusTransaction.requiringNew().run(repository::deleteAll);
+        Mockito.reset(securityAlertEmailService);
     }
 
     @Test
@@ -92,5 +97,22 @@ class KeycloakSecurityEventSyncServiceTest {
         List<KeycloakSecurityEvent> rows = QuarkusTransaction.requiringNew().call(() -> repository.listAll());
         assertEquals(1, rows.size());
         assertEquals("seed-row", rows.get(0).dedupeKey);
+    }
+
+    @Test
+    void firesASuspiciousEventAlertOnlyForABruteForceLockout() throws Exception {
+        Mockito.when(keycloakAdminService.fetchLoginEvents(any(LocalDate.class))).thenReturn(List.of(
+            new KeycloakAdminService.KeycloakLoginEvent(System.currentTimeMillis(), "LOGIN_ERROR", "chama",
+                "webchama-frontend", "user-1", "session-1", "10.0.0.5", "user_temporarily_disabled", Map.of()),
+            new KeycloakAdminService.KeycloakLoginEvent(System.currentTimeMillis(), "LOGIN_ERROR", "chama",
+                "webchama-frontend", "user-2", "session-2", "10.0.0.9", "invalid_user_credentials", Map.of())));
+        Mockito.when(keycloakAdminService.fetchAdminEvents(any(LocalDate.class))).thenReturn(List.of());
+
+        syncService.sync();
+
+        Mockito.verify(securityAlertEmailService, Mockito.times(1))
+            .alertSuspiciousEvent(Mockito.argThat(e -> "user_temporarily_disabled".equals(e.error)));
+        Mockito.verify(securityAlertEmailService, Mockito.never())
+            .alertSuspiciousEvent(Mockito.argThat(e -> "invalid_user_credentials".equals(e.error)));
     }
 }

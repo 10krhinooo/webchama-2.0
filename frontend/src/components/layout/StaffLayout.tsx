@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, Menu, X } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -90,16 +90,24 @@ export default function StaffLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          <NavLink to="/my-chamas" end className={navLinkClass}>
-            <Building2 className="h-4 w-4" />
-            My Chamas
-          </NavLink>
+          {!keycloak.hasRealmRole('SUPER_ADMIN') && (
+            <NavLink to="/my-chamas" end className={navLinkClass}>
+              <Building2 className="h-4 w-4" />
+              My Chamas
+            </NavLink>
+          )}
 
           {keycloak.hasRealmRole('SUPER_ADMIN') && (
-            <NavLink to="/admin/overview" className={navLinkClass}>
-              <Gauge className="h-4 w-4" />
-              Platform Overview
-            </NavLink>
+            <>
+              <NavLink to="/admin/overview" className={navLinkClass}>
+                <Gauge className="h-4 w-4" />
+                Platform Overview
+              </NavLink>
+              <NavLink to="/admin/security-events" className={navLinkClass}>
+                <AlertTriangle className="h-4 w-4" />
+                Security Events
+              </NavLink>
+            </>
           )}
 
           {chamaId && (
@@ -169,9 +177,15 @@ export default function StaffLayout() {
               <Menu className="h-5 w-5" />
             </button>
             <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
-              <Link to="/my-chamas" className="shrink-0 font-medium text-muted hover:text-ink">
-                My Chamas
-              </Link>
+              {keycloak.hasRealmRole('SUPER_ADMIN') ? (
+                <Link to="/admin/overview" className="shrink-0 font-medium text-muted hover:text-ink">
+                  Platform Overview
+                </Link>
+              ) : (
+                <Link to="/my-chamas" className="shrink-0 font-medium text-muted hover:text-ink">
+                  My Chamas
+                </Link>
+              )}
               {chama && (
                 <>
                   <span className="shrink-0 text-muted/50">/</span>

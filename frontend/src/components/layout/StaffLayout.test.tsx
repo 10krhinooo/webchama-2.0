@@ -144,7 +144,7 @@ describe('StaffLayout', () => {
     expect(screen.queryByRole('link', { name: /platform overview/i })).toBeNull()
   })
 
-  it('shows the Platform Overview link for a SUPER_ADMIN realm role holder', () => {
+  it('shows the Platform Overview and Security Events links, and hides My Chamas, for a SUPER_ADMIN realm role holder', () => {
     mockUseKeycloak.mockReturnValue({
       keycloak: {
         logout,
@@ -153,7 +153,14 @@ describe('StaffLayout', () => {
       },
     })
     renderAt('/chamas')
-    expect(screen.getByRole('link', { name: /platform overview/i })).toBeTruthy()
+    expect(screen.getAllByRole('link', { name: /platform overview/i }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: /security events/i })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /my chamas/i })).toBeNull()
+  })
+
+  it('shows the My Chamas link for a plain user', () => {
+    renderAt('/chamas')
+    expect(screen.getAllByRole('link', { name: /my chamas/i }).length).toBeGreaterThan(0)
   })
 
   it('opens the mobile nav backdrop from the header menu button and closes it from the drawer close button', () => {

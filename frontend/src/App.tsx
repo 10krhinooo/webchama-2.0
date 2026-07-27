@@ -17,6 +17,7 @@ import ResolutionsPage from './pages/staff/ResolutionsPage'
 import WelfareFundPage from './pages/staff/WelfareFundPage'
 import DocumentGeneratorPage from './pages/staff/DocumentGeneratorPage'
 import AdminOverviewPage from './pages/staff/AdminOverviewPage'
+import SecurityEventsPage from './pages/staff/SecurityEventsPage'
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
             }
           >
             <Route path="/admin/overview" element={<AdminOverviewPage />} />
+            <Route path="/admin/security-events" element={<SecurityEventsPage />} />
           </Route>
           <Route
             path="/contribution-payment-result"
