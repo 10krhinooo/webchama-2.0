@@ -10,7 +10,17 @@ vi.mock('./client', () => ({
 }))
 
 import { client } from './client'
-import { getChamas, getChama, createChama, updateChama, deleteChama, type CreateChamaRequest } from './chamas'
+import {
+  getChamas,
+  getMyChamas,
+  getChama,
+  createChama,
+  updateChama,
+  deleteChama,
+  updateAutoPushSettings,
+  getSavingsProgress,
+  type CreateChamaRequest,
+} from './chamas'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
 const mockPost = client.post as ReturnType<typeof vi.fn>
@@ -63,5 +73,26 @@ describe('chamas api', () => {
     mockDelete.mockResolvedValue({})
     await deleteChama(9)
     expect(mockDelete).toHaveBeenCalledWith('/chamas/9')
+  })
+
+  it('getMyChamas fetches the caller own chamas with roles and unwraps data', async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 1, roles: ['CHAIRPERSON'] }] })
+    const result = await getMyChamas()
+    expect(mockGet).toHaveBeenCalledWith('/chamas/mine')
+    expect(result).toEqual([{ id: 1, roles: ['CHAIRPERSON'] }])
+  })
+
+  it('updateAutoPushSettings puts the settings and unwraps data', async () => {
+    mockPut.mockResolvedValue({ data: { id: 9, autoPushEnabled: false, autoPushRetryHours: 48 } })
+    const result = await updateAutoPushSettings(9, { autoPushEnabled: false, autoPushRetryHours: 48 })
+    expect(mockPut).toHaveBeenCalledWith('/chamas/9/auto-push-settings', { autoPushEnabled: false, autoPushRetryHours: 48 })
+    expect(result).toEqual({ id: 9, autoPushEnabled: false, autoPushRetryHours: 48 })
+  })
+
+  it('getSavingsProgress fetches progress for a chama and unwraps data', async () => {
+    mockGet.mockResolvedValue({ data: { target: 50000, totalPaid: 1000 } })
+    const result = await getSavingsProgress(9)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/9/savings-progress')
+    expect(result).toEqual({ target: 50000, totalPaid: 1000 })
   })
 })

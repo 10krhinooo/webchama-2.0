@@ -36,6 +36,8 @@ import {
   deleteContribution,
   payContributionWithMpesa,
   initiateCardPayment,
+  getPayments,
+  getMyPayments,
 } from '../../api/contributions'
 import { getMembers, updateMyAutoPay } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -49,6 +51,8 @@ const mockRecordPayment = recordPayment as ReturnType<typeof vi.fn>
 const mockDeleteContribution = deleteContribution as ReturnType<typeof vi.fn>
 const mockPayContributionWithMpesa = payContributionWithMpesa as ReturnType<typeof vi.fn>
 const mockInitiateCardPayment = initiateCardPayment as ReturnType<typeof vi.fn>
+const mockGetPayments = getPayments as ReturnType<typeof vi.fn>
+const mockGetMyPayments = getMyPayments as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUpdateMyAutoPay = updateMyAutoPay as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
@@ -82,6 +86,8 @@ describe('ContributionsPage', () => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
     mockGetMyContributionStreak.mockResolvedValue(0)
+    mockGetPayments.mockResolvedValue([])
+    mockGetMyPayments.mockResolvedValue([])
   })
 
   it('shows the member self-service view with no management controls', async () => {
@@ -187,6 +193,82 @@ describe('ContributionsPage', () => {
     expect(screen.getByText('Jane Doe')).toBeTruthy()
     expect(screen.getByText('Record Payment')).toBeTruthy()
     expect(mockGetMyContributions).not.toHaveBeenCalled()
+  })
+
+  it('shows a dash in the payment column when a contribution has no payment attempts', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([contribution])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    expect(screen.getByText('—')).toBeTruthy()
+  })
+
+  it('shows the latest payment attempt badge for a contribution, most recent first', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([contribution])
+    mockGetPayments.mockResolvedValue([
+      {
+        id: 1,
+        chamaId: 3,
+        memberId: 5,
+        contributionId: 1,
+        welfareContributionId: null,
+        purpose: 'CONTRIBUTION',
+        amount: 500,
+        method: 'MPESA',
+        status: 'FAILED',
+        providerReference: 'ref-1',
+        mpesaReceiptNumber: null,
+        paidAt: null,
+        createdAt: '2026-07-01T10:00:00Z',
+      },
+      {
+        id: 2,
+        chamaId: 3,
+        memberId: 5,
+        contributionId: 1,
+        welfareContributionId: null,
+        purpose: 'CONTRIBUTION',
+        amount: 500,
+        method: 'MPESA',
+        status: 'PENDING',
+        providerReference: 'ref-2',
+        mpesaReceiptNumber: null,
+        paidAt: null,
+        createdAt: '2026-07-02T10:00:00Z',
+      },
+    ])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    expect(screen.getByText('MPESA PENDING')).toBeTruthy()
+  })
+
+  it('shows the member self-service payment column from getMyPayments', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockGetMyPayments.mockResolvedValue([
+      {
+        id: 3,
+        chamaId: 3,
+        memberId: 5,
+        contributionId: 1,
+        welfareContributionId: null,
+        purpose: 'CONTRIBUTION',
+        amount: 500,
+        method: 'MPESA',
+        status: 'SUCCESS',
+        providerReference: 'ref-3',
+        mpesaReceiptNumber: 'ABC123',
+        paidAt: '2026-07-02T10:05:00Z',
+        createdAt: '2026-07-02T10:00:00Z',
+      },
+    ])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('MPESA SUCCESS')).toBeTruthy())
+    expect(mockGetPayments).not.toHaveBeenCalled()
   })
 
   it('creates a new contribution through the modal', async () => {
