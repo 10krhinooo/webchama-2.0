@@ -45,6 +45,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises the DocumentType-specific subject/label branches (loan statement, payout receipt)
@@ -215,6 +216,42 @@ class DocumentEmailServiceTest {
         List<Mail> sent = mailbox.getMailsSentTo("service-test@example.com");
         assertEquals(1, sent.size());
         assertEquals("Your payout receipt from Email Service Test Chama", sent.get(0).getSubject());
+    }
+
+    @Test
+    void escapesTheMemberAndChamaNameInTheEmailBodyAndStripsHeaderInjectionFromTheSubject() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            Chama chama = chamaRepository.findById(chamaId);
+            chama.name = "Evil Chama\r\nBcc: attacker@example.com <script>alert(1)</script>";
+        });
+
+        Long docId = QuarkusTransaction.requiringNew().call(() -> {
+            GeneratedDocument doc = new GeneratedDocument();
+            doc.chama = chamaRepository.findById(chamaId);
+            doc.member = memberRepository.findById(memberId);
+            doc.documentType = DocumentType.CONTRIBUTION_RECEIPT;
+            doc.documentNumber = "CR-2026-07-9002";
+            doc.memberName = "<img/src=x/onerror=alert(1)>";
+            doc.lineItemsJson = "[]";
+            doc.totalAmount = new BigDecimal("1000");
+            doc.pdfBytes = new byte[]{1, 2, 3};
+            generatedDocumentRepository.persist(doc);
+            return doc.id;
+        });
+
+        assertEquals(DeliveryStatus.SENT, sendAndGetStatus(docId));
+        List<Mail> sent = mailbox.getMailsSentTo("service-test@example.com");
+        assertEquals(1, sent.size());
+
+        String subject = sent.get(0).getSubject();
+        assertTrue(subject.indexOf('\r') < 0);
+        assertTrue(subject.indexOf('\n') < 0);
+
+        String html = sent.get(0).getHtml();
+        assertTrue(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assertTrue(html.contains("&lt;img/src=x/onerror=alert(1)&gt;"));
+        assertTrue(html.indexOf("<script>") < 0);
+        assertTrue(html.indexOf("<img") < 0);
     }
 
     @Test

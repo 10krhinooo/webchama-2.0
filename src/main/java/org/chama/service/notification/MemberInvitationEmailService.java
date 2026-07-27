@@ -108,6 +108,6 @@ public class MemberInvitationEmailService {
                 </table>
               </body>
             </html>
-            """.formatted(firstName, email, temporaryPassword, frontendUrl);
+            """.formatted(HtmlEmailSupport.escapeHtml(firstName), HtmlEmailSupport.escapeHtml(email), temporaryPassword, frontendUrl);
     }
 }

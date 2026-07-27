@@ -83,7 +83,7 @@ public class DocumentEmailService {
     }
 
     private String subjectFor(GeneratedDocument doc) {
-        String chamaName = doc.chama.name;
+        String chamaName = HtmlEmailSupport.forSubject(doc.chama.name);
         return switch (doc.documentType) {
             case CONTRIBUTION_RECEIPT -> "Your contribution receipt from " + chamaName;
             case LOAN_STATEMENT -> "Your loan statement from " + chamaName;
@@ -145,6 +145,11 @@ public class DocumentEmailService {
                 </table>
               </body>
             </html>
-            """.formatted(firstName, documentLabel(doc.documentType), doc.chama.name, doc.documentNumber, doc.chama.name);
+            """.formatted(
+                HtmlEmailSupport.escapeHtml(firstName),
+                documentLabel(doc.documentType),
+                HtmlEmailSupport.escapeHtml(doc.chama.name),
+                doc.documentNumber,
+                HtmlEmailSupport.escapeHtml(doc.chama.name));
     }
 }
