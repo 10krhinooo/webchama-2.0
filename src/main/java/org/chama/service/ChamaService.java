@@ -26,11 +26,18 @@ import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
 import org.chama.security.CurrentUser;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 
 @ApplicationScoped
 public class ChamaService {
+
+    // Excludes visually ambiguous characters (0/O, 1/I/L) since a join code is meant to be read
+    // off a phone screen or WhatsApp message and retyped by hand.
+    private static final String JOIN_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    private static final int JOIN_CODE_LENGTH = 8;
+    private static final SecureRandom JOIN_CODE_RANDOM = new SecureRandom();
 
     @Inject
     ChamaRepository chamaRepository;
@@ -115,6 +122,7 @@ public class ChamaService {
         chama.contributionAmount = dto.contributionAmount();
         chama.meetingDay = dto.meetingDay();
         chama.savingsTarget = dto.savingsTarget();
+        chama.joinCode = generateUniqueJoinCode();
         chamaRepository.persist(chama);
 
         Member founder = new Member();
@@ -147,6 +155,26 @@ public class ChamaService {
         chama.approvalThreshold = dto.approvalThreshold();
         chama.savingsTarget = dto.savingsTarget();
         return chama;
+    }
+
+    /** Chairperson-triggered rotation if a join code leaks or a chama wants to close signups. */
+    @Transactional
+    public Chama regenerateJoinCode(Long id) {
+        Chama chama = get(id);
+        chama.joinCode = generateUniqueJoinCode();
+        return chama;
+    }
+
+    private String generateUniqueJoinCode() {
+        String code;
+        do {
+            StringBuilder sb = new StringBuilder(JOIN_CODE_LENGTH);
+            for (int i = 0; i < JOIN_CODE_LENGTH; i++) {
+                sb.append(JOIN_CODE_ALPHABET.charAt(JOIN_CODE_RANDOM.nextInt(JOIN_CODE_ALPHABET.length())));
+            }
+            code = sb.toString();
+        } while (chamaRepository.joinCodeExists(code));
+        return code;
     }
 
     @Transactional

@@ -1,5 +1,7 @@
 package org.chama.rest;
 
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -35,13 +37,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class ChamaResourceTest {
+
+    @Inject
+    MockMailbox mailbox;
 
     @Inject
     ActivityLogRepository activityLogRepository;
@@ -106,6 +116,7 @@ class ChamaResourceTest {
     @BeforeEach
     @Transactional
     void cleanDatabase() {
+        mailbox.clear();
         documentDeliveryAttemptRepository.deleteAll();
         generatedDocumentRepository.deleteAll();
         meetingAttendanceRepository.deleteAll();
@@ -333,5 +344,178 @@ class ChamaResourceTest {
                 .statusCode(200)
                 .body("target", equalTo(50000))
                 .body("totalPaid", equalTo(1400.00f));
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void creatingAChamaGeneratesAUniqueJoinCode() {
+        given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then()
+                .statusCode(201)
+                .body("joinCode", org.hamcrest.Matchers.notNullValue())
+                .body("joinCode.length()", equalTo(8));
+    }
+
+    @Test
+    @TestSecurity(user = "second-timer")
+    void anAlreadyRegisteredUserCanJoinAnotherChamaWithItsJoinCode() {
+        String joinCode = QuarkusTransaction.requiringNew().call(() -> {
+            Chama chama = new Chama();
+            chama.name = "Somebody Else's Chama";
+            chama.type = org.chama.domain.enums.ChamaType.MERRY_GO_ROUND;
+            chama.contributionFrequency = org.chama.domain.enums.ContributionFrequency.MONTHLY;
+            chama.contributionAmount = new BigDecimal("500");
+            chamaRepository.persist(chama);
+            return chama.joinCode;
+        });
+
+        String joinBody = String.format("""
+            {"joinCode":"%s","fullName":"Second Timer","phone":"254700000010"}
+            """, joinCode);
+        given()
+            .contentType("application/json")
+            .body(joinBody)
+            .when().post("/api/chamas/join")
+            .then()
+                .statusCode(201)
+                .body("fullName", equalTo("Second Timer"))
+                .body("roles[0]", equalTo("MEMBER"));
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void joiningWithAnUnknownCodeReturns404() {
+        String joinBody = """
+            {"joinCode":"NOPE0000","fullName":"Nobody","phone":"254700000011"}
+            """;
+        given()
+            .contentType("application/json")
+            .body(joinBody)
+            .when().post("/api/chamas/join")
+            .then().statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void joiningAChamaTheCallerAlreadyBelongsToIsRejected() {
+        String joinCode = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("joinCode");
+
+        String joinBody = String.format("""
+            {"joinCode":"%s","fullName":"Founder Again","phone":"254700000000"}
+            """, joinCode);
+        given()
+            .contentType("application/json")
+            .body(joinBody)
+            .when().post("/api/chamas/join")
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void onlyTheChairpersonCanRegenerateTheJoinCode() {
+        int chamaId = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("id");
+        String originalCode = given()
+            .when().get("/api/chamas/{id}", chamaId)
+            .then().statusCode(200)
+            .extract().path("joinCode");
+
+        String newCode = given()
+            .contentType("application/json")
+            .when().post("/api/chamas/{id}/join-code/regenerate", chamaId)
+            .then()
+                .statusCode(200)
+                .extract().path("joinCode");
+
+        org.junit.jupiter.api.Assertions.assertNotEquals(originalCode, newCode);
+
+        String rejoinWithOldCode = String.format("""
+            {"joinCode":"%s","fullName":"Late Joiner","phone":"254700000012"}
+            """, originalCode);
+        given()
+            .contentType("application/json")
+            .body(rejoinWithOldCode)
+            .when().post("/api/chamas/join")
+            .then().statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "not-chairperson")
+    void aNonChairpersonCannotRegenerateTheJoinCode() {
+        int chamaId = QuarkusTransaction.requiringNew().call(() -> {
+            Chama chama = new Chama();
+            chama.name = "Somebody Else's Chama";
+            chama.type = org.chama.domain.enums.ChamaType.MERRY_GO_ROUND;
+            chama.contributionFrequency = org.chama.domain.enums.ContributionFrequency.MONTHLY;
+            chama.contributionAmount = new BigDecimal("500");
+            chamaRepository.persist(chama);
+            return chama.id.intValue();
+        });
+
+        given()
+            .contentType("application/json")
+            .when().post("/api/chamas/{id}/join-code/regenerate", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void chairpersonCanEmailTheJoinCodeToAProspectiveMember() {
+        int chamaId = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("id");
+        String joinCode = given()
+            .when().get("/api/chamas/{id}", chamaId)
+            .then().statusCode(200)
+            .extract().path("joinCode");
+
+        given()
+            .contentType("application/json")
+            .body("{\"email\":\"prospect@example.com\"}")
+            .when().post("/api/chamas/{id}/join-code/invite", chamaId)
+            .then().statusCode(202);
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<Mail> sent = mailbox.getMailsSentTo("prospect@example.com");
+            assertEquals(1, sent.size());
+            Mail mail = sent.get(0);
+            assertTrue(mail.getSubject().contains("Tumaini Chama"));
+            assertTrue(mail.getHtml().contains(joinCode));
+        });
+    }
+
+    @Test
+    @TestSecurity(user = "not-chairperson")
+    void aNonChairpersonCannotEmailTheJoinCode() {
+        int chamaId = QuarkusTransaction.requiringNew().call(() -> {
+            Chama chama = new Chama();
+            chama.name = "Somebody Else's Chama";
+            chama.type = org.chama.domain.enums.ChamaType.MERRY_GO_ROUND;
+            chama.contributionFrequency = org.chama.domain.enums.ContributionFrequency.MONTHLY;
+            chama.contributionAmount = new BigDecimal("500");
+            chamaRepository.persist(chama);
+            return chama.id.intValue();
+        });
+
+        given()
+            .contentType("application/json")
+            .body("{\"email\":\"prospect@example.com\"}")
+            .when().post("/api/chamas/{id}/join-code/invite", chamaId)
+            .then().statusCode(403);
     }
 }
