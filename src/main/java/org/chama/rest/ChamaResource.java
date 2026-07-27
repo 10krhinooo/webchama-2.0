@@ -16,6 +16,9 @@ import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.ChamaDto;
 import org.chama.dto.CreateChamaDto;
+import org.chama.dto.InviteToChamaDto;
+import org.chama.dto.JoinChamaDto;
+import org.chama.dto.MemberDto;
 import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateAutoPushSettingsDto;
@@ -23,6 +26,8 @@ import org.chama.dto.UpdateChamaDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
 import org.chama.service.ChamaService;
+import org.chama.service.MemberService;
+import org.chama.service.notification.ChamaInvitationEmailService;
 
 import java.util.List;
 
@@ -34,6 +39,12 @@ public class ChamaResource {
 
     @Inject
     ChamaService chamaService;
+
+    @Inject
+    MemberService memberService;
+
+    @Inject
+    ChamaInvitationEmailService chamaInvitationEmailService;
 
     @Inject
     TenantAccessService tenantAccessService;
@@ -84,6 +95,33 @@ public class ChamaResource {
     public ChamaDto updateAutoPushSettings(@PathParam("id") Long id, @Valid UpdateAutoPushSettingsDto dto) {
         tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON, MemberRoleType.TREASURER);
         return ChamaDto.from(chamaService.updateAutoPushSettings(id, dto));
+    }
+
+    /** Self-service: redeem another chama's join code to become a MEMBER there. Issue #170. */
+    @POST
+    @Path("/join")
+    public Response join(@Valid JoinChamaDto dto) {
+        var member = memberService.joinViaCode(dto, currentUser);
+        return Response.status(Response.Status.CREATED)
+            .entity(MemberDto.from(member, memberService.rolesOf(member.id)))
+            .build();
+    }
+
+    @POST
+    @Path("/{id}/join-code/regenerate")
+    public ChamaDto regenerateJoinCode(@PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON);
+        return ChamaDto.from(chamaService.regenerateJoinCode(id));
+    }
+
+    /** Chairperson emails the chama's current join code to a prospective member. Issue #170. */
+    @POST
+    @Path("/{id}/join-code/invite")
+    public Response inviteByEmail(@PathParam("id") Long id, @Valid InviteToChamaDto dto) {
+        tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON);
+        var chama = chamaService.get(id);
+        chamaInvitationEmailService.sendJoinInvite(dto.email(), chama.name, chama.joinCode);
+        return Response.accepted().build();
     }
 
     @DELETE

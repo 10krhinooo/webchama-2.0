@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import org.chama.domain.enums.ChamaStatus;
 import org.chama.domain.enums.ChamaType;
@@ -16,6 +17,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.Instant;
 
 @Entity
@@ -78,4 +80,25 @@ public class Chama extends PanacheEntityBase {
 
     @Column(name = "created_at", nullable = false)
     public Instant createdAt = Instant.now();
+
+    // Short shareable code an already-registered user redeems to self-join this chama (issue
+    // #170), instead of only via chairperson-added-by-email. ChamaService.create() generates this
+    // with a DB uniqueness check before persisting; the @PrePersist fallback below only exists so
+    // code that persists a Chama directly (tests, other seed paths) doesn't need to know about it.
+    @Column(name = "join_code", nullable = false, unique = true)
+    public String joinCode;
+
+    private static final String JOIN_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    private static final SecureRandom JOIN_CODE_RANDOM = new SecureRandom();
+
+    @PrePersist
+    void ensureJoinCode() {
+        if (joinCode == null) {
+            StringBuilder sb = new StringBuilder(8);
+            for (int i = 0; i < 8; i++) {
+                sb.append(JOIN_CODE_ALPHABET.charAt(JOIN_CODE_RANDOM.nextInt(JOIN_CODE_ALPHABET.length())));
+            }
+            joinCode = sb.toString();
+        }
+    }
 }

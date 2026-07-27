@@ -45,7 +45,9 @@ Seed users (Keycloak, realm `chama`): `admin/SuperAdmin1234!` (SUPER_ADMIN), `ch
 ## Features
 
 - **Chamas and membership**: multi-tenant, a member can belong to several chamas via `member_role`, each
-  with its own per-chama role. Tenant isolation is enforced on every request.
+  with its own per-chama role. Tenant isolation is enforced on every request. An already-registered
+  user can self-join another chama with a short join code (chairperson-generated, regenerable, and
+  emailable to a prospective member), instead of only being added manually by a chairperson.
 - **Contributions**: due dates, partial payments, overdue flagging, on-time streak tracking, and
   opt-in scheduled auto-STK-push so a member's contribution can be charged automatically when due.
 - **Payments**: M-Pesa STK Push and Flutterwave card checkout for contributions, self-service only (a

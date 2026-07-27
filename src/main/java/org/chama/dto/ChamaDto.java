@@ -22,7 +22,8 @@ public record ChamaDto(
     ChamaStatus status,
     boolean autoPushEnabled,
     int autoPushRetryHours,
-    Instant createdAt) {
+    Instant createdAt,
+    String joinCode) {
 
     public static ChamaDto from(Chama chama) {
         return new ChamaDto(
@@ -39,6 +40,7 @@ public record ChamaDto(
             chama.status,
             chama.autoPushEnabled,
             chama.autoPushRetryHours,
-            chama.createdAt);
+            chama.createdAt,
+            chama.joinCode);
     }
 }

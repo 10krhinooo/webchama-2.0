@@ -1,4 +1,5 @@
 import { client } from './client'
+import type { Member } from './members'
 
 export type ChamaType = 'MERRY_GO_ROUND' | 'TABLE_BANKING' | 'INVESTMENT_GROUP'
 export type ContributionFrequency = 'WEEKLY' | 'MONTHLY'
@@ -18,6 +19,19 @@ export interface Chama {
   autoPushEnabled: boolean
   autoPushRetryHours: number
   createdAt: string
+  joinCode: string
+}
+
+export interface JoinChamaRequest {
+  joinCode: string
+  fullName: string
+  phone: string
+  nationalId?: string
+  nextOfKin?: string
+}
+
+export interface InviteToChamaRequest {
+  email: string
 }
 
 export interface UpdateAutoPushSettingsRequest {
@@ -100,4 +114,18 @@ export async function updateAutoPushSettings(
 export async function getSavingsProgress(id: number): Promise<SavingsProgress> {
   const { data } = await client.get<SavingsProgress>(`/chamas/${id}/savings-progress`)
   return data
+}
+
+export async function joinChama(payload: JoinChamaRequest): Promise<Member> {
+  const { data } = await client.post<Member>('/chamas/join', payload)
+  return data
+}
+
+export async function regenerateJoinCode(id: number): Promise<Chama> {
+  const { data } = await client.post<Chama>(`/chamas/${id}/join-code/regenerate`)
+  return data
+}
+
+export async function inviteToChama(id: number, payload: InviteToChamaRequest): Promise<void> {
+  await client.post(`/chamas/${id}/join-code/invite`, payload)
 }
