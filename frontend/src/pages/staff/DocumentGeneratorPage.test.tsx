@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import DocumentGeneratorPage from './DocumentGeneratorPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/documents', () => ({
   getDocuments: vi.fn(),
@@ -120,7 +121,7 @@ describe('DocumentGeneratorPage', () => {
     // Step 0: Setup
     await waitFor(() => expect(screen.getByLabelText(/member/i)).toBeTruthy())
     expect(screen.getByText('Next')).toHaveProperty('disabled', true)
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.click(screen.getByText('Next'))
 
     // Step 1: Line Items
@@ -158,7 +159,7 @@ describe('DocumentGeneratorPage', () => {
     await waitFor(() => expect(screen.getByText(/no documents generated yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ New Document'))
     await waitFor(() => expect(screen.getByLabelText(/member/i)).toBeTruthy())
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.click(screen.getByText('Next'))
 
     await waitFor(() => expect(screen.getByLabelText('Description')).toBeTruthy())
@@ -182,7 +183,7 @@ describe('DocumentGeneratorPage', () => {
     await waitFor(() => expect(screen.getByText(/no documents generated yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ New Document'))
     await waitFor(() => expect(screen.getByLabelText(/member/i)).toBeTruthy())
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.click(screen.getByText('Next'))
     await waitFor(() => expect(screen.getByLabelText('Description')).toBeTruthy())
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Fee' } })
@@ -209,7 +210,7 @@ describe('DocumentGeneratorPage', () => {
     await waitFor(() => expect(screen.getByText(/no documents generated yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ New Document'))
     await waitFor(() => expect(screen.getByLabelText(/member/i)).toBeTruthy())
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.click(screen.getByText('Next'))
 
     await waitFor(() => expect(screen.getAllByLabelText('Description')).toHaveLength(1))

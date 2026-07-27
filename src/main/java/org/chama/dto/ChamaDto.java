@@ -20,6 +20,8 @@ public record ChamaDto(
     BigDecimal approvalThreshold,
     BigDecimal savingsTarget,
     ChamaStatus status,
+    boolean autoPushEnabled,
+    int autoPushRetryHours,
     Instant createdAt,
     String joinCode) {
 
@@ -36,6 +38,8 @@ public record ChamaDto(
             chama.approvalThreshold,
             chama.savingsTarget,
             chama.status,
+            chama.autoPushEnabled,
+            chama.autoPushRetryHours,
             chama.createdAt,
             chama.joinCode);
     }

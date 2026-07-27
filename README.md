@@ -13,7 +13,7 @@ See the GitHub project board for tracked issues: https://github.com/users/10krhi
 | Layer | Tech |
 |---|---|
 | Backend | Quarkus 3.37.3, Java 21, Maven |
-| Frontend | React 19 + Vite + TypeScript + Tailwind CSS 3 (`frontend/`) |
+| Frontend | React 19 + Vite + TypeScript + Tailwind CSS 3, shadcn/ui primitives (`frontend/`) |
 | Database | PostgreSQL 16 via Flyway migrations |
 | Auth | Keycloak 24 OIDC, realm `chama`. `SUPER_ADMIN` is a platform-wide Keycloak realm role; `CHAIRPERSON`, `TREASURER`, `SECRETARY`, `MEMBER` are per-chama roles stored in the `member_role` table, not the JWT, since a member can hold different roles in different chamas |
 | Payments | M-Pesa Daraja STK Push (contributions) and B2C (loan disbursement), Flutterwave card payments, both with webhook signature verification and idempotent crediting |
@@ -51,7 +51,9 @@ Seed users (Keycloak, realm `chama`): `admin/SuperAdmin1234!` (SUPER_ADMIN), `ch
 - **Contributions**: due dates, partial payments, overdue flagging, on-time streak tracking, and
   opt-in scheduled auto-STK-push so a member's contribution can be charged automatically when due.
 - **Payments**: M-Pesa STK Push and Flutterwave card checkout for contributions, self-service only (a
-  member can only pay their own remaining balance). M-Pesa B2C for loan disbursement.
+  member can only pay their own remaining balance). M-Pesa B2C for loan disbursement. A background
+  sweep reconciles M-Pesa payments still stuck PENDING after a lost or delayed Daraja callback, and
+  chairpersons/treasurers can tune or disable the scheduled auto-STK-push per chama.
 - **Loans**: request, chairperson/treasurer approval or rejection, repayment schedule and tracking,
   member credit scoring derived from contribution consistency and repayment history.
 - **Payout rotation**: define the "merry-go-round" order, track whose turn it is, mark disbursed.

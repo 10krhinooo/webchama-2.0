@@ -104,13 +104,13 @@ describe('MyChamasPage', () => {
 
   it('joins a chama via the join modal and navigates to its dashboard', async () => {
     mockJoinChama.mockResolvedValue({ id: 9, chamaId: 42, fullName: 'New Joiner' })
-    const { container } = renderPage()
+    renderPage()
     await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: /join a chama/i }))
     fireEvent.change(screen.getByLabelText(/join code/i), { target: { value: 'ab12cd34' } })
     fireEvent.change(screen.getByLabelText(/your full name/i), { target: { value: 'New Joiner' } })
-    fireEvent.change(container.querySelector('input[type="tel"]')!, { target: { value: '+254700000099' } })
+    fireEvent.change(document.querySelector('input[type="tel"]')!, { target: { value: '+254700000099' } })
     fireEvent.click(screen.getByRole('button', { name: /^join chama$/i }))
 
     await waitFor(() =>
@@ -123,13 +123,13 @@ describe('MyChamasPage', () => {
 
   it('shows an error inside the join modal when the code is invalid', async () => {
     mockJoinChama.mockRejectedValue(new Error('Chama not found'))
-    const { container } = renderPage()
+    renderPage()
     await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: /join a chama/i }))
     fireEvent.change(screen.getByLabelText(/join code/i), { target: { value: 'NOPE0000' } })
     fireEvent.change(screen.getByLabelText(/your full name/i), { target: { value: 'New Joiner' } })
-    fireEvent.change(container.querySelector('input[type="tel"]')!, { target: { value: '+254700000099' } })
+    fireEvent.change(document.querySelector('input[type="tel"]')!, { target: { value: '+254700000099' } })
     fireEvent.click(screen.getByRole('button', { name: /^join chama$/i }))
 
     await waitFor(() => expect(screen.getByText('Chama not found')).toBeTruthy())

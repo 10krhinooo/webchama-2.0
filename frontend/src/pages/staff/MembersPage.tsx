@@ -25,6 +25,7 @@ import PhoneInput from '../../components/ui/PhoneInput'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Pagination from '../../components/ui/Pagination'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 
 const ALL_ROLES: MemberRoleType[] = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'MEMBER']
@@ -194,54 +195,52 @@ export default function MembersPage() {
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={isChairperson} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Phone</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Roles</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                {isChairperson && <th />}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {members.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted text-sm">No members yet.</td></tr>
-              )}
-              {pageItems.map((m) => (
-                <tr key={m.id} className="hover:bg-paper-dim/30">
-                  <td className="px-4 py-3 font-medium text-ink">{m.fullName}</td>
-                  <td className="px-4 py-3 font-mono text-muted">{m.phone}</td>
-                  <td className="px-4 py-3 space-x-1">
-                    {m.roles.map((r) => <Badge key={r} label={r} variant="primary" />)}
-                  </td>
-                  <td className="px-4 py-3"><Badge label={m.status} variant={statusVariant(m.status)} /></td>
-                  {isChairperson && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(m)} className="rounded px-2 py-1.5 text-primary text-xs hover:bg-primary/10">Edit</button>
-                        {m.status === 'ACTIVE' ? (
-                          <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'SUSPENDED')}
-                            className="rounded px-2 py-1.5 text-warning text-xs hover:bg-warning/10 disabled:opacity-40">Suspend</button>
-                        ) : (
-                          <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'ACTIVE')}
-                            className="rounded px-2 py-1.5 text-success text-xs hover:bg-success/10 disabled:opacity-40">Activate</button>
-                        )}
-                        {m.status !== 'EXITED' && (
-                          <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'EXITED')}
-                            className="rounded px-2 py-1.5 text-muted text-xs hover:bg-paper-dim disabled:opacity-40">Mark exited</button>
-                        )}
-                        <span className="mx-1 h-4 w-px bg-black/10" aria-hidden="true" />
-                        <button onClick={() => setRemoving(m)} className="rounded px-2 py-1.5 text-danger text-xs hover:bg-danger/10">Remove</button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Name</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead>Roles</TableHead>
+              <TableHead>Status</TableHead>
+              {isChairperson && <TableHead />}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.length === 0 && (
+              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">No members yet.</TableCell></TableRow>
+            )}
+            {pageItems.map((m) => (
+              <TableRow key={m.id}>
+                <TableCell className="font-medium text-ink">{m.fullName}</TableCell>
+                <TableCell className="font-mono text-muted">{m.phone}</TableCell>
+                <TableCell className="space-x-1">
+                  {m.roles.map((r) => <Badge key={r} label={r} variant="primary" />)}
+                </TableCell>
+                <TableCell><Badge label={m.status} variant={statusVariant(m.status)} /></TableCell>
+                {isChairperson && (
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => openEdit(m)} className="rounded px-2 py-1.5 text-primary text-xs hover:bg-primary/10">Edit</button>
+                      {m.status === 'ACTIVE' ? (
+                        <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'SUSPENDED')}
+                          className="rounded px-2 py-1.5 text-warning text-xs hover:bg-warning/10 disabled:opacity-40">Suspend</button>
+                      ) : (
+                        <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'ACTIVE')}
+                          className="rounded px-2 py-1.5 text-success text-xs hover:bg-success/10 disabled:opacity-40">Activate</button>
+                      )}
+                      {m.status !== 'EXITED' && (
+                        <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'EXITED')}
+                          className="rounded px-2 py-1.5 text-muted text-xs hover:bg-paper-dim disabled:opacity-40">Mark exited</button>
+                      )}
+                      <span className="mx-1 h-4 w-px bg-black/10" aria-hidden="true" />
+                      <button onClick={() => setRemoving(m)} className="rounded px-2 py-1.5 text-danger text-xs hover:bg-danger/10">Remove</button>
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {!loading && !roleLoading && (

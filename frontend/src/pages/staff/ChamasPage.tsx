@@ -7,6 +7,7 @@ import {
   deleteChama,
   regenerateJoinCode,
   inviteToChama,
+  updateAutoPushSettings,
   type Chama,
   type CreateChamaRequest,
   type UpdateChamaRequest,
@@ -25,6 +26,7 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Textarea from '../../components/ui/Textarea'
 import Pagination from '../../components/ui/Pagination'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 
 const EMPTY_FORM = {
@@ -56,6 +58,10 @@ export default function ChamasPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteNotice, setInviteNotice] = useState<string | null>(null)
+  const [autoPushEnabled, setAutoPushEnabled] = useState(true)
+  const [autoPushRetryHours, setAutoPushRetryHours] = useState('24')
+  const [autoPushSaving, setAutoPushSaving] = useState(false)
+  const [autoPushNotice, setAutoPushNotice] = useState<string | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(chamas)
 
   const refresh = () => {
@@ -86,6 +92,9 @@ export default function ChamasPage() {
       creatorFullName: '',
       creatorPhone: '',
     })
+    setAutoPushEnabled(chama.autoPushEnabled)
+    setAutoPushRetryHours(String(chama.autoPushRetryHours))
+    setAutoPushNotice(null)
     setModalNotice(null)
     setCopied(false)
     setInviteEmail('')
@@ -128,6 +137,25 @@ export default function ChamasPage() {
       setInviteNotice(extractErrorMessage(err))
     } finally {
       setInviting(false)
+    }
+  }
+
+  const handleSaveAutoPushSettings = async () => {
+    if (!editing) return
+    setAutoPushSaving(true)
+    setAutoPushNotice(null)
+    try {
+      const updated = await updateAutoPushSettings(editing.id, {
+        autoPushEnabled,
+        autoPushRetryHours: Number(autoPushRetryHours),
+      })
+      setEditing(updated)
+      setChamas((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      setNotice({ variant: 'success', message: 'Auto-push settings saved.' })
+    } catch (err) {
+      setAutoPushNotice(extractErrorMessage(err))
+    } finally {
+      setAutoPushSaving(false)
     }
   }
 
@@ -196,42 +224,40 @@ export default function ChamasPage() {
       {loading ? (
         <TablePageSkeleton withFilter={false} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Contribution</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {chamas.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted text-sm">You are not part of any chama yet.</td></tr>
-              )}
-              {pageItems.map((c) => (
-                <tr key={c.id} className="hover:bg-paper-dim/30">
-                  <td className="px-4 py-3 font-medium text-ink">
-                    <Link to={`/chamas/${c.id}/members`} className="hover:underline">{c.name}</Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted">{c.type.replaceAll('_', ' ')}</td>
-                  <td className="px-4 py-3 font-mono text-muted">
-                    {c.currency} {c.contributionAmount.toLocaleString()} / {c.contributionFrequency.toLowerCase()}
-                  </td>
-                  <td className="px-4 py-3"><Badge label={c.status} variant={statusVariant(c.status)} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-3">
-                      <button onClick={() => openEdit(c)} className="text-primary text-xs hover:underline">Edit</button>
-                      <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Contribution</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {chamas.length === 0 && (
+              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">You are not part of any chama yet.</TableCell></TableRow>
+            )}
+            {pageItems.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-medium text-ink">
+                  <Link to={`/chamas/${c.id}/members`} className="hover:underline">{c.name}</Link>
+                </TableCell>
+                <TableCell className="text-muted">{c.type.replaceAll('_', ' ')}</TableCell>
+                <TableCell className="font-mono text-muted">
+                  {c.currency} {c.contributionAmount.toLocaleString()} / {c.contributionFrequency.toLowerCase()}
+                </TableCell>
+                <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-end gap-3">
+                    <button onClick={() => openEdit(c)} className="text-primary text-xs hover:underline">Edit</button>
+                    <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {!loading && (
@@ -252,7 +278,7 @@ export default function ChamasPage() {
             </FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Type" htmlFor="chama-type" required>
-                <Select id="chama-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Chama['type'] })}>
+                <Select id="chama-type" value={form.type} onChange={(v) => setForm({ ...form, type: v as Chama['type'] })}>
                   <option value="MERRY_GO_ROUND">Merry-go-round</option>
                   <option value="TABLE_BANKING">Table banking</option>
                   <option value="INVESTMENT_GROUP">Investment group</option>
@@ -262,7 +288,7 @@ export default function ChamasPage() {
                 <Select
                   id="chama-frequency"
                   value={form.contributionFrequency}
-                  onChange={(e) => setForm({ ...form, contributionFrequency: e.target.value as Chama['contributionFrequency'] })}
+                  onChange={(v) => setForm({ ...form, contributionFrequency: v as Chama['contributionFrequency'] })}
                 >
                   <option value="WEEKLY">Weekly</option>
                   <option value="MONTHLY">Monthly</option>
@@ -308,6 +334,53 @@ export default function ChamasPage() {
                 placeholder="e.g. 500000"
               />
             </FormField>
+
+            {editing && (
+              <div className="border-t border-ink/10 pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-ink">Auto-push settings</h3>
+                <p className="text-xs text-muted">
+                  Controls the automatic M-Pesa prompt sent to members who have opted in to
+                  auto-pay on their contribution's due date.
+                </p>
+                {autoPushNotice && (
+                  <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{autoPushNotice}</div>
+                )}
+                <label className="flex items-center gap-2 text-sm text-ink/80">
+                  <input
+                    type="checkbox"
+                    checked={autoPushEnabled}
+                    onChange={(e) => setAutoPushEnabled(e.target.checked)}
+                    aria-label="Enable auto-push"
+                  />
+                  Enable automatic M-Pesa prompts
+                </label>
+                <FormField
+                  label="Retry after (hours)"
+                  htmlFor="chama-auto-push-retry-hours"
+                  hint="How long to wait before re-sending a prompt to a member who hasn't paid yet."
+                >
+                  <Input
+                    id="chama-auto-push-retry-hours"
+                    type="number"
+                    min="1"
+                    max="168"
+                    step="1"
+                    value={autoPushRetryHours}
+                    onChange={(e) => setAutoPushRetryHours(e.target.value)}
+                    disabled={!autoPushEnabled}
+                  />
+                </FormField>
+                <LoadingButton
+                  type="button"
+                  variant="secondary"
+                  loading={autoPushSaving}
+                  loadingText="Saving…"
+                  onClick={handleSaveAutoPushSettings}
+                >
+                  Save Auto-Push Settings
+                </LoadingButton>
+              </div>
+            )}
 
             {!editing && (
               <>

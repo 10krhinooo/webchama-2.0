@@ -20,6 +20,8 @@ import {
   payContributionWithMpesa,
   initiateCardPayment,
   verifyCardPayment,
+  getPayments,
+  getMyPayments,
   type CreateContributionRequest,
 } from './contributions'
 
@@ -101,5 +103,19 @@ describe('contributions api', () => {
       params: { txRef: 'tx_123', transactionId: 999 },
     })
     expect(result).toBe(true)
+  })
+
+  it('getPayments fetches every payment attempt for the chama and unwraps data', async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 1 }] })
+    const result = await getPayments(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/payments')
+    expect(result).toEqual([{ id: 1 }])
+  })
+
+  it('getMyPayments fetches the caller own payment attempts and unwraps data', async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 2 }] })
+    const result = await getMyPayments(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/payments/mine')
+    expect(result).toEqual([{ id: 2 }])
   })
 })

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ResolutionsPage from './ResolutionsPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/resolutions', () => ({
   getResolutions: vi.fn(),
@@ -97,7 +98,7 @@ describe('ResolutionsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no resolutions yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Open Resolution'))
-    fireEvent.change(screen.getByLabelText(/meeting/i), { target: { value: '7' } })
+    selectOption(/meeting/i, '2026-08-15 — Discuss Q3 contributions')
     fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Approve loan for Jane Doe' } })
     fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'Show of hands' } })
     fireEvent.click(screen.getByText('Open Resolution', { selector: 'button[type="submit"]' }))
@@ -117,7 +118,7 @@ describe('ResolutionsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no resolutions yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Open Resolution'))
-    fireEvent.change(screen.getByLabelText(/meeting/i), { target: { value: '7' } })
+    selectOption(/meeting/i, '2026-08-15 — Discuss Q3 contributions')
     fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Approve loan for Jane Doe' } })
     fireEvent.click(screen.getByText('Open Resolution', { selector: 'button[type="submit"]' }))
 

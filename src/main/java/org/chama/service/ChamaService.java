@@ -11,6 +11,7 @@ import org.chama.domain.model.MemberRole;
 import org.chama.dto.CreateChamaDto;
 import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
+import org.chama.dto.UpdateAutoPushSettingsDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
@@ -175,6 +176,14 @@ public class ChamaService {
             code = sb.toString();
         } while (chamaRepository.joinCodeExists(code));
         return code;
+    }
+
+    @Transactional
+    public Chama updateAutoPushSettings(Long id, UpdateAutoPushSettingsDto dto) {
+        Chama chama = get(id);
+        chama.autoPushEnabled = dto.autoPushEnabled();
+        chama.autoPushRetryHours = dto.autoPushRetryHours();
+        return chama;
     }
 
     @Transactional

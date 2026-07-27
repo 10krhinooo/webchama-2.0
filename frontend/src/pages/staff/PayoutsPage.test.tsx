@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import PayoutsPage from './PayoutsPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/payouts', () => ({
   getPayoutSchedule: vi.fn(),
@@ -149,7 +150,7 @@ describe('PayoutsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no rotation schedule generated yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('Generate Schedule'))
-    fireEvent.change(screen.getByLabelText(/rotation order/i), { target: { value: 'AGREED' } })
+    selectOption(/rotation order/i, 'Agreed order')
 
     await waitFor(() => expect(screen.getByText(/1\. Jane Doe/)).toBeTruthy())
     fireEvent.click(screen.getAllByText('↓')[0])
