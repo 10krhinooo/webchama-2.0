@@ -61,7 +61,9 @@ Seed users (Keycloak, realm `chama`): `admin/SuperAdmin1234!` (SUPER_ADMIN), `ch
 - **Documents**: PDF statement and receipt generation, plus a freeform document generator, delivered
   by email.
 - **Audit trail**: an immutable activity log covering financial and governance events, and a synced
-  feed of Keycloak security events (logins, failed attempts, password changes).
+  feed of Keycloak security events (logins, failed attempts, password changes), viewable on a
+  SUPER_ADMIN-only security events page with suspicious rows highlighted and email alerts on
+  account lockouts.
 - **Security**: per-IP rate limiting on payment and webhook endpoints, fail-closed Flutterwave webhook
   signature verification, idempotent M-Pesa callback handling, hardened Keycloak realm settings
   (enforced SSL, ROPC disabled on the SPA client), and a branded, custom Keycloak login theme.
