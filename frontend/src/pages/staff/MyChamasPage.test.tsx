@@ -45,7 +45,7 @@ describe('MyChamasPage', () => {
     vi.clearAllMocks()
     mockGetMyChamas.mockResolvedValue([myChama])
     mockUseKeycloak.mockReturnValue({
-      keycloak: { tokenParsed: { given_name: 'Ann', name: 'Ann Wanjiru' } },
+      keycloak: { tokenParsed: { given_name: 'Ann', name: 'Ann Wanjiru' }, hasRealmRole: vi.fn().mockReturnValue(false) },
     })
   })
 
@@ -62,13 +62,13 @@ describe('MyChamasPage', () => {
   })
 
   it('falls back to splitting the full name when given_name is absent', async () => {
-    mockUseKeycloak.mockReturnValue({ keycloak: { tokenParsed: { name: 'Peter Otieno' } } })
+    mockUseKeycloak.mockReturnValue({ keycloak: { tokenParsed: { name: 'Peter Otieno' }, hasRealmRole: vi.fn().mockReturnValue(false) } })
     renderPage()
     await waitFor(() => expect(screen.getByText('Hello, Peter')).toBeTruthy())
   })
 
   it('omits the greeting when no name claim is present', async () => {
-    mockUseKeycloak.mockReturnValue({ keycloak: { tokenParsed: {} } })
+    mockUseKeycloak.mockReturnValue({ keycloak: { tokenParsed: {}, hasRealmRole: vi.fn().mockReturnValue(false) } })
     renderPage()
     await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
     expect(screen.queryByText(/^Hello,/)).toBeNull()
@@ -98,5 +98,21 @@ describe('MyChamasPage', () => {
     renderPage()
     await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
     expect(screen.getByRole('link', { name: /manage chamas/i })).toHaveAttribute('href', '/chamas')
+  })
+
+  it('redirects a SUPER_ADMIN to the platform overview instead of listing chamas', async () => {
+    mockUseKeycloak.mockReturnValue({
+      keycloak: { tokenParsed: { given_name: 'Ann' }, hasRealmRole: vi.fn().mockReturnValue(true) },
+    })
+    render(
+      <MemoryRouter initialEntries={['/my-chamas']}>
+        <Routes>
+          <Route path="/my-chamas" element={<MyChamasPage />} />
+          <Route path="/admin/overview" element={<div>Platform Overview Page</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByText('Platform Overview Page')).toBeTruthy())
+    expect(mockGetMyChamas).not.toHaveBeenCalled()
   })
 })

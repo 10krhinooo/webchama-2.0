@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
 import { getMyChamas, type MyChama } from '../../api/chamas'
 import { roleBadgeText } from '../../utils/roleBadges'
@@ -10,10 +10,18 @@ export default function MyChamasPage() {
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const { keycloak } = useKeycloak()
+  const isSuperAdmin = keycloak.hasRealmRole('SUPER_ADMIN')
 
   useEffect(() => {
+    if (isSuperAdmin) return
     getMyChamas().then(setChamas).finally(() => setLoading(false))
-  }, [])
+  }, [isSuperAdmin])
+
+  // SUPER_ADMIN has no default chama membership (MIGRATION_PLAN.md section 5), the platform
+  // overview is its real landing page, not a per-chama picker.
+  if (isSuperAdmin) {
+    return <Navigate to="/admin/overview" replace />
+  }
 
   const tokenParsed = keycloak.tokenParsed as { given_name?: string; name?: string } | undefined
   const firstName = tokenParsed?.given_name ?? tokenParsed?.name?.split(' ')[0]
