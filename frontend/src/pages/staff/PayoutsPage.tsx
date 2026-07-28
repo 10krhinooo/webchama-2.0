@@ -12,6 +12,7 @@ import {
   type RotationOrderType,
 } from '../../api/payouts'
 import { getMembers, type Member } from '../../api/members'
+import { getChama, updateAutoPushSettings, type Chama } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
@@ -46,8 +47,14 @@ export default function PayoutsPage() {
   const [schedule, setSchedule] = useState<PayoutScheduleEntry[]>([])
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [chama, setChama] = useState<Chama | null>(null)
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
+
+  const [autoPushEnabled, setAutoPushEnabled] = useState(true)
+  const [autoPushRetryHours, setAutoPushRetryHours] = useState('24')
+  const [autoPushSaving, setAutoPushSaving] = useState(false)
+  const [autoPushNotice, setAutoPushNotice] = useState<string | null>(null)
 
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [scheduleForm, setScheduleForm] = useState(EMPTY_SCHEDULE_FORM)
@@ -70,11 +77,17 @@ export default function PayoutsPage() {
       getPayoutSchedule(chamaId),
       canManage ? getPayouts(chamaId) : getMyPayouts(chamaId),
       canManage ? getMembers(chamaId) : Promise.resolve([]),
+      canManage ? getChama(chamaId) : Promise.resolve(null),
     ])
-      .then(([s, p, m]) => {
+      .then(([s, p, m, c]) => {
         setSchedule(s)
         setPayouts(p)
         setMembers(m)
+        setChama(c)
+        if (c) {
+          setAutoPushEnabled(c.autoPushEnabled)
+          setAutoPushRetryHours(String(c.autoPushRetryHours))
+        }
       })
       .finally(() => setLoading(false))
   }
@@ -134,6 +147,24 @@ export default function PayoutsPage() {
       setPayoutModalNotice(extractErrorMessage(err))
     } finally {
       setCreatingPayout(false)
+    }
+  }
+
+  const handleSaveAutoPushSettings = async () => {
+    if (!chama) return
+    setAutoPushSaving(true)
+    setAutoPushNotice(null)
+    try {
+      const updated = await updateAutoPushSettings(chama.id, {
+        autoPushEnabled,
+        autoPushRetryHours: Number(autoPushRetryHours),
+      })
+      setChama(updated)
+      setNotice({ variant: 'success', message: 'Auto-push settings saved.' })
+    } catch (err) {
+      setAutoPushNotice(extractErrorMessage(err))
+    } finally {
+      setAutoPushSaving(false)
     }
   }
 
@@ -234,6 +265,53 @@ export default function PayoutsPage() {
               </TableBody>
             </Table>
           </section>
+
+          {canManage && chama && (
+            <section className="space-y-3 rounded-xl border border-black/10 bg-white p-4">
+              <h2 className="font-heading text-lg font-semibold text-ink">Auto-push settings</h2>
+              <p className="text-xs text-muted">
+                Controls the automatic M-Pesa prompt sent to members who have opted in to
+                auto-pay on their contribution's due date.
+              </p>
+              {autoPushNotice && (
+                <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{autoPushNotice}</div>
+              )}
+              <label className="flex items-center gap-2 text-sm text-ink/80">
+                <input
+                  type="checkbox"
+                  checked={autoPushEnabled}
+                  onChange={(e) => setAutoPushEnabled(e.target.checked)}
+                  aria-label="Enable auto-push"
+                />
+                Enable automatic M-Pesa prompts
+              </label>
+              <FormField
+                label="Retry after (hours)"
+                htmlFor="payout-auto-push-retry-hours"
+                hint="How long to wait before re-sending a prompt to a member who hasn't paid yet."
+              >
+                <Input
+                  id="payout-auto-push-retry-hours"
+                  type="number"
+                  min="1"
+                  max="168"
+                  step="1"
+                  value={autoPushRetryHours}
+                  onChange={(e) => setAutoPushRetryHours(e.target.value)}
+                  disabled={!autoPushEnabled}
+                />
+              </FormField>
+              <LoadingButton
+                type="button"
+                variant="secondary"
+                loading={autoPushSaving}
+                loadingText="Saving…"
+                onClick={handleSaveAutoPushSettings}
+              >
+                Save Auto-Push Settings
+              </LoadingButton>
+            </section>
+          )}
         </>
       )}
 

@@ -9,28 +9,14 @@ vi.mock('../../api/chamas', () => ({
   createChama: vi.fn(),
   updateChama: vi.fn(),
   deleteChama: vi.fn(),
-  regenerateJoinCode: vi.fn(),
-  inviteToChama: vi.fn(),
-  updateAutoPushSettings: vi.fn(),
 }))
 
-import {
-  getChamas,
-  createChama,
-  updateChama,
-  deleteChama,
-  regenerateJoinCode,
-  inviteToChama,
-  updateAutoPushSettings,
-} from '../../api/chamas'
+import { getChamas, createChama, updateChama, deleteChama } from '../../api/chamas'
 
 const mockGetChamas = getChamas as ReturnType<typeof vi.fn>
 const mockCreateChama = createChama as ReturnType<typeof vi.fn>
 const mockUpdateChama = updateChama as ReturnType<typeof vi.fn>
 const mockDeleteChama = deleteChama as ReturnType<typeof vi.fn>
-const mockRegenerateJoinCode = regenerateJoinCode as ReturnType<typeof vi.fn>
-const mockInviteToChama = inviteToChama as ReturnType<typeof vi.fn>
-const mockUpdateAutoPushSettings = updateAutoPushSettings as ReturnType<typeof vi.fn>
 
 const chama = {
   id: 1,
@@ -208,105 +194,5 @@ describe('ChamasPage', () => {
 
     fireEvent.click(screen.getByText('Edit'))
     expect(screen.getByLabelText(/savings target/i)).toHaveValue(250000)
-  })
-
-  it('shows the chama join code when editing and copies it to the clipboard', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    Object.assign(navigator, { clipboard: { writeText } })
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('Edit'))
-    expect(screen.getByDisplayValue('AB12CD34')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith('AB12CD34'))
-    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy()
-  })
-
-  it('regenerates the join code and reflects the new value', async () => {
-    mockRegenerateJoinCode.mockResolvedValue({ ...chama, joinCode: 'ZZ99YY88' })
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('Edit'))
-    fireEvent.click(screen.getByRole('button', { name: /regenerate code/i }))
-
-    await waitFor(() => expect(mockRegenerateJoinCode).toHaveBeenCalledWith(1))
-    await waitFor(() => expect(screen.getByDisplayValue('ZZ99YY88')).toBeTruthy())
-  })
-
-  it('sends a join-code invite by email', async () => {
-    mockInviteToChama.mockResolvedValue(undefined)
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('Edit'))
-    fireEvent.change(screen.getByLabelText(/invite by email/i), { target: { value: 'prospect@example.com' } })
-    fireEvent.click(screen.getByRole('button', { name: /send invite/i }))
-
-    await waitFor(() =>
-      expect(mockInviteToChama).toHaveBeenCalledWith(1, { email: 'prospect@example.com' }),
-    )
-    await waitFor(() => expect(screen.getByText(/invite sent to prospect@example.com/i)).toBeTruthy())
-  })
-
-  it('shows an error when the join-code invite fails', async () => {
-    mockInviteToChama.mockRejectedValue(new Error('mail server unavailable'))
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('Edit'))
-    fireEvent.change(screen.getByLabelText(/invite by email/i), { target: { value: 'prospect@example.com' } })
-    fireEvent.click(screen.getByRole('button', { name: /send invite/i }))
-
-    await waitFor(() => expect(screen.getByText('mail server unavailable')).toBeTruthy())
-  })
-
-  it('does not show auto-push settings when creating a new chama', async () => {
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('+ New Chama'))
-    expect(screen.queryByText('Auto-push settings')).toBeNull()
-  })
-
-  it('preloads auto-push settings when editing and saves changes', async () => {
-    mockUpdateAutoPushSettings.mockResolvedValue({ ...chama, autoPushEnabled: false, autoPushRetryHours: 48 })
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('Edit'))
-    expect(screen.getByLabelText('Enable auto-push')).toBeChecked()
-    expect(screen.getByLabelText(/retry after/i)).toHaveValue(24)
-
-    fireEvent.click(screen.getByLabelText('Enable auto-push'))
-    fireEvent.change(screen.getByLabelText(/retry after/i), { target: { value: '48' } })
-    fireEvent.click(screen.getByText('Save Auto-Push Settings'))
-
-    await waitFor(() =>
-      expect(mockUpdateAutoPushSettings).toHaveBeenCalledWith(1, { autoPushEnabled: false, autoPushRetryHours: 48 }),
-    )
-    await waitFor(() => expect(screen.getByText('Auto-push settings saved.')).toBeTruthy())
-  })
-
-  it('shows an error inside the modal when saving auto-push settings fails', async () => {
-    mockUpdateAutoPushSettings.mockRejectedValue(new Error('could not save settings'))
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('Edit'))
-    fireEvent.click(screen.getByText('Save Auto-Push Settings'))
-
-    await waitFor(() => expect(screen.getByText('could not save settings')).toBeTruthy())
-  })
-
-  it('disables the retry-hours field while auto-push is off', async () => {
-    mockGetChamas.mockResolvedValue([{ ...chama, autoPushEnabled: false }])
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
-
-    fireEvent.click(screen.getByText('Edit'))
-    expect(screen.getByLabelText(/retry after/i)).toBeDisabled()
   })
 })

@@ -11,7 +11,7 @@ import {
   type MemberStatus,
   type MemberInvitationResult,
 } from '../../api/members'
-import { getChama, type Chama } from '../../api/chamas'
+import { getChama, regenerateJoinCode, inviteToChama, type Chama } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
@@ -63,6 +63,11 @@ export default function MembersPage() {
   const [inviteResult, setInviteResult] = useState<MemberInvitationResult | null>(null)
   const [removing, setRemoving] = useState<Member | null>(null)
   const [removeLoading, setRemoveLoading] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(members)
 
   const refresh = () => {
@@ -180,6 +185,43 @@ export default function MembersPage() {
     }
   }
 
+  const handleCopyJoinCode = async () => {
+    if (!chama) return
+    await navigator.clipboard.writeText(chama.joinCode)
+    setCopied(true)
+  }
+
+  const handleRegenerateJoinCode = async () => {
+    if (!chama) return
+    setRegenerating(true)
+    try {
+      const updated = await regenerateJoinCode(chama.id)
+      setChama(updated)
+      setCopied(false)
+      setNotice({ variant: 'success', message: 'Join code regenerated. The old code no longer works.' })
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setRegenerating(false)
+    }
+  }
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chama) return
+    setInviting(true)
+    setInviteNotice(null)
+    try {
+      await inviteToChama(chama.id, { email: inviteEmail })
+      setNotice({ variant: 'success', message: `Invite sent to ${inviteEmail}.` })
+      setInviteEmail('')
+    } catch (err) {
+      setInviteNotice(extractErrorMessage(err))
+    } finally {
+      setInviting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -191,6 +233,41 @@ export default function MembersPage() {
       </div>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
+
+      {isChairperson && chama && (
+        <div className="rounded-xl border border-black/10 bg-white p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-ink">Join code</h2>
+          <p className="text-xs text-muted">
+            Share this code so an already-registered user can join this chama themselves, or email it to them directly.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input readOnly value={chama.joinCode} className="font-mono uppercase tracking-widest" />
+            <Button type="button" variant="secondary" onClick={handleCopyJoinCode}>
+              {copied ? 'Copied' : 'Copy'}
+            </Button>
+          </div>
+          <LoadingButton type="button" variant="secondary" loading={regenerating} loadingText="Regenerating…" onClick={handleRegenerateJoinCode}>
+            Regenerate code
+          </LoadingButton>
+
+          <form onSubmit={handleInvite} className="flex items-end gap-2 pt-2">
+            <FormField label="Invite by email" htmlFor="member-invite-email" hint={inviteNotice ?? undefined}>
+              <Input
+                id="member-invite-email"
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="member@example.com"
+                invalid={!!inviteNotice}
+              />
+            </FormField>
+            <LoadingButton type="submit" loading={inviting} loadingText="Sending…">
+              Send invite
+            </LoadingButton>
+          </form>
+        </div>
+      )}
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={isChairperson} />

@@ -35,6 +35,18 @@ DECLARE
     pay_status payment_status;
     roll INT;
     v_full_name TEXT;
+    -- Keycloak user IDs for the seed accounts documented in CLAUDE.md (chairperson1/treasurer1/
+    -- secretary1/member1), pinned in realm-chama.json so they stay stable across realm re-imports.
+    -- Made members of the first demo chama so those credentials land on a populated chama instead
+    -- of an empty one.
+    seed_keycloak_ids TEXT[] := ARRAY[
+        '86f12d95-9e9e-4671-a611-78e1cb055394',
+        '6e03bd99-0d28-4922-9a8a-760402e413d6',
+        '8cd08963-0626-4a58-9f83-8894b5ef251f',
+        '4accb63a-7e33-4007-82f7-fb0940fc08c1'
+    ];
+    seed_full_names TEXT[] := ARRAY['Grace Chairperson', 'Peter Treasurer', 'Alice Secretary', 'John Member'];
+    seed_roles member_role_type[] := ARRAY['CHAIRPERSON','TREASURER','SECRETARY','MEMBER']::member_role_type[];
 BEGIN
     IF (SELECT count(*) FROM chama) >= 10 THEN
         RAISE NOTICE 'Skipping demo data seed: chama table already has 10+ rows';
@@ -64,6 +76,46 @@ BEGIN
         IF i <= 3 THEN
             UPDATE chama SET created_at = date_trunc('month', now()) + (floor(random() * 20) || ' days')::interval
             WHERE id = v_chama_id;
+        END IF;
+
+        -- Land the seed Keycloak accounts (chairperson1/treasurer1/secretary1/member1) on the
+        -- first demo chama, one per role, so those credentials see a populated chama instead of
+        -- an empty one.
+        IF i = 1 THEN
+            FOR k IN 1..array_length(seed_keycloak_ids, 1) LOOP
+                INSERT INTO member (chama_id, keycloak_user_id, full_name, phone, national_id,
+                                     next_of_kin, join_date, status, auto_pay_enabled)
+                VALUES (
+                    v_chama_id,
+                    seed_keycloak_ids[k],
+                    seed_full_names[k],
+                    '+2547' || lpad((10000000 + k)::text, 8, '0'),
+                    lpad((20000000 + k)::text, 8, '0'),
+                    'Next of Kin ' || k,
+                    CURRENT_DATE - (30 * k || ' days')::interval,
+                    'ACTIVE',
+                    true
+                )
+                RETURNING id INTO v_member_id;
+
+                INSERT INTO member_role (member_id, role) VALUES (v_member_id, seed_roles[k]);
+
+                FOR period_offset IN 0..2 LOOP
+                    period_date := date_trunc('month', now())::date - (period_offset || ' months')::interval;
+                    amt_due := (500 + random() * 4500)::numeric(12,2);
+                    amt_paid := CASE WHEN period_offset = 0 THEN 0 ELSE amt_due END;
+                    c_status := CASE WHEN period_offset = 0 THEN 'PENDING' ELSE 'PAID' END::contribution_status;
+
+                    INSERT INTO contribution (chama_id, member_id, period, amount_due, amount_paid,
+                                               payment_method, status, paid_at)
+                    VALUES (
+                        v_chama_id, v_member_id, period_date, amt_due, amt_paid,
+                        CASE WHEN amt_paid > 0 THEN 'MPESA'::payment_method ELSE NULL END,
+                        c_status,
+                        CASE WHEN amt_paid > 0 THEN period_date + interval '5 days' ELSE NULL END
+                    );
+                END LOOP;
+            END LOOP;
         END IF;
 
         n_members := 6 + floor(random() * 10)::int;
