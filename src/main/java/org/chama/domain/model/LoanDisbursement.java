@@ -22,7 +22,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * Backs the M-Pesa B2C loan payout flow (MIGRATION_PLAN.md section 6). A row is created PENDING
+ * Backs the M-Pesa B2C loan payout flow. A row is created PENDING
  * as soon as Daraja's B2C paymentrequest call is acknowledged, since that 200 response only means
  * the request was accepted, not that money has moved. It is only ever moved to COMPLETED/FAILED
  * by the ResultURL/QueueTimeOutURL callback (B2cCallbackResource) or the reconciliation sweep

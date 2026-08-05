@@ -22,7 +22,7 @@ import java.time.LocalDate;
  * One row per (person, chama): a person who belongs to more than one chama
  * has more than one Member row, one per chama, each with its own MemberRole
  * set. This is what actually satisfies "a member can belong to several
- * chamas" from MIGRATION_PLAN.md section 4, not the member_role table itself.
+ * chamas", not the member_role table itself.
  */
 @Entity
 @Table(name = "member")

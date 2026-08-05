@@ -8,6 +8,9 @@ welfare funds, in-app voting, and PDF statements, all scoped per chama with per-
 
 See the GitHub project board for tracked issues: https://github.com/users/10krhinooo/projects/3
 
+For a deeper walkthrough of the architecture, key files, common tasks, and debugging tips, see
+[ONBOARDING.md](ONBOARDING.md).
+
 ## Tech stack
 
 | Layer | Tech |
@@ -76,6 +79,18 @@ Seed users (Keycloak, realm `chama`): `admin/SuperAdmin1234!` (SUPER_ADMIN), `ch
 
 Both the backend and frontend enforce a 90 percent minimum test coverage threshold in CI. Every module
 added to this project ships with tests alongside it, coverage is not backfilled after the fact.
+
+Backend tests run against their own database, `chama_test`, kept separate from the `chama` database
+the dev server uses. `postgres-init/01-create-test-db.sql` creates it automatically the first time the
+`postgres` container initializes its data volume (a fresh `docker compose up -d`, or CI). If you already
+had a `postgres_data` volume from before this existed, create it once by hand instead:
+
+```bash
+docker exec webchama-postgres psql -U chama -d chama -c "CREATE DATABASE chama_test OWNER chama;"
+```
+
+`@QuarkusTest` classes wipe every table in `@BeforeEach`, so this separation matters: without it, running
+tests locally would wipe out whatever you were looking at in the dev database.
 
 ```bash
 # Backend: runs tests and checks the JaCoCo coverage gate

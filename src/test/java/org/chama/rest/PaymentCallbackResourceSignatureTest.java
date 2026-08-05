@@ -16,8 +16,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * PaymentCallbackResource.cardCallback() must fail closed (see MIGRATION_PLAN.md section 7):
- * reject when the secret hash isn't configured, reject on a hash mismatch, and only ever
+ * PaymentCallbackResource.cardCallback() must fail closed: reject when the secret hash isn't
+ * configured, reject on a hash mismatch, and only ever
  * delegate to PaymentService (which does its own server-to-server re-verification) once both
  * checks pass.
  */

@@ -74,8 +74,8 @@ public class Loan extends PanacheEntityBase {
     @Column(name = "requested_at", nullable = false, updatable = false)
     public Instant requestedAt;
 
-    // Approving a loan is a claim-once transition (MIGRATION_PLAN.md section 7); @Version
-    // closes the race a plain REQUESTED-status check can't close alone (issue #30).
+    // Approving a loan is a claim-once transition; @Version closes the race a plain
+    // REQUESTED-status check can't close alone (issue #30).
     @Version
     @Column(nullable = false)
     public long version;

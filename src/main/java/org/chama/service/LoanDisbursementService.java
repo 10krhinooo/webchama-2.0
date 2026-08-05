@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Daraja B2C loan disbursement (MIGRATION_PLAN.md section 6). {@link #initiate} only ever records
+ * Daraja B2C loan disbursement. {@link #initiate} only ever records
  * a PENDING loan_disbursement row and fires the paymentrequest call through {@link DarajaB2cClient},
  * it never marks a loan DISBURSED itself, the initial 200 response only confirms Safaricom accepted
  * the request, not that money moved. Only {@link #applyResultCallback} (driven by
