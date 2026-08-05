@@ -13,12 +13,15 @@ import { client } from './client'
 import {
   getContributions,
   getMyContributions,
+  getMyContributionStreak,
   createContribution,
   recordPayment,
   deleteContribution,
   payContributionWithMpesa,
   initiateCardPayment,
   verifyCardPayment,
+  getPayments,
+  getMyPayments,
   type CreateContributionRequest,
 } from './contributions'
 
@@ -50,6 +53,13 @@ describe('contributions api', () => {
     const result = await getMyContributions(3)
     expect(mockGet).toHaveBeenCalledWith('/chamas/3/contributions/mine')
     expect(result).toEqual([{ id: 2 }])
+  })
+
+  it('getMyContributionStreak fetches and unwraps the streak count', async () => {
+    mockGet.mockResolvedValue({ data: { streak: 4 } })
+    const result = await getMyContributionStreak(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/contributions/mine/streak')
+    expect(result).toBe(4)
   })
 
   it('createContribution posts the payload', async () => {
@@ -93,5 +103,19 @@ describe('contributions api', () => {
       params: { txRef: 'tx_123', transactionId: 999 },
     })
     expect(result).toBe(true)
+  })
+
+  it('getPayments fetches every payment attempt for the chama and unwraps data', async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 1 }] })
+    const result = await getPayments(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/payments')
+    expect(result).toEqual([{ id: 1 }])
+  })
+
+  it('getMyPayments fetches the caller own payment attempts and unwraps data', async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 2 }] })
+    const result = await getMyPayments(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/payments/mine')
+    expect(result).toEqual([{ id: 2 }])
   })
 })

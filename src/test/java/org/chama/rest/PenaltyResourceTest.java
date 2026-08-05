@@ -13,12 +13,18 @@ import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.domain.model.Penalty;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
 import org.chama.repository.MeetingAttendanceRepository;
@@ -26,6 +32,7 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,16 +47,37 @@ import static org.hamcrest.Matchers.notNullValue;
 class PenaltyResourceTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
     MemberRepository memberRepository;
 
     @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
     MemberRoleRepository memberRoleRepository;
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
@@ -86,6 +114,8 @@ class PenaltyResourceTest {
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             paymentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
@@ -96,8 +126,13 @@ class PenaltyResourceTest {
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
+            approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();

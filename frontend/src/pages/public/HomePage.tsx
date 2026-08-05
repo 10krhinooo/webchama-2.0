@@ -3,6 +3,7 @@ import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import PublicNav from "../../components/layout/PublicNav"
 import PublicFooter from "../../components/layout/PublicFooter"
+import StartChamaCta from "../../components/marketing/StartChamaCta"
 import ContributionPot from "../../components/marketing/ContributionPot"
 import LedgerRow from "../../components/marketing/LedgerRow"
 import StampApproval from "../../components/marketing/StampApproval"
@@ -167,12 +168,9 @@ function HomePage() {
                   with M-Pesa built in and two signatures required before any money moves.
                 </p>
                 <div className="mt-8 flex flex-wrap items-center gap-4">
-                  <a
-                    href="#join"
-                    className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-paper transition hover:-translate-y-0.5 hover:bg-primary-dark"
-                  >
+                  <StartChamaCta className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-paper transition hover:-translate-y-0.5 hover:bg-primary-dark">
                     Start your chama
-                  </a>
+                  </StartChamaCta>
                   <a href="#how-it-works" className="text-sm font-semibold text-ink/70 hover:text-ink">
                     See how zamu works &darr;
                   </a>
@@ -276,12 +274,9 @@ function HomePage() {
               take your first mchango by M-Pesa this week.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <a
-                href="#join"
-                className="rounded-full bg-paper px-6 py-3 text-sm font-semibold text-primary transition hover:bg-paper-dim"
-              >
+              <StartChamaCta className="rounded-full bg-paper px-6 py-3 text-sm font-semibold text-primary transition hover:bg-paper-dim">
                 Start your chama
-              </a>
+              </StartChamaCta>
               <a
                 href="#join"
                 className="rounded-full border border-paper/40 px-6 py-3 text-sm font-semibold text-paper transition hover:bg-primary-dark"

@@ -147,6 +147,23 @@ public class KeycloakAdminService {
         return null;
     }
 
+    /** The account's current email, used to resolve a document/notification recipient at send time. */
+    public String getUserEmail(String keycloakUserId) throws Exception {
+        String token = getAdminToken();
+        HttpRequest req = HttpRequest.newBuilder(
+                URI.create(adminUrl + "/admin/realms/" + appRealm + "/users/" + keycloakUserId))
+            .GET()
+            .header("Authorization", "Bearer " + token)
+            .timeout(Duration.ofSeconds(15))
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+            throw new RuntimeException("Failed to fetch Keycloak user: " + resp.statusCode());
+        }
+        return mapper.readTree(resp.body()).path("email").asText(null);
+    }
+
     public record KeycloakLoginEvent(long time, String type, String realmId, String clientId, String userId,
                                       String sessionId, String ipAddress, String error, Map<String, String> details) {}
 

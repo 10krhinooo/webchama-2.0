@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
@@ -16,12 +17,15 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.CreateMemberDto;
+import org.chama.dto.CreditScoreDto;
 import org.chama.dto.MemberDto;
 import org.chama.dto.MemberInvitationDto;
+import org.chama.dto.UpdateAutoPayDto;
 import org.chama.dto.UpdateMemberDto;
 import org.chama.dto.UpdateMemberStatusDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
+import org.chama.service.CreditScoreService;
 import org.chama.service.MemberService;
 
 import java.util.List;
@@ -34,6 +38,9 @@ public class MemberResource {
 
     @Inject
     MemberService memberService;
+
+    @Inject
+    CreditScoreService creditScoreService;
 
     @Inject
     TenantAccessService tenantAccessService;
@@ -65,6 +72,18 @@ public class MemberResource {
         return MemberDto.from(member, memberService.rolesOf(member.id));
     }
 
+    /** CHAIRPERSON/TREASURER, or the member themselves, can view their own credit score. */
+    @GET
+    @Path("/{id}/credit-score")
+    public CreditScoreDto creditScore(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        var self = tenantAccessService.currentMember(currentUser, chamaId);
+        boolean ownScore = self.isPresent() && self.get().id.equals(id);
+        if (!ownScore) {
+            tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        }
+        return creditScoreService.calculate(chamaId, id);
+    }
+
     @POST
     public Response create(@PathParam("chamaId") Long chamaId, @Valid CreateMemberDto dto) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
@@ -81,6 +100,15 @@ public class MemberResource {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
         var member = memberService.update(chamaId, id, dto);
         return MemberDto.from(member, memberService.rolesOf(member.id));
+    }
+
+    /** Self-service: opt in/out of the scheduled auto-STK-push job for the caller's own contributions. */
+    @PUT
+    @Path("/mine/auto-pay")
+    public MemberDto updateMyAutoPay(@PathParam("chamaId") Long chamaId, @Valid UpdateAutoPayDto dto) {
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        var updated = memberService.updateAutoPay(chamaId, member.id, dto.autoPayEnabled());
+        return MemberDto.from(updated, memberService.rolesOf(updated.id));
     }
 
     @PUT

@@ -1,7 +1,7 @@
 import { client } from './client'
 
 export type InterestMethod = 'FLAT' | 'REDUCING_BALANCE'
-export type LoanStatus = 'REQUESTED' | 'APPROVED' | 'DISBURSED' | 'REPAYING' | 'CLOSED' | 'DEFAULTED'
+export type LoanStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'DISBURSED' | 'REPAYING' | 'CLOSED' | 'DEFAULTED'
 export type LoanRepaymentStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE'
 
 export interface Loan {
@@ -56,6 +56,11 @@ export async function createLoan(chamaId: number, payload: CreateLoanRequest): P
 
 export async function approveLoan(chamaId: number, loanId: number): Promise<Loan> {
   const { data } = await client.put<Loan>(`/chamas/${chamaId}/loans/${loanId}/approve`, {})
+  return data
+}
+
+export async function rejectLoan(chamaId: number, loanId: number): Promise<Loan> {
+  const { data } = await client.put<Loan>(`/chamas/${chamaId}/loans/${loanId}/reject`, {})
   return data
 }
 

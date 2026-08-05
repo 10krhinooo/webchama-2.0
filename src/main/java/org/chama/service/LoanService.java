@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.LoanRepaymentStatus;
 import org.chama.domain.enums.LoanStatus;
 import org.chama.domain.model.Loan;
@@ -39,6 +40,9 @@ public class LoanService {
 
     @Inject
     ChamaService chamaService;
+
+    @Inject
+    ActivityLogService activityLogService;
 
     public List<Loan> listForChama(Long chamaId) {
         return loanRepository.findByChama(chamaId);
@@ -94,6 +98,21 @@ public class LoanService {
         loan.status = LoanStatus.APPROVED;
         loan.approvedBy = approver;
         loan.approvedAt = Instant.now();
+        activityLogService.log(loan.chama, ActivityEventType.LOAN_APPROVED,
+            loan.member.fullName + "'s loan of " + loan.chama.currency + " " + loan.principal + " was approved");
+        return loan;
+    }
+
+    /** CHAIRPERSON/TREASURER-only: move a REQUESTED loan to REJECTED, a terminal state. */
+    @Transactional
+    public Loan reject(Long chamaId, Long loanId) {
+        Loan loan = get(chamaId, loanId);
+        if (loan.status != LoanStatus.REQUESTED) {
+            throw new BadRequestException("Only a requested loan can be rejected");
+        }
+        loan.status = LoanStatus.REJECTED;
+        activityLogService.log(loan.chama, ActivityEventType.LOAN_REJECTED,
+            loan.member.fullName + "'s loan of " + loan.chama.currency + " " + loan.principal + " was rejected");
         return loan;
     }
 

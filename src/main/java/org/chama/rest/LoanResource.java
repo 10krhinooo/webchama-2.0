@@ -94,10 +94,18 @@ public class LoanResource {
         return LoanDto.from(loanService.approve(chamaId, id, approver.id));
     }
 
+    /** CHAIRPERSON/TREASURER-only: move a REQUESTED loan to REJECTED, a terminal state. */
+    @PUT
+    @Path("/{id}/reject")
+    public LoanDto reject(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        return LoanDto.from(loanService.reject(chamaId, id));
+    }
+
     /**
-     * CHAIRPERSON/TREASURER-only: trigger the M-Pesa B2C payout for an APPROVED loan. This is a
-     * single-role gate, not yet the maker-checker dual sign-off MIGRATION_PLAN.md section 6 calls
-     * for, that lands with Phase 7a (issue #36).
+     * CHAIRPERSON/TREASURER-only: trigger the M-Pesa B2C payout for an APPROVED loan. Above the
+     * chama's approval threshold, LoanDisbursementService additionally requires a cleared
+     * maker-checker dual sign-off (issues #52/#54/#36) before this actually fires the B2C call.
      */
     @PUT
     @Path("/{id}/disburse")

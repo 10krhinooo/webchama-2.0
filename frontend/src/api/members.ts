@@ -13,6 +13,7 @@ export interface Member {
   joinDate: string
   status: MemberStatus
   roles: MemberRoleType[]
+  autoPayEnabled: boolean
 }
 
 export interface UpdateMemberRequest {
@@ -30,6 +31,17 @@ export interface CreateMemberRequest extends UpdateMemberRequest {
 export interface MemberInvitationResult {
   member: Member
   temporaryPassword: string | null
+}
+
+export interface CreditScore {
+  memberId: number
+  score: number
+  contributionConsistency: number
+  meetingAttendanceRate: number
+  loanRepaymentRate: number
+  contributionsConsidered: number
+  meetingsConsidered: number
+  loanRepaymentsConsidered: number
 }
 
 export async function getMembers(chamaId: number): Promise<Member[]> {
@@ -62,6 +74,17 @@ export async function updateMemberStatus(chamaId: number, id: number, status: Me
   return data
 }
 
+/** Self-service: opt in/out of the scheduled auto-STK-push job for the caller's own contributions. */
+export async function updateMyAutoPay(chamaId: number, autoPayEnabled: boolean): Promise<Member> {
+  const { data } = await client.put<Member>(`/chamas/${chamaId}/members/mine/auto-pay`, { autoPayEnabled })
+  return data
+}
+
 export async function deleteMember(chamaId: number, id: number): Promise<void> {
   await client.delete(`/chamas/${chamaId}/members/${id}`)
+}
+
+export async function getCreditScore(chamaId: number, memberId: number): Promise<CreditScore> {
+  const { data } = await client.get<CreditScore>(`/chamas/${chamaId}/members/${memberId}/credit-score`)
+  return data
 }

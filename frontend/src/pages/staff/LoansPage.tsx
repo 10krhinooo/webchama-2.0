@@ -5,13 +5,14 @@ import {
   getMyLoans,
   createLoan,
   approveLoan,
+  rejectLoan,
   getLoanRepayments,
   recordLoanRepayment,
   type Loan,
   type LoanRepayment,
   type InterestMethod,
 } from '../../api/loans'
-import { getMembers, type Member } from '../../api/members'
+import { getMembers, getCreditScore, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
@@ -26,13 +27,14 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 
 const EMPTY_FORM = { memberId: '', principal: '', interestRate: '', interestMethod: 'FLAT' as InterestMethod, termMonths: '' }
 const EMPTY_PAYMENT_FORM = { amount: '' }
 
 function loanStatusVariant(status: Loan['status']) {
   if (status === 'CLOSED') return 'success' as const
-  if (status === 'DEFAULTED') return 'danger' as const
+  if (status === 'DEFAULTED' || status === 'REJECTED') return 'danger' as const
   if (status === 'REPAYING') return 'warning' as const
   if (status === 'APPROVED' || status === 'DISBURSED') return 'primary' as const
   return 'muted' as const
@@ -45,6 +47,12 @@ function repaymentStatusVariant(status: LoanRepayment['status']) {
   return 'muted' as const
 }
 
+function creditScoreVariant(score: number) {
+  if (score >= 70) return 'success' as const
+  if (score >= 40) return 'warning' as const
+  return 'danger' as const
+}
+
 export default function LoansPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
@@ -53,6 +61,7 @@ export default function LoansPage() {
 
   const [loans, setLoans] = useState<Loan[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [creditScores, setCreditScores] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
@@ -78,8 +87,21 @@ export default function LoansPage() {
       .then(([l, m]) => {
         setLoans(l)
         setMembers(m)
+        if (canManage) loadCreditScores(l)
       })
       .finally(() => setLoading(false))
+  }
+
+  // A data-backed signal for the chairperson/treasurer reviewing a loan request, not a hard gate
+  // (issue #59). Fetched per distinct member on the current page of loans, a missing entry just
+  // means the lookup hasn't resolved yet.
+  const loadCreditScores = (currentLoans: Loan[]) => {
+    const memberIds = [...new Set(currentLoans.map((l) => l.memberId))]
+    Promise.all(memberIds.map((id) => getCreditScore(chamaId, id).then((s) => [id, s.score] as const)))
+      .then((entries) => setCreditScores(Object.fromEntries(entries)))
+      .catch(() => {
+        /* Non-critical signal, a failed lookup just leaves that loan's score blank. */
+      })
   }
 
   useEffect(refresh, [chamaId, canManage, roleLoading])
@@ -117,6 +139,19 @@ export default function LoansPage() {
     try {
       await approveLoan(chamaId, loan.id)
       setNotice({ variant: 'success', message: `Loan for ${loan.memberName} approved.` })
+      refresh()
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const handleReject = async (loan: Loan) => {
+    setApprovingId(loan.id)
+    try {
+      await rejectLoan(chamaId, loan.id)
+      setNotice({ variant: 'success', message: `Loan for ${loan.memberName} rejected.` })
       refresh()
     } catch (err) {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
@@ -167,32 +202,40 @@ export default function LoansPage() {
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
       ) : (
-        <Reveal eager delayMs={80} className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                {canManage && <th className="text-left px-4 py-3 font-medium text-ink/80">Member</th>}
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Principal</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Interest</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Term</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
+        <Reveal eager delayMs={80}>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                {canManage && <TableHead>Member</TableHead>}
+                {canManage && <TableHead>Credit Score</TableHead>}
+                <TableHead>Principal</TableHead>
+                <TableHead>Interest</TableHead>
+                <TableHead>Term</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {loans.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted text-sm">No loans yet.</td></tr>
+                <TableRow><TableCell colSpan={canManage ? 7 : 5} className="py-10 text-center text-sm text-muted">No loans yet.</TableCell></TableRow>
               )}
               {pageItems.map((loan) => (
-                <tr key={loan.id} className="hover:bg-paper-dim/30">
-                  {canManage && <td className="px-4 py-3 font-medium text-ink">{loan.memberName}</td>}
-                  <td className="px-4 py-3 font-mono text-muted">{loan.principal.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-muted">
+                <TableRow key={loan.id}>
+                  {canManage && <TableCell className="font-medium text-ink">{loan.memberName}</TableCell>}
+                  {canManage && (
+                    <TableCell>
+                      {creditScores[loan.memberId] !== undefined
+                        ? <Badge label={String(creditScores[loan.memberId])} variant={creditScoreVariant(creditScores[loan.memberId])} />
+                        : <span className="text-muted text-xs">—</span>}
+                    </TableCell>
+                  )}
+                  <TableCell className="font-mono text-muted">{loan.principal.toLocaleString()}</TableCell>
+                  <TableCell className="text-muted">
                     {loan.interestRate}% ({loan.interestMethod === 'FLAT' ? 'Flat' : 'Reducing balance'})
-                  </td>
-                  <td className="px-4 py-3 text-muted">{loan.termMonths} mo</td>
-                  <td className="px-4 py-3"><Badge label={loan.status} variant={loanStatusVariant(loan.status)} /></td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="text-muted">{loan.termMonths} mo</TableCell>
+                  <TableCell><Badge label={loan.status} variant={loanStatusVariant(loan.status)} /></TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-3">
                       {canManage && loan.status === 'REQUESTED' && (
                         <button
@@ -203,13 +246,22 @@ export default function LoansPage() {
                           {approvingId === loan.id ? 'Approving…' : 'Approve'}
                         </button>
                       )}
+                      {canManage && loan.status === 'REQUESTED' && (
+                        <button
+                          onClick={() => handleReject(loan)}
+                          disabled={approvingId === loan.id}
+                          className="text-danger text-xs hover:underline disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      )}
                       <button onClick={() => openSchedule(loan)} className="text-primary text-xs hover:underline">View Schedule</button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Reveal>
       )}
 
@@ -225,7 +277,7 @@ export default function LoansPage() {
             )}
             {canManage && (
               <FormField label="Member" htmlFor="loan-member" required>
-                <Select id="loan-member" required value={form.memberId} onChange={(e) => setForm({ ...form, memberId: e.target.value })}>
+                <Select id="loan-member" required value={form.memberId} onChange={(v) => setForm({ ...form, memberId: v })}>
                   <option value="" disabled>Select a member</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                 </Select>
@@ -242,7 +294,7 @@ export default function LoansPage() {
               </FormField>
               <FormField label="Interest method" htmlFor="loan-method" required>
                 <Select id="loan-method" value={form.interestMethod}
-                  onChange={(e) => setForm({ ...form, interestMethod: e.target.value as InterestMethod })}>
+                  onChange={(v) => setForm({ ...form, interestMethod: v as InterestMethod })}>
                   <option value="FLAT">Flat</option>
                   <option value="REDUCING_BALANCE">Reducing balance</option>
                 </Select>

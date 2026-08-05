@@ -12,8 +12,11 @@ import org.chama.domain.model.MemberRole;
 import org.chama.domain.enums.ChamaStatus;
 import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
@@ -24,6 +27,13 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ResolutionRepository;
+import org.chama.repository.ResolutionVoteRepository;
+import org.chama.repository.ActivityLogRepository;
+import org.chama.repository.PaymentRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +52,12 @@ import static org.hamcrest.Matchers.equalTo;
 class TenantIsolationTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
@@ -52,6 +68,12 @@ class TenantIsolationTest {
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
@@ -77,12 +99,39 @@ class TenantIsolationTest {
     @Inject
     MeetingRepository meetingRepository;
 
+    @Inject
+    ResolutionVoteRepository resolutionVoteRepository;
+
+    @Inject
+    ResolutionRepository resolutionRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
     private Long chamaAId;
     private Long chamaBId;
 
     @BeforeEach
     void seedTwoChamas() {
         QuarkusTransaction.requiringNew().run(() -> {
+            resolutionVoteRepository.deleteAll();
+            resolutionRepository.deleteAll();
+            approvalRepository.deleteAll();
+            paymentRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
             penaltyRepository.deleteAll();
@@ -94,6 +143,7 @@ class TenantIsolationTest {
             contributionRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chamaA = newChama("Chama A");
@@ -161,6 +211,14 @@ class TenantIsolationTest {
 
     @Test
     @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotViewAChamaBMembersCreditScore() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaBId, 999)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
     void chamaListOnlyReturnsChamasTheCallerBelongsTo() {
         given()
             .when().get("/api/chamas")
@@ -181,6 +239,14 @@ class TenantIsolationTest {
             .contentType("application/json")
             .body(body)
             .when().put("/api/chamas/{id}", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotGenerateAnAgmStatementForChamaB() {
+        given()
+            .when().post("/api/chamas/{chamaId}/documents/agm-statement?from=2026-01-01&to=2026-12-31", chamaBId)
             .then().statusCode(403);
     }
 
@@ -229,6 +295,84 @@ class TenantIsolationTest {
     }
 
     @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotListChamaBResolutions() {
+        given()
+            .when().get("/api/chamas/{chamaId}/resolutions", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotReadChamaBWelfareFund() {
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotOpenAResolutionInChamaB() {
+        var body = """
+            {"meetingId":1,"title":"Hijacked resolution"}
+            """;
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/resolutions", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotListChamaBApprovals() {
+        given()
+            .when().get("/api/chamas/{chamaId}/approvals", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotRequestApprovalForChamaB() {
+        var body = """
+            {"targetType":"LOAN_DISBURSEMENT","targetId":1,"memberId":1,"amount":150000}
+            """;
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when().post("/api/chamas/{chamaId}/approvals", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-member-a")
+    void plainMemberCannotReadWelfareFundSummary() {
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaAId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-member-a")
+    void plainMemberCanSeeOwnWelfareContributionsViaMineEndpoint() {
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund/contributions/mine", chamaAId)
+            .then()
+                .statusCode(200)
+                .body("size()", equalTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotCreateWithdrawalForChamaB() {
+        given()
+            .contentType("application/json")
+            .body("{\"amount\":10,\"reason\":\"attempted cross-tenant withdrawal\"}")
+            .when().post("/api/chamas/{chamaId}/welfare-fund/withdrawals", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
     @TestSecurity(user = "stranger")
     void nonMemberCannotReadEitherChama() {
         given().when().get("/api/chamas/{id}", chamaAId).then().statusCode(403);
@@ -247,12 +391,30 @@ class TenantIsolationTest {
 
     @Test
     @TestSecurity(user = "platform-owner", roles = "SUPER_ADMIN")
-    void superAdminBypassesTenantScopingForBothChamas() {
-        given().when().get("/api/chamas/{id}", chamaAId).then().statusCode(200);
-        given().when().get("/api/chamas/{id}", chamaBId).then().statusCode(200);
+    void superAdminHasNoDefaultAccessToChamaDetails() {
+        given().when().get("/api/chamas/{id}", chamaAId).then().statusCode(403);
+        given().when().get("/api/chamas/{id}", chamaBId).then().statusCode(403);
         given()
             .when().get("/api/chamas")
-            .then().statusCode(200).body("size()", equalTo(2));
+            .then().statusCode(200).body("size()", equalTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotToggleAutoPayForChamaB() {
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":true}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaBId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "user-chair-a")
+    void chairOfChamaACannotSeeOwnStreakForChamaB() {
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaBId)
+            .then().statusCode(403);
     }
 
     @Test

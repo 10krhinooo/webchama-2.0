@@ -17,4 +17,8 @@ public class MeetingAttendanceRepository implements PanacheRepository<MeetingAtt
     public Optional<MeetingAttendance> findByMeetingAndMember(Long meetingId, Long memberId) {
         return find("meeting.id = ?1 and member.id = ?2", meetingId, memberId).firstResultOptional();
     }
+
+    public List<MeetingAttendance> findByChamaAndMember(Long chamaId, Long memberId) {
+        return list("meeting.chama.id = ?1 and member.id = ?2", chamaId, memberId);
+    }
 }

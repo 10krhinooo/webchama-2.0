@@ -17,8 +17,13 @@ public record ChamaDto(
     ContributionFrequency contributionFrequency,
     BigDecimal contributionAmount,
     String meetingDay,
+    BigDecimal approvalThreshold,
+    BigDecimal savingsTarget,
     ChamaStatus status,
-    Instant createdAt) {
+    boolean autoPushEnabled,
+    int autoPushRetryHours,
+    Instant createdAt,
+    String joinCode) {
 
     public static ChamaDto from(Chama chama) {
         return new ChamaDto(
@@ -30,7 +35,12 @@ public record ChamaDto(
             chama.contributionFrequency,
             chama.contributionAmount,
             chama.meetingDay,
+            chama.approvalThreshold,
+            chama.savingsTarget,
             chama.status,
-            chama.createdAt);
+            chama.autoPushEnabled,
+            chama.autoPushRetryHours,
+            chama.createdAt,
+            chama.joinCode);
     }
 }

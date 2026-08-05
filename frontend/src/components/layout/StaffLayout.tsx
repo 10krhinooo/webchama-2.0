@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, Menu, X } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import { getChama, type Chama } from '../../api/chamas'
+import { useMyMembership } from '../../hooks/useMyMembership'
+import { roleBadgeText } from '../../utils/roleBadges'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `sidebar-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -43,11 +45,14 @@ export default function StaffLayout() {
   const { chamaId } = useParams<{ chamaId?: string }>()
   const location = useLocation()
   const chama = useChamaName(chamaId ? Number(chamaId) : undefined)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { roles, isSuperAdmin, isManager, loading: roleLoading } = useMyMembership(
+    chamaId ? Number(chamaId) : undefined,
+  )
+  const [navOpen, setNavOpen] = useState(false)
 
   // Close the mobile drawer on every navigation rather than leaving it open over the new page.
   useEffect(() => {
-    setSidebarOpen(false)
+    setNavOpen(false)
   }, [location.pathname])
 
   const tokenParsed = keycloak.tokenParsed as { name?: string; preferred_username?: string; email?: string } | undefined
@@ -61,89 +66,135 @@ export default function StaffLayout() {
 
   return (
     <div className="flex min-h-screen bg-paper">
-      {sidebarOpen && (
+      {navOpen && (
         <div
+          data-testid="nav-backdrop"
           className="fixed inset-0 z-30 bg-black/40 lg:hidden"
-          aria-hidden="true"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setNavOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 -translate-x-full flex-col bg-night text-paper transition-transform duration-300 lg:static lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : ''
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto bg-night text-paper transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+          navOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex items-center justify-between gap-2 border-b border-white/10 px-5 py-5">
-          <span className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <WeaveMark className="h-6 w-6 text-accent" />
             <span className="font-heading text-lg font-bold">Webchama</span>
-          </span>
+          </div>
           <button
             type="button"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setNavOpen(false)}
+            className="rounded-lg p-1 text-paper/70 hover:bg-white/10 hover:text-paper lg:hidden"
             aria-label="Close menu"
-            className="rounded-lg p-1.5 text-paper/70 hover:bg-white/10 hover:text-paper lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          <NavLink to="/chamas" end className={navLinkClass} style={navDelay(0)}>
-            <Building2 className="h-4 w-4" />
-            Chamas
-          </NavLink>
+          {!keycloak.hasRealmRole('SUPER_ADMIN') && (
+            <NavLink to="/my-chamas" end className={navLinkClass} style={navDelay(0)}>
+              <Building2 className="h-4 w-4" />
+              My Chamas
+            </NavLink>
+          )}
+
+          {keycloak.hasRealmRole('SUPER_ADMIN') && (
+            <>
+              <NavLink to="/admin/overview" className={navLinkClass} style={navDelay(0)}>
+                <Gauge className="h-4 w-4" />
+                Platform Overview
+              </NavLink>
+              <NavLink to="/admin/security-events" className={navLinkClass} style={navDelay(1)}>
+                <AlertTriangle className="h-4 w-4" />
+                Security Events
+              </NavLink>
+            </>
+          )}
 
           {chamaId && (
             <>
-              <p className="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-paper/40">
-                This chama
-              </p>
-              <NavLink to={`/chamas/${chamaId}/dashboard`} className={navLinkClass} style={navDelay(1)}>
+              <div className="px-3 pb-1 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-paper/40">This chama</p>
+                {!roleLoading && (
+                  <span className="mt-1 inline-block rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper/70">
+                    {roleBadgeText(isSuperAdmin, roles)}
+                  </span>
+                )}
+              </div>
+              <NavLink to={`/chamas/${chamaId}/dashboard`} className={navLinkClass} style={navDelay(2)}>
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/members`} className={navLinkClass} style={navDelay(2)}>
+              <NavLink to={`/chamas/${chamaId}/members`} className={navLinkClass} style={navDelay(3)}>
                 <Users className="h-4 w-4" />
                 Members
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/contributions`} className={navLinkClass} style={navDelay(3)}>
+              <NavLink to={`/chamas/${chamaId}/contributions`} className={navLinkClass} style={navDelay(4)}>
                 <Wallet className="h-4 w-4" />
                 Contributions
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/loans`} className={navLinkClass} style={navDelay(4)}>
+              <NavLink to={`/chamas/${chamaId}/loans`} className={navLinkClass} style={navDelay(5)}>
                 <HandCoins className="h-4 w-4" />
                 Loans
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/payouts`} className={navLinkClass} style={navDelay(5)}>
+              <NavLink to={`/chamas/${chamaId}/payouts`} className={navLinkClass} style={navDelay(6)}>
                 <RotateCw className="h-4 w-4" />
                 Payouts
               </NavLink>
+              <NavLink to={`/chamas/${chamaId}/welfare-fund`} className={navLinkClass} style={navDelay(7)}>
+                <HeartHandshake className="h-4 w-4" />
+                Welfare Fund
+              </NavLink>
+              <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass} style={navDelay(8)}>
+                <Vote className="h-4 w-4" />
+                Resolutions
+              </NavLink>
+              {!roleLoading && isManager && (
+                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass} style={navDelay(9)}>
+                  <FileText className="h-4 w-4" />
+                  Documents
+                </NavLink>
+              )}
+              {!roleLoading && isManager && (
+                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass} style={navDelay(10)}>
+                  <ShieldCheck className="h-4 w-4" />
+                  Approvals
+                </NavLink>
+              )}
             </>
           )}
         </nav>
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between gap-3 border-b border-ink/10 bg-white px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-ink/10 bg-white px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open menu"
+              onClick={() => setNavOpen(true)}
               className="rounded-lg p-1.5 text-muted hover:bg-paper-dim hover:text-ink lg:hidden"
+              aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
-              <Link to="/chamas" className="font-medium text-muted hover:text-ink">
-                Chamas
-              </Link>
+            <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
+              {keycloak.hasRealmRole('SUPER_ADMIN') ? (
+                <Link to="/admin/overview" className="shrink-0 font-medium text-muted hover:text-ink">
+                  Platform Overview
+                </Link>
+              ) : (
+                <Link to="/my-chamas" className="shrink-0 font-medium text-muted hover:text-ink">
+                  My Chamas
+                </Link>
+              )}
               {chama && (
                 <>
-                  <span className="text-muted/50">/</span>
-                  <span className="font-medium text-ink">{chama.name}</span>
+                  <span className="shrink-0 text-muted/50">/</span>
+                  <span className="truncate font-medium text-ink">{chama.name}</span>
                 </>
               )}
             </nav>

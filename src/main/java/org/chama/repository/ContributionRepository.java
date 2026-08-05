@@ -2,8 +2,12 @@ package org.chama.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.chama.domain.enums.ContributionStatus;
 import org.chama.domain.model.Contribution;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 @ApplicationScoped
@@ -19,5 +23,66 @@ public class ContributionRepository implements PanacheRepository<Contribution> {
 
     public List<Contribution> findByChamaAndMember(Long chamaId, Long memberId) {
         return list("chama.id = ?1 and member.id = ?2", chamaId, memberId);
+    }
+
+    /** A member's contribution history for one chama, most recent billing period first (issue #61's streak). */
+    public List<Contribution> findByChamaAndMemberOrderByPeriodDesc(Long chamaId, Long memberId) {
+        return list("chama.id = ?1 and member.id = ?2 order by period desc", chamaId, memberId);
+    }
+
+    /** Contributions whose billing period falls strictly before a statement period (issue #66's opening balance). */
+    public List<Contribution> findByChamaAndPeriodBefore(Long chamaId, LocalDate before) {
+        return list("chama.id = ?1 and period < ?2", chamaId, before);
+    }
+
+    /** Contributions whose billing period falls within a statement period, inclusive of both ends. */
+    public List<Contribution> findByChamaAndPeriodBetween(Long chamaId, LocalDate start, LocalDate end) {
+        return list("chama.id = ?1 and period between ?2 and ?3", chamaId, start, end);
+    }
+
+    /** Lifetime total paid across every contribution the chama has ever had, for the savings-goal progress view (not scoped to the current cycle, unlike the dashboard's "this cycle" figure). */
+    public BigDecimal sumAmountPaidForChama(Long chamaId) {
+        BigDecimal total = getEntityManager()
+            .createQuery("select coalesce(sum(c.amountPaid), 0) from Contribution c where c.chama.id = :chamaId", BigDecimal.class)
+            .setParameter("chamaId", chamaId)
+            .getSingleResult();
+        return total;
+    }
+
+    /** Platform-wide lifetime total paid across every chama, for the SUPER_ADMIN overview. */
+    public BigDecimal sumAmountPaidAll() {
+        return getEntityManager()
+            .createQuery("select coalesce(sum(c.amountPaid), 0) from Contribution c", BigDecimal.class)
+            .getSingleResult();
+    }
+
+    /** Platform-wide total paid since a given instant (e.g. start of the current month). */
+    public BigDecimal sumAmountPaidSince(Instant since) {
+        return getEntityManager()
+            .createQuery("select coalesce(sum(c.amountPaid), 0) from Contribution c where c.paidAt >= :since", BigDecimal.class)
+            .setParameter("since", since)
+            .getSingleResult();
+    }
+
+    public long countByStatus(ContributionStatus status) {
+        return count("status", status);
+    }
+
+    /**
+     * Candidates for the auto-STK-push scheduler (issue #60): the chama hasn't turned the sweep
+     * off, the member has opted in, the contribution is due (period on or before today) and
+     * still unpaid. {@code earliestPossibleRetry} is a broad pre-filter using the shortest
+     * per-chama retry interval allowed (1 hour), a superset of every chama's actual configured
+     * {@code autoPushRetryHours} (a per-row variable, awkward to express in JPQL); the caller
+     * ({@link org.chama.service.ContributionAutoPushService}) applies the exact per-chama
+     * interval afterwards in Java.
+     */
+    public List<Contribution> findDueForAutoPush(LocalDate today, Instant earliestPossibleRetry) {
+        return list("chama.autoPushEnabled = true"
+                + " and member.autoPayEnabled = true"
+                + " and status in (?1, ?2)"
+                + " and period <= ?3"
+                + " and (lastAutoPushAt is null or lastAutoPushAt < ?4)",
+            ContributionStatus.PENDING, ContributionStatus.OVERDUE, today, earliestPossibleRetry);
     }
 }

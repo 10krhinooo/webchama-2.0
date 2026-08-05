@@ -32,6 +32,12 @@ export async function getMyContributions(chamaId: number): Promise<Contribution[
   return data
 }
 
+/** Self-service: the caller's own on-time contribution streak, a light engagement nudge. */
+export async function getMyContributionStreak(chamaId: number): Promise<number> {
+  const { data } = await client.get<{ streak: number }>(`/chamas/${chamaId}/contributions/mine/streak`)
+  return data.streak
+}
+
 export async function createContribution(chamaId: number, payload: CreateContributionRequest): Promise<Contribution> {
   const { data } = await client.post<Contribution>(`/chamas/${chamaId}/contributions`, payload)
   return data
@@ -51,7 +57,7 @@ export async function deleteContribution(chamaId: number, id: number): Promise<v
   await client.delete(`/chamas/${chamaId}/contributions/${id}`)
 }
 
-export type PaymentPurpose = 'CONTRIBUTION' | 'LOAN_REPAYMENT' | 'PENALTY'
+export type PaymentPurpose = 'CONTRIBUTION' | 'LOAN_REPAYMENT' | 'PENALTY' | 'WELFARE'
 export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED'
 
 export interface Payment {
@@ -59,6 +65,7 @@ export interface Payment {
   chamaId: number
   memberId: number
   contributionId: number | null
+  welfareContributionId: number | null
   purpose: PaymentPurpose
   amount: number
   method: PaymentMethod
@@ -67,6 +74,18 @@ export interface Payment {
   mpesaReceiptNumber: string | null
   paidAt: string | null
   createdAt: string
+}
+
+/** Staff (treasurer/chairperson): every payment attempt across the chama, not just contribution/welfare status. */
+export async function getPayments(chamaId: number): Promise<Payment[]> {
+  const { data } = await client.get<Payment[]>(`/chamas/${chamaId}/payments`)
+  return data
+}
+
+/** Self-service: the caller's own payment attempts, so a PENDING push in flight is visible without re-firing it. */
+export async function getMyPayments(chamaId: number): Promise<Payment[]> {
+  const { data } = await client.get<Payment[]>(`/chamas/${chamaId}/payments/mine`)
+  return data
 }
 
 /** Self-service: pays the contribution's remaining balance via M-Pesa STK push. */

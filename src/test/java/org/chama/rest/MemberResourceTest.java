@@ -14,27 +14,37 @@ import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MeetingRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.service.KeycloakAdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,16 +53,37 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MemberResourceTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
     MemberRepository memberRepository;
 
     @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
     MemberRoleRepository memberRoleRepository;
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
@@ -84,7 +115,11 @@ class MemberResourceTest {
     @Inject
     MockMailbox mailbox;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     private Long chamaId;
+    private Long chairId;
 
     @BeforeEach
     void seed() throws Exception {
@@ -95,6 +130,8 @@ class MemberResourceTest {
             .thenReturn("kc-generated-id");
 
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
             penaltyRepository.deleteAll();
@@ -103,9 +140,15 @@ class MemberResourceTest {
             loanRepaymentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
+            paymentRepository.deleteAll();
             contributionRepository.deleteAll();
+            approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();
@@ -125,6 +168,7 @@ class MemberResourceTest {
             chair.phone = "254700000001";
             chair.status = org.chama.domain.enums.MemberStatus.ACTIVE;
             memberRepository.persist(chair);
+            chairId = chair.id;
             MemberRole role = new MemberRole();
             role.member = chair;
             role.role = MemberRoleType.CHAIRPERSON;
@@ -181,13 +225,18 @@ class MemberResourceTest {
             .when().post("/api/chamas/{chamaId}/members", chamaId)
             .then().statusCode(201);
 
-        List<Mail> sent = mailbox.getMailsSentTo("emailed.member@example.com");
-        assertEquals(1, sent.size());
-        Mail mail = sent.get(0);
-        assertEquals("Your Webchama account is ready", mail.getSubject());
-        assertTrue(mail.getHtml().contains("Emailed"));
-        assertTrue(mail.getHtml().contains("Temp1234!"));
-        assertTrue(mail.getHtml().contains("emailed.member@example.com"));
+        // MemberInvitationEmailService sends off the request thread (see its
+        // class comment), so the mailbox is populated shortly after, not
+        // necessarily by the time the create request returns.
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<Mail> sent = mailbox.getMailsSentTo("emailed.member@example.com");
+            assertEquals(1, sent.size());
+            Mail mail = sent.get(0);
+            assertEquals("Your Webchama account is ready", mail.getSubject());
+            assertTrue(mail.getHtml().contains("Emailed"));
+            assertTrue(mail.getHtml().contains("Temp1234!"));
+            assertTrue(mail.getHtml().contains("emailed.member@example.com"));
+        });
     }
 
     @Test
@@ -223,6 +272,43 @@ class MemberResourceTest {
     void mineReturns404ForSomeoneWithNoMemberRowInThisChama() {
         given()
             .when().get("/api/chamas/{chamaId}/members/mine", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void chairpersonCanViewAnyMembersCreditScore() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaId, chairId)
+            .then()
+                .statusCode(200)
+                .body("memberId", equalTo(chairId.intValue()))
+                .body("score", equalTo(100));
+    }
+
+    @Test
+    @TestSecurity(user = "new-member")
+    void aPlainMemberCanViewTheirOwnCreditScoreButNotAnotherMembers() {
+        Long plainId = QuarkusTransaction.requiringNew().call(() -> {
+            Member plain = new Member();
+            plain.chama = chamaRepository.findById(chamaId);
+            plain.keycloakUserId = "new-member";
+            plain.fullName = "Plain Member";
+            plain.phone = "254700000005";
+            memberRepository.persist(plain);
+            MemberRole role = new MemberRole();
+            role.member = plain;
+            role.role = MemberRoleType.MEMBER;
+            role.persist();
+            return plain.id;
+        });
+
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaId, plainId)
+            .then().statusCode(200);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}/credit-score", chamaId, chairId)
             .then().statusCode(403);
     }
 
@@ -293,6 +379,36 @@ class MemberResourceTest {
             .then()
                 .statusCode(502)
                 .body("userMessage", equalTo("Could not create the member's account right now. Try again shortly."));
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void memberCanOptInAndOutOfAutoPay() {
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":true}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaId)
+            .then()
+                .statusCode(200)
+                .body("autoPayEnabled", equalTo(true));
+
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":false}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaId)
+            .then()
+                .statusCode(200)
+                .body("autoPayEnabled", equalTo(false));
+    }
+
+    @Test
+    @TestSecurity(user = "not-a-member")
+    void nonMemberCannotToggleAutoPay() {
+        given()
+            .contentType("application/json")
+            .body("{\"autoPayEnabled\":true}")
+            .when().put("/api/chamas/{chamaId}/members/mine/auto-pay", chamaId)
+            .then().statusCode(403);
     }
 
     @Test

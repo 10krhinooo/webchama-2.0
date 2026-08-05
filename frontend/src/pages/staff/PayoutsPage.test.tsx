@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import PayoutsPage from './PayoutsPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/payouts', () => ({
   getPayoutSchedule: vi.fn(),
@@ -13,6 +14,10 @@ vi.mock('../../api/payouts', () => ({
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
+}))
+vi.mock('../../api/chamas', () => ({
+  getChama: vi.fn(),
+  updateAutoPushSettings: vi.fn(),
 }))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
@@ -27,6 +32,7 @@ import {
   disbursePayout,
 } from '../../api/payouts'
 import { getMembers } from '../../api/members'
+import { getChama, updateAutoPushSettings } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
 const mockGetPayoutSchedule = getPayoutSchedule as ReturnType<typeof vi.fn>
@@ -36,6 +42,8 @@ const mockGetMyPayouts = getMyPayouts as ReturnType<typeof vi.fn>
 const mockCreatePayout = createPayout as ReturnType<typeof vi.fn>
 const mockDisbursePayout = disbursePayout as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
+const mockGetChama = getChama as ReturnType<typeof vi.fn>
+const mockUpdateAutoPushSettings = updateAutoPushSettings as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 const scheduleEntry = {
@@ -75,6 +83,7 @@ describe('PayoutsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe', status: 'ACTIVE' }])
+    mockGetChama.mockResolvedValue({ id: 3, name: 'Tumaini', autoPushEnabled: true, autoPushRetryHours: 24 })
   })
 
   it('shows the full schedule and ledger for a treasurer/chairperson', async () => {
@@ -149,7 +158,7 @@ describe('PayoutsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no rotation schedule generated yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('Generate Schedule'))
-    fireEvent.change(screen.getByLabelText(/rotation order/i), { target: { value: 'AGREED' } })
+    selectOption(/rotation order/i, 'Agreed order')
 
     await waitFor(() => expect(screen.getByText(/1\. Jane Doe/)).toBeTruthy())
     fireEvent.click(screen.getAllByText('↓')[0])
@@ -211,5 +220,61 @@ describe('PayoutsPage', () => {
 
     await waitFor(() => expect(screen.getAllByText('Jane Doe').length).toBeGreaterThan(0))
     expect(screen.queryByText('Disburse')).toBeNull()
+  })
+
+  it('does not show auto-push settings to a plain member', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, member: { id: 5 }, loading: false })
+    mockGetPayoutSchedule.mockResolvedValue([scheduleEntry])
+    mockGetMyPayouts.mockResolvedValue([payout])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('My Payouts')).toBeTruthy())
+    expect(screen.queryByText('Auto-push settings')).toBeNull()
+    expect(mockGetChama).not.toHaveBeenCalled()
+  })
+
+  it('preloads auto-push settings for a manager and saves changes', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetPayoutSchedule.mockResolvedValue([scheduleEntry])
+    mockGetPayouts.mockResolvedValue([payout])
+    mockUpdateAutoPushSettings.mockResolvedValue({ id: 3, name: 'Tumaini', autoPushEnabled: false, autoPushRetryHours: 48 })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Auto-push settings')).toBeTruthy())
+    expect(screen.getByLabelText('Enable auto-push')).toBeChecked()
+    expect(screen.getByLabelText(/retry after/i)).toHaveValue(24)
+
+    fireEvent.click(screen.getByLabelText('Enable auto-push'))
+    fireEvent.change(screen.getByLabelText(/retry after/i), { target: { value: '48' } })
+    fireEvent.click(screen.getByText('Save Auto-Push Settings'))
+
+    await waitFor(() =>
+      expect(mockUpdateAutoPushSettings).toHaveBeenCalledWith(3, { autoPushEnabled: false, autoPushRetryHours: 48 }),
+    )
+    await waitFor(() => expect(screen.getByText('Auto-push settings saved.')).toBeTruthy())
+  })
+
+  it('shows an error when saving auto-push settings fails', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetPayoutSchedule.mockResolvedValue([scheduleEntry])
+    mockGetPayouts.mockResolvedValue([payout])
+    mockUpdateAutoPushSettings.mockRejectedValue(new Error('could not save settings'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Auto-push settings')).toBeTruthy())
+    fireEvent.click(screen.getByText('Save Auto-Push Settings'))
+
+    await waitFor(() => expect(screen.getByText('could not save settings')).toBeTruthy())
+  })
+
+  it('disables the retry-hours field while auto-push is off', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetPayoutSchedule.mockResolvedValue([scheduleEntry])
+    mockGetPayouts.mockResolvedValue([payout])
+    mockGetChama.mockResolvedValue({ id: 3, name: 'Tumaini', autoPushEnabled: false, autoPushRetryHours: 24 })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Auto-push settings')).toBeTruthy())
+    expect(screen.getByLabelText(/retry after/i)).toBeDisabled()
   })
 })

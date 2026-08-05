@@ -8,14 +8,19 @@ export interface MyMembership {
   isSuperAdmin: boolean
   isChairperson: boolean
   isTreasurer: boolean
+  isSecretary: boolean
+  isManager: boolean
   loading: boolean
 }
 
 /**
  * Resolves the caller's own role(s) within one chama. SUPER_ADMIN is a real
- * Keycloak realm role and bypasses every chama-scoped check, so it is read
- * straight from the token rather than from a member row, which a platform
- * admin may not even have.
+ * Keycloak realm role, reported here for display purposes only (e.g. a
+ * "Platform admin" badge), it grants no chama-scoped access of its own, per
+ * MIGRATION_PLAN.md section 5 ("no operational access to any single
+ * chama's financial data by default"). A platform admin only gets real
+ * roles in a chama by holding an actual member row in it, exactly like
+ * anyone else, so this always fetches the caller's own membership.
  */
 export function useMyMembership(chamaId: number | undefined): MyMembership {
   const { keycloak } = useKeycloak()
@@ -24,7 +29,7 @@ export function useMyMembership(chamaId: number | undefined): MyMembership {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!chamaId || isSuperAdmin) {
+    if (!chamaId) {
       setMember(null)
       setLoading(false)
       return
@@ -44,15 +49,20 @@ export function useMyMembership(chamaId: number | undefined): MyMembership {
     return () => {
       cancelled = true
     }
-  }, [chamaId, isSuperAdmin])
+  }, [chamaId])
 
   const roles = member?.roles ?? []
+  const isChairperson = roles.includes('CHAIRPERSON')
+  const isTreasurer = roles.includes('TREASURER')
+  const isSecretary = roles.includes('SECRETARY')
   return {
     member,
     roles,
     isSuperAdmin,
-    isChairperson: isSuperAdmin || roles.includes('CHAIRPERSON'),
-    isTreasurer: isSuperAdmin || roles.includes('TREASURER'),
+    isChairperson,
+    isTreasurer,
+    isSecretary,
+    isManager: isChairperson || isTreasurer,
     loading,
   }
 }

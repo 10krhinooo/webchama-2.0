@@ -17,7 +17,9 @@ import {
   createMember,
   updateMember,
   updateMemberStatus,
+  updateMyAutoPay,
   deleteMember,
+  getCreditScore,
   type CreateMemberRequest,
 } from './members'
 
@@ -81,9 +83,23 @@ describe('members api', () => {
     expect(result).toEqual({ id: 4, status: 'SUSPENDED' })
   })
 
+  it('updateMyAutoPay puts the opt-in flag for the caller own membership', async () => {
+    mockPut.mockResolvedValue({ data: { id: 4, autoPayEnabled: true } })
+    const result = await updateMyAutoPay(3, true)
+    expect(mockPut).toHaveBeenCalledWith('/chamas/3/members/mine/auto-pay', { autoPayEnabled: true })
+    expect(result).toEqual({ id: 4, autoPayEnabled: true })
+  })
+
   it('deleteMember deletes by id', async () => {
     mockDelete.mockResolvedValue({})
     await deleteMember(3, 4)
     expect(mockDelete).toHaveBeenCalledWith('/chamas/3/members/4')
+  })
+
+  it('getCreditScore fetches and unwraps a member credit score', async () => {
+    mockGet.mockResolvedValue({ data: { memberId: 4, score: 82 } })
+    const result = await getCreditScore(3, 4)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/members/4/credit-score')
+    expect(result).toEqual({ memberId: 4, score: 82 })
   })
 })

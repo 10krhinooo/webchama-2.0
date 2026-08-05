@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.enums.ApprovalTargetType;
 import org.chama.domain.enums.LoanDisbursementStatus;
 import org.chama.domain.enums.LoanStatus;
 import org.chama.domain.model.Loan;
@@ -41,10 +42,14 @@ public class LoanDisbursementService {
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
 
+    @Inject
+    ApprovalService approvalService;
+
     /**
      * Triggers a B2C payout for an APPROVED loan. Restricted to TREASURER/CHAIRPERSON at the
-     * resource layer (issue #36 notes the intended maker-checker dual sign-off from Phase 7a is
-     * not yet in place, this single-role gate is the interim control).
+     * resource layer. A principal at or above the chama's approval threshold additionally requires
+     * a cleared maker-checker dual sign-off (issues #52/#54/#36) before the B2C call fires, see
+     * {@link ApprovalService#requireApproved}.
      */
     @Transactional
     public LoanDisbursement initiate(Long chamaId, Long loanId) {
@@ -54,6 +59,9 @@ public class LoanDisbursementService {
         }
         if (loan.status != LoanStatus.APPROVED) {
             throw new BadRequestException("Only an approved loan can be disbursed");
+        }
+        if (approvalService.requiresApproval(loan.chama, loan.principal)) {
+            approvalService.requireApproved(chamaId, ApprovalTargetType.LOAN_DISBURSEMENT, loanId);
         }
 
         DarajaB2cClient.B2cAckResult ack = b2cClient.requestPayout(

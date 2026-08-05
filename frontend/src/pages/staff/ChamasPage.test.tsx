@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ChamasPage from './ChamasPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/chamas', () => ({
   getChamas: vi.fn(),
@@ -26,8 +27,12 @@ const chama = {
   contributionFrequency: 'MONTHLY' as const,
   contributionAmount: 500,
   meetingDay: null,
+  savingsTarget: null,
   status: 'ACTIVE' as const,
   createdAt: '2026-01-01T00:00:00Z',
+  joinCode: 'AB12CD34',
+  autoPushEnabled: true,
+  autoPushRetryHours: 24,
 }
 
 function renderPage() {
@@ -133,8 +138,8 @@ describe('ChamasPage', () => {
     fireEvent.click(screen.getByText('+ New Chama'))
     fireEvent.change(screen.getByLabelText(/^name \*/i), { target: { value: 'Upya' } })
     fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'A savings group' } })
-    fireEvent.change(screen.getByLabelText(/^type/i), { target: { value: 'TABLE_BANKING' } })
-    fireEvent.change(screen.getByLabelText(/frequency/i), { target: { value: 'WEEKLY' } })
+    selectOption(/^type/i, 'Table banking')
+    selectOption(/frequency/i, 'Weekly')
     fireEvent.change(screen.getByLabelText(/currency/i), { target: { value: 'USD' } })
     fireEvent.change(screen.getByLabelText(/meeting day/i), { target: { value: 'Fridays' } })
     fireEvent.change(screen.getByLabelText(/contribution amount/i), { target: { value: '1000' } })
@@ -149,5 +154,45 @@ describe('ChamasPage', () => {
       currency: 'USD',
       meetingDay: 'Fridays',
     })
+  })
+
+  it('submits a savings target when set', async () => {
+    mockCreateChama.mockResolvedValue({ ...chama, id: 2 })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('+ New Chama'))
+    fireEvent.change(screen.getByLabelText(/^name \*/i), { target: { value: 'Upya' } })
+    fireEvent.change(screen.getByLabelText(/contribution amount/i), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText(/savings target/i), { target: { value: '500000' } })
+    fireEvent.change(screen.getByLabelText(/your full name/i), { target: { value: 'Jane' } })
+    fireEvent.click(screen.getByText('Create Chama'))
+
+    await waitFor(() => expect(mockCreateChama).toHaveBeenCalled())
+    expect(mockCreateChama.mock.calls[0][0]).toMatchObject({ savingsTarget: 500000 })
+  })
+
+  it('leaves the savings target unset when the field is left blank', async () => {
+    mockCreateChama.mockResolvedValue({ ...chama, id: 2 })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('+ New Chama'))
+    fireEvent.change(screen.getByLabelText(/^name \*/i), { target: { value: 'Upya' } })
+    fireEvent.change(screen.getByLabelText(/contribution amount/i), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText(/your full name/i), { target: { value: 'Jane' } })
+    fireEvent.click(screen.getByText('Create Chama'))
+
+    await waitFor(() => expect(mockCreateChama).toHaveBeenCalled())
+    expect(mockCreateChama.mock.calls[0][0].savingsTarget).toBeUndefined()
+  })
+
+  it('preloads the savings target when editing a chama that already has one', async () => {
+    mockGetChamas.mockResolvedValue([{ ...chama, savingsTarget: 250000 }])
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Edit'))
+    expect(screen.getByLabelText(/savings target/i)).toHaveValue(250000)
   })
 })

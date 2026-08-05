@@ -2,33 +2,38 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import LoansPage from './LoansPage'
+import { selectOption } from '../../test-utils/selectOption'
 
 vi.mock('../../api/loans', () => ({
   getLoans: vi.fn(),
   getMyLoans: vi.fn(),
   createLoan: vi.fn(),
   approveLoan: vi.fn(),
+  rejectLoan: vi.fn(),
   getLoanRepayments: vi.fn(),
   recordLoanRepayment: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
+  getCreditScore: vi.fn(),
 }))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
-import { getLoans, getMyLoans, createLoan, approveLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
-import { getMembers } from '../../api/members'
+import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
+import { getMembers, getCreditScore } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
 const mockGetLoans = getLoans as ReturnType<typeof vi.fn>
 const mockGetMyLoans = getMyLoans as ReturnType<typeof vi.fn>
 const mockCreateLoan = createLoan as ReturnType<typeof vi.fn>
 const mockApproveLoan = approveLoan as ReturnType<typeof vi.fn>
+const mockRejectLoan = rejectLoan as ReturnType<typeof vi.fn>
 const mockGetLoanRepayments = getLoanRepayments as ReturnType<typeof vi.fn>
 const mockRecordLoanRepayment = recordLoanRepayment as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
+const mockGetCreditScore = getCreditScore as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 const loan = {
@@ -72,6 +77,7 @@ describe('LoansPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
+    mockGetCreditScore.mockResolvedValue({ memberId: 5, score: 82 })
   })
 
   it('lists all loans for a treasurer/chairperson', async () => {
@@ -82,6 +88,25 @@ describe('LoansPage', () => {
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     expect(screen.getByText('Loans')).toBeTruthy()
     expect(mockGetMyLoans).not.toHaveBeenCalled()
+  })
+
+  it("shows the loan member's credit score to a manager", async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    renderPage()
+
+    await waitFor(() => expect(mockGetCreditScore).toHaveBeenCalledWith(3, 5))
+    await waitFor(() => expect(screen.getByText('82')).toBeTruthy())
+  })
+
+  it("does not show a credit score column to a plain member", async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, member: { id: 5 }, loading: false })
+    mockGetMyLoans.mockResolvedValue([loan])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('View Schedule')).toBeTruthy())
+    expect(mockGetCreditScore).not.toHaveBeenCalled()
+    expect(screen.queryByText('Credit Score')).toBeNull()
   })
 
   it("lists only the caller's own loans for a plain member", async () => {
@@ -110,7 +135,7 @@ describe('LoansPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no loans yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Loan'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/principal/i), { target: { value: '10000' } })
     fireEvent.change(screen.getByLabelText(/interest rate/i), { target: { value: '12' } })
     fireEvent.change(screen.getByLabelText(/term/i), { target: { value: '6' } })
@@ -152,7 +177,7 @@ describe('LoansPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no loans yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Loan'))
-    fireEvent.change(screen.getByLabelText(/member/i), { target: { value: '5' } })
+    selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/principal/i), { target: { value: '10000' } })
     fireEvent.change(screen.getByLabelText(/interest rate/i), { target: { value: '12' } })
     fireEvent.change(screen.getByLabelText(/term/i), { target: { value: '6' } })
@@ -192,22 +217,37 @@ describe('LoansPage', () => {
     await waitFor(() => expect(screen.getByText(/approved/i)).toBeTruthy())
   })
 
-  it('does not offer an Approve action once a loan is past REQUESTED', async () => {
+  it('lets a manager reject a requested loan', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    mockRejectLoan.mockResolvedValue({ ...loan, status: 'REJECTED' })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    fireEvent.click(screen.getByText('Reject'))
+
+    await waitFor(() => expect(mockRejectLoan).toHaveBeenCalledWith(3, 1))
+    await waitFor(() => expect(screen.getByText(/rejected/i)).toBeTruthy())
+  })
+
+  it('does not offer Approve/Reject actions once a loan is past REQUESTED', async () => {
     mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
     mockGetLoans.mockResolvedValue([{ ...loan, status: 'APPROVED' }])
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
     expect(screen.queryByText('Approve')).toBeNull()
+    expect(screen.queryByText('Reject')).toBeNull()
   })
 
-  it('does not offer Approve to a plain member', async () => {
+  it('does not offer Approve/Reject to a plain member', async () => {
     mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, member: { id: 5 }, loading: false })
     mockGetMyLoans.mockResolvedValue([loan])
     renderPage()
 
     await waitFor(() => expect(screen.getByText('View Schedule')).toBeTruthy())
     expect(screen.queryByText('Approve')).toBeNull()
+    expect(screen.queryByText('Reject')).toBeNull()
   })
 
   it("does not offer Record Payment to a plain member viewing their own schedule", async () => {

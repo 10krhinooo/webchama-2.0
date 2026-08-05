@@ -18,11 +18,17 @@ import org.chama.domain.model.Contribution;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.domain.model.Payment;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
 import org.chama.repository.MeetingAttendanceRepository;
@@ -30,6 +36,7 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.service.FlutterwaveService;
 import org.chama.service.MpesaService;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,16 +55,37 @@ import static org.mockito.ArgumentMatchers.argThat;
 class PaymentFlowResourceTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
     MemberRepository memberRepository;
 
     @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
     MemberRoleRepository memberRoleRepository;
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
     @Inject
     PaymentRepository paymentRepository;
@@ -96,6 +124,8 @@ class PaymentFlowResourceTest {
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             paymentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
@@ -105,8 +135,13 @@ class PaymentFlowResourceTest {
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
             contributionRepository.deleteAll();
+            approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();

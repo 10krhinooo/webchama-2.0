@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import org.chama.domain.enums.KeycloakEventSource;
 import org.chama.domain.model.KeycloakSecurityEvent;
 import org.chama.repository.KeycloakSecurityEventRepository;
+import org.chama.service.notification.SecurityAlertEmailService;
 import org.jboss.logging.Logger;
 import io.quarkus.scheduler.Scheduled;
 
@@ -42,6 +43,9 @@ public class KeycloakSecurityEventSyncService {
 
     @Inject
     KeycloakSecurityEventRepository repository;
+
+    @Inject
+    SecurityAlertEmailService securityAlertEmailService;
 
     void onStart(@Observes StartupEvent event) {
         try {
@@ -106,6 +110,10 @@ public class KeycloakSecurityEventSyncService {
                     row.keycloakUserId, row.ipAddress);
             }
             repository.persist(row);
+
+            if (isSuspicious(row)) {
+                securityAlertEmailService.alertSuspiciousEvent(row);
+            }
         }
     }
 
@@ -146,6 +154,16 @@ public class KeycloakSecurityEventSyncService {
             if (existing.contains(row.dedupeKey)) continue;
             repository.persist(row);
         }
+    }
+
+    /**
+     * Rule-based for now: the one signal Keycloak itself raises specifically for "someone tried
+     * to force enter", bruteForceProtected locking an account after repeated failed logins. Kept
+     * as its own method so a future, smarter (e.g. LLM-scored) classifier has a single seam to
+     * replace this at, rather than reaching into the sync loop.
+     */
+    private boolean isSuspicious(KeycloakSecurityEvent event) {
+        return "user_temporarily_disabled".equals(event.error);
     }
 
     private static String nz(String value) {

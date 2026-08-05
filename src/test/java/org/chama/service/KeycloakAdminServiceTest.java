@@ -51,17 +51,28 @@ class KeycloakAdminServiceTest {
     }
 
     @Test
+    void getUserEmailReturnsTheEmailOfARealAccount() throws Exception {
+        String email = "kc-get-email-test-" + UUID.randomUUID() + "@example.com";
+        String userId = keycloakAdminService.createUser(email, "Get Email Test", keycloakAdminService.generateTempPassword());
+
+        assertEquals(email, keycloakAdminService.getUserEmail(userId));
+    }
+
+    @Test
     void ensureEventsEnabledSucceedsAgainstTheRealKeycloakInstance() throws Exception {
         keycloakAdminService.ensureEventsEnabled();
     }
 
     /**
-     * Triggers a real bad-password direct-grant attempt against webchama-frontend (public,
-     * direct access grants enabled) for the seeded member1 account, then confirms the resulting
+     * Triggers a real bad-password direct-grant attempt against admin-cli (Keycloak's own
+     * built-in per-realm client, always public with direct access grants enabled, the same
+     * client kcadm.sh uses) for the seeded member1 account, then confirms the resulting
      * LOGIN_ERROR shows up through fetchLoginEvents. This is exactly the "someone tries to force
      * enter" signal KeycloakSecurityEventSyncService exists to capture, error is Keycloak's own
      * failure reason string (e.g. invalid_user_credentials, or user_temporarily_disabled once
-     * bruteForceProtected locks the account).
+     * bruteForceProtected locks the account). Deliberately not webchama-frontend, direct access
+     * grants are disabled on that client, real logins only ever go through the standard/PKCE
+     * flow, so simulating a bad password there would no longer reach Keycloak's login path at all.
      */
     @Test
     void fetchLoginEventsIncludesARealFailedLoginAttempt() throws Exception {
@@ -92,7 +103,7 @@ class KeycloakAdminServiceTest {
     private void triggerBadPasswordLoginAttempt() throws Exception {
         HttpClient http = HttpClient.newHttpClient();
         String body = "grant_type=password"
-            + "&client_id=" + URLEncoder.encode("webchama-frontend", StandardCharsets.UTF_8)
+            + "&client_id=" + URLEncoder.encode("admin-cli", StandardCharsets.UTF_8)
             + "&username=" + URLEncoder.encode("member1", StandardCharsets.UTF_8)
             + "&password=" + URLEncoder.encode("definitely-the-wrong-password", StandardCharsets.UTF_8);
 

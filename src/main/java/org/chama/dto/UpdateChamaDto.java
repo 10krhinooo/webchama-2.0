@@ -3,6 +3,7 @@ package org.chama.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
 
@@ -15,5 +16,8 @@ public record UpdateChamaDto(
     String currency,
     @NotNull ContributionFrequency contributionFrequency,
     @NotNull @Positive BigDecimal contributionAmount,
-    String meetingDay) {
+    String meetingDay,
+    @PositiveOrZero BigDecimal approvalThreshold,
+    // Null means no lifetime savings goal is set.
+    @PositiveOrZero BigDecimal savingsTarget) {
 }

@@ -6,23 +6,39 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.enums.ApprovalTargetType;
 import org.chama.domain.enums.ChamaStatus;
 import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
 import org.chama.domain.enums.InterestMethod;
 import org.chama.domain.enums.LoanDisbursementStatus;
 import org.chama.domain.enums.LoanStatus;
+import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.enums.MemberStatus;
+import org.chama.domain.model.Approval;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Loan;
 import org.chama.domain.model.LoanDisbursement;
 import org.chama.domain.model.Member;
+import org.chama.domain.model.MemberRole;
 import org.chama.dto.B2cResultCallbackDto;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
+import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
+import org.chama.repository.PayoutRepository;
+import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -42,13 +58,37 @@ import static org.mockito.ArgumentMatchers.eq;
 class LoanDisbursementServiceTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
     LoanDisbursementService loanDisbursementService;
+
+    @Inject
+    ApprovalRepository approvalRepository;
 
     @Inject
     ChamaRepository chamaRepository;
 
     @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
+
+    @Inject
     MemberRepository memberRepository;
+
+    @Inject
+    MemberRoleRepository memberRoleRepository;
+
+    @Inject
+    ContributionRepository contributionRepository;
+
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    PenaltyRepository penaltyRepository;
 
     @Inject
     LoanRepository loanRepository;
@@ -58,6 +98,18 @@ class LoanDisbursementServiceTest {
 
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
+
+    @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
 
     @InjectMock
     DarajaB2cClient b2cClient;
@@ -69,10 +121,26 @@ class LoanDisbursementServiceTest {
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepaymentRepository.deleteAll();
             loanRepository.deleteAll();
+            approvalRepository.deleteAll();
+            memberRoleRepository.deleteAll();
+            // Other test classes (e.g. AgmStatementServiceTest, ContributionAutoPushServiceTest) may
+            // leave Payment/Contribution/Payout/Penalty rows tied to a Member that this class's own
+            // memberRepository.deleteAll() below would otherwise violate a foreign key on, since this
+            // class never creates any of those itself.
+            paymentRepository.deleteAll();
+            contributionRepository.deleteAll();
+            payoutRepository.deleteAll();
+            penaltyRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = newChama("B2C Test Chama");
@@ -106,17 +174,74 @@ class LoanDisbursementServiceTest {
     }
 
     private Long persistLoan(LoanStatus status) {
+        return persistLoan(status, new BigDecimal("5000"));
+    }
+
+    // Above ApprovalService's default threshold (100000), so the maker-checker gate applies.
+    private Long persistLoanAboveThreshold(LoanStatus status) {
+        return persistLoan(status, new BigDecimal("150000"));
+    }
+
+    private Long persistLoan(LoanStatus status, BigDecimal principal) {
         return QuarkusTransaction.requiringNew().call(() -> {
             Loan loan = new Loan();
             loan.chama = chamaRepository.findById(chamaId);
             loan.member = memberRepository.findById(memberId);
-            loan.principal = new BigDecimal("5000");
+            loan.principal = principal;
             loan.interestRate = new BigDecimal("0");
             loan.interestMethod = InterestMethod.FLAT;
             loan.termMonths = 6;
             loan.status = status;
             loanRepository.persist(loan);
             return loan.id;
+        });
+    }
+
+    /** Seeds an Approval for the loan's disbursement, optionally clearing both signatories. */
+    private void seedApproval(Long loanId, boolean bothSignatoriesCleared) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            Member signerOne = new Member();
+            signerOne.chama = chamaRepository.findById(chamaId);
+            signerOne.keycloakUserId = "b2c-signer-1-" + loanId;
+            signerOne.fullName = "Signer One";
+            signerOne.phone = "254700000301";
+            signerOne.status = MemberStatus.ACTIVE;
+            memberRepository.persist(signerOne);
+            MemberRole signerOneRole = new MemberRole();
+            signerOneRole.member = signerOne;
+            signerOneRole.role = MemberRoleType.TREASURER;
+            signerOneRole.persist();
+
+            Approval approval = new Approval();
+            approval.chama = chamaRepository.findById(chamaId);
+            approval.targetType = ApprovalTargetType.LOAN_DISBURSEMENT;
+            approval.targetId = loanId;
+            approval.member = memberRepository.findById(memberId);
+            approval.amount = new BigDecimal("150000");
+            approval.reason = "Loan disbursement";
+            approval.requestedBy = signerOne;
+            approval.firstApprover = signerOne;
+            approval.firstApprovedAt = Instant.now();
+
+            if (bothSignatoriesCleared) {
+                Member signerTwo = new Member();
+                signerTwo.chama = chamaRepository.findById(chamaId);
+                signerTwo.keycloakUserId = "b2c-signer-2-" + loanId;
+                signerTwo.fullName = "Signer Two";
+                signerTwo.phone = "254700000302";
+                signerTwo.status = MemberStatus.ACTIVE;
+                memberRepository.persist(signerTwo);
+                MemberRole signerTwoRole = new MemberRole();
+                signerTwoRole.member = signerTwo;
+                signerTwoRole.role = MemberRoleType.CHAIRPERSON;
+                signerTwoRole.persist();
+
+                approval.secondApprover = signerTwo;
+                approval.secondApprovedAt = Instant.now();
+                approval.status = org.chama.domain.enums.ApprovalStatus.APPROVED;
+            }
+
+            approvalRepository.persist(approval);
         });
     }
 
@@ -145,6 +270,34 @@ class LoanDisbursementServiceTest {
         Long loanId = persistLoan(LoanStatus.APPROVED);
 
         assertThrows(NotFoundException.class, () -> loanDisbursementService.initiate(otherChamaId, loanId));
+    }
+
+    @Test
+    void initiateRejectsAnAboveThresholdLoanWithoutAClearedApproval() {
+        Long loanId = persistLoanAboveThreshold(LoanStatus.APPROVED);
+
+        assertThrows(BadRequestException.class, () -> loanDisbursementService.initiate(chamaId, loanId));
+        Mockito.verifyNoInteractions(b2cClient);
+    }
+
+    @Test
+    void initiateRejectsAnAboveThresholdLoanWhenApprovalHasOnlyOneSignatory() {
+        Long loanId = persistLoanAboveThreshold(LoanStatus.APPROVED);
+        seedApproval(loanId, false);
+
+        assertThrows(BadRequestException.class, () -> loanDisbursementService.initiate(chamaId, loanId));
+    }
+
+    @Test
+    void initiateProceedsForAnAboveThresholdLoanOnceApprovalHasClearedBothSignatories() {
+        Long loanId = persistLoanAboveThreshold(LoanStatus.APPROVED);
+        seedApproval(loanId, true);
+        Mockito.when(b2cClient.requestPayout(eq("254700000201"), any(BigDecimal.class), anyString()))
+            .thenReturn(new DarajaB2cClient.B2cAckResult("AG_2", "16740-9"));
+
+        LoanDisbursement disbursement = loanDisbursementService.initiate(chamaId, loanId);
+
+        assertEquals(LoanDisbursementStatus.PENDING, disbursement.status);
     }
 
     @Test

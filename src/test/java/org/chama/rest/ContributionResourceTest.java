@@ -12,22 +12,31 @@ import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MeetingRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -36,16 +45,37 @@ import static org.hamcrest.Matchers.equalTo;
 class ContributionResourceTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
     MemberRepository memberRepository;
 
     @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
     MemberRoleRepository memberRoleRepository;
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
@@ -71,12 +101,17 @@ class ContributionResourceTest {
     @Inject
     MeetingRepository meetingRepository;
 
+    @Inject
+    PaymentRepository paymentRepository;
+
     private Long chamaId;
     private Long memberId;
 
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
             penaltyRepository.deleteAll();
@@ -85,9 +120,15 @@ class ContributionResourceTest {
             loanRepaymentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
+            paymentRepository.deleteAll();
             contributionRepository.deleteAll();
+            approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();
@@ -188,5 +229,57 @@ class ContributionResourceTest {
         given()
             .when().delete("/api/chamas/{chamaId}/contributions/{id}", chamaId, contributionId)
             .then().statusCode(204);
+    }
+
+    @Test
+    @TestSecurity(user = "payer-1")
+    void mineStreakIsZeroWithNoContributions() {
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaId)
+            .then()
+                .statusCode(200)
+                .body("streak", equalTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "payer-1")
+    void mineStreakCountsAContributionPaidOnOrBeforeItsDueDate() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            org.chama.domain.model.Contribution contribution = new org.chama.domain.model.Contribution();
+            contribution.chama = chamaRepository.findById(chamaId);
+            contribution.member = memberRepository.findById(memberId);
+            contribution.period = LocalDate.now();
+            contribution.amountDue = new BigDecimal("500");
+            contribution.amountPaid = new BigDecimal("500");
+            contribution.status = org.chama.domain.enums.ContributionStatus.PAID;
+            contribution.paidAt = java.time.Instant.now();
+            contributionRepository.persist(contribution);
+        });
+
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaId)
+            .then()
+                .statusCode(200)
+                .body("streak", equalTo(1));
+    }
+
+    @Test
+    @TestSecurity(user = "payer-1")
+    void mineStreakResetsToZeroOnAnOverdueUnpaidContribution() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            org.chama.domain.model.Contribution overdue = new org.chama.domain.model.Contribution();
+            overdue.chama = chamaRepository.findById(chamaId);
+            overdue.member = memberRepository.findById(memberId);
+            overdue.period = LocalDate.now().minusMonths(1);
+            overdue.amountDue = new BigDecimal("500");
+            overdue.status = org.chama.domain.enums.ContributionStatus.OVERDUE;
+            contributionRepository.persist(overdue);
+        });
+
+        given()
+            .when().get("/api/chamas/{chamaId}/contributions/mine/streak", chamaId)
+            .then()
+                .statusCode(200)
+                .body("streak", equalTo(0));
     }
 }

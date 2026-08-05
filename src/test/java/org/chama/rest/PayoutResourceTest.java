@@ -12,12 +12,18 @@ import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.DocumentDeliveryAttemptRepository;
+import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.WelfareContributionRepository;
+import org.chama.repository.WelfareFundRepository;
+import org.chama.repository.WelfareWithdrawalRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
 import org.chama.repository.MeetingAttendanceRepository;
@@ -25,6 +31,7 @@ import org.chama.repository.MeetingRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.service.MemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,16 +48,37 @@ import static org.hamcrest.Matchers.notNullValue;
 class PayoutResourceTest {
 
     @Inject
+    ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
     ChamaRepository chamaRepository;
 
     @Inject
     MemberRepository memberRepository;
 
     @Inject
+    WelfareWithdrawalRepository welfareWithdrawalRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    WelfareFundRepository welfareFundRepository;
+
+    @Inject
     MemberRoleRepository memberRoleRepository;
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
+
+    @Inject
+    DocumentDeliveryAttemptRepository documentDeliveryAttemptRepository;
 
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
@@ -91,6 +119,8 @@ class PayoutResourceTest {
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
+            documentDeliveryAttemptRepository.deleteAll();
+            generatedDocumentRepository.deleteAll();
             paymentRepository.deleteAll();
             meetingAttendanceRepository.deleteAll();
             meetingRepository.deleteAll();
@@ -101,8 +131,13 @@ class PayoutResourceTest {
             loanRepaymentRepository.deleteAll();
             loanDisbursementRepository.deleteAll();
             loanRepository.deleteAll();
+            approvalRepository.deleteAll();
+            welfareWithdrawalRepository.deleteAll();
+            welfareContributionRepository.deleteAll();
+            welfareFundRepository.deleteAll();
             memberRoleRepository.deleteAll();
             memberRepository.deleteAll();
+            activityLogRepository.deleteAll();
             chamaRepository.deleteAll();
 
             Chama chama = new Chama();
@@ -301,6 +336,45 @@ class PayoutResourceTest {
         given()
             .when().put("/api/chamas/{chamaId}/payouts/{id}/disburse", chamaId, payoutId)
             .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "payout-treasurer-1")
+    void disbursingAnAboveThresholdPayoutRequiresAClearedApproval() {
+        Long payoutId = QuarkusTransaction.requiringNew().call(() -> {
+            org.chama.domain.model.Payout payout = new org.chama.domain.model.Payout();
+            payout.chama = chamaRepository.findById(chamaId);
+            payout.member = memberRepository.findById(m1Id);
+            payout.roundNumber = 1;
+            payout.scheduledDate = LocalDate.of(2026, 8, 1);
+            payout.amount = new BigDecimal("150000");
+            payoutRepository.persist(payout);
+            return payout.id;
+        });
+
+        given()
+            .when().put("/api/chamas/{chamaId}/payouts/{id}/disburse", chamaId, payoutId)
+            .then().statusCode(400);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            org.chama.domain.model.Approval approval = new org.chama.domain.model.Approval();
+            approval.chama = chamaRepository.findById(chamaId);
+            approval.targetType = org.chama.domain.enums.ApprovalTargetType.PAYOUT_DISBURSEMENT;
+            approval.targetId = payoutId;
+            approval.member = memberRepository.findById(m1Id);
+            approval.amount = new BigDecimal("150000");
+            approval.requestedBy = memberRepository.findById(treasurerId);
+            approval.firstApprover = memberRepository.findById(treasurerId);
+            approval.firstApprovedAt = java.time.Instant.now();
+            approval.secondApprover = memberRepository.findById(m1Id);
+            approval.secondApprovedAt = java.time.Instant.now();
+            approval.status = org.chama.domain.enums.ApprovalStatus.APPROVED;
+            approvalRepository.persist(approval);
+        });
+
+        given()
+            .when().put("/api/chamas/{chamaId}/payouts/{id}/disburse", chamaId, payoutId)
+            .then().statusCode(200).body("status", equalTo("DISBURSED"));
     }
 
     @Test

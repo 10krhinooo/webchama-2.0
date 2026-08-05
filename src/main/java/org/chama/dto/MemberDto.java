@@ -16,7 +16,8 @@ public record MemberDto(
     String nextOfKin,
     LocalDate joinDate,
     MemberStatus status,
-    List<MemberRoleType> roles) {
+    List<MemberRoleType> roles,
+    boolean autoPayEnabled) {
 
     public static MemberDto from(Member member, List<MemberRoleType> roles) {
         return new MemberDto(
@@ -28,6 +29,7 @@ public record MemberDto(
             member.nextOfKin,
             member.joinDate,
             member.status,
-            roles);
+            roles,
+            member.autoPayEnabled);
     }
 }

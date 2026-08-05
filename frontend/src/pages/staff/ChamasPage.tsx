@@ -24,6 +24,7 @@ import Select from '../../components/ui/Select'
 import Textarea from '../../components/ui/Textarea'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 
 const EMPTY_FORM = {
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
   contributionFrequency: 'MONTHLY' as Chama['contributionFrequency'],
   contributionAmount: '',
   meetingDay: '',
+  savingsTarget: '',
   creatorFullName: '',
   creatorPhone: '',
 }
@@ -75,6 +77,7 @@ export default function ChamasPage() {
       contributionFrequency: chama.contributionFrequency,
       contributionAmount: String(chama.contributionAmount),
       meetingDay: chama.meetingDay ?? '',
+      savingsTarget: chama.savingsTarget != null ? String(chama.savingsTarget) : '',
       creatorFullName: '',
       creatorPhone: '',
     })
@@ -95,6 +98,7 @@ export default function ChamasPage() {
         contributionFrequency: form.contributionFrequency,
         contributionAmount: Number(form.contributionAmount),
         meetingDay: form.meetingDay || undefined,
+        savingsTarget: form.savingsTarget ? Number(form.savingsTarget) : undefined,
       }
       if (editing) {
         await updateChama(editing.id, base)
@@ -146,41 +150,41 @@ export default function ChamasPage() {
       {loading ? (
         <TablePageSkeleton withFilter={false} />
       ) : (
-        <Reveal eager delayMs={80} className="bg-white rounded-2xl shadow-card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-paper-dim border-b border-black/10">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Contribution</th>
-                <th className="text-left px-4 py-3 font-medium text-ink/80">Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
+        <Reveal eager delayMs={80}>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Contribution</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {chamas.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted text-sm">You are not part of any chama yet.</td></tr>
+                <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">You are not part of any chama yet.</TableCell></TableRow>
               )}
               {pageItems.map((c) => (
-                <tr key={c.id} className="hover:bg-paper-dim/30">
-                  <td className="px-4 py-3 font-medium text-ink">
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium text-ink">
                     <Link to={`/chamas/${c.id}/members`} className="hover:underline">{c.name}</Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted">{c.type.replaceAll('_', ' ')}</td>
-                  <td className="px-4 py-3 font-mono text-muted">
+                  </TableCell>
+                  <TableCell className="text-muted">{c.type.replaceAll('_', ' ')}</TableCell>
+                  <TableCell className="font-mono text-muted">
                     {c.currency} {c.contributionAmount.toLocaleString()} / {c.contributionFrequency.toLowerCase()}
-                  </td>
-                  <td className="px-4 py-3"><Badge label={c.status} variant={statusVariant(c.status)} /></td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={() => openEdit(c)} className="text-primary text-xs hover:underline">Edit</button>
                       <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Reveal>
       )}
 
@@ -202,7 +206,7 @@ export default function ChamasPage() {
             </FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Type" htmlFor="chama-type" required>
-                <Select id="chama-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Chama['type'] })}>
+                <Select id="chama-type" value={form.type} onChange={(v) => setForm({ ...form, type: v as Chama['type'] })}>
                   <option value="MERRY_GO_ROUND">Merry-go-round</option>
                   <option value="TABLE_BANKING">Table banking</option>
                   <option value="INVESTMENT_GROUP">Investment group</option>
@@ -212,7 +216,7 @@ export default function ChamasPage() {
                 <Select
                   id="chama-frequency"
                   value={form.contributionFrequency}
-                  onChange={(e) => setForm({ ...form, contributionFrequency: e.target.value as Chama['contributionFrequency'] })}
+                  onChange={(v) => setForm({ ...form, contributionFrequency: v as Chama['contributionFrequency'] })}
                 >
                   <option value="WEEKLY">Weekly</option>
                   <option value="MONTHLY">Monthly</option>
@@ -241,6 +245,21 @@ export default function ChamasPage() {
                 value={form.meetingDay}
                 onChange={(e) => setForm({ ...form, meetingDay: e.target.value })}
                 placeholder="e.g. Last Saturday of the month"
+              />
+            </FormField>
+            <FormField
+              label="Savings target"
+              htmlFor="chama-savings-target"
+              hint="Optional lifetime savings goal, shown as progress on the dashboard."
+            >
+              <Input
+                id="chama-savings-target"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.savingsTarget}
+                onChange={(e) => setForm({ ...form, savingsTarget: e.target.value })}
+                placeholder="e.g. 500000"
               />
             </FormField>
 

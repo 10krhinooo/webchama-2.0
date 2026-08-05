@@ -9,6 +9,7 @@ vi.mock('keycloak-js', () => ({
 
 vi.mock('@react-keycloak/web', () => ({
   ReactKeycloakProvider: ({ children }: { children: React.ReactNode }) => children,
+  useKeycloak: () => ({ keycloak: { register: vi.fn() } }),
 }))
 
 import App from './App'
