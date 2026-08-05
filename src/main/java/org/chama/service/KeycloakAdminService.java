@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Minimal Keycloak Admin API client for provisioning member accounts, and for
@@ -30,6 +32,17 @@ import java.util.Map;
  */
 @ApplicationScoped
 public class KeycloakAdminService {
+
+    private static final Logger LOG = Logger.getLogger(KeycloakAdminService.class);
+
+    /** Keycloak's own page size cap for /events and /admin-events. */
+    private static final int EVENTS_PAGE_SIZE = 1000;
+
+    /** Safety backstop on pages fetched per call, not a normal ceiling: a realm producing more
+     * than 20,000 events in one sync window is pathological, and this stops ensureEventsEnabled's
+     * caller from looping forever against a runaway event log. Logged loudly so under-coverage
+     * stays visible rather than silently dropping the tail like the unpaginated version did. */
+    private static final int MAX_EVENT_PAGES = 20;
 
     @ConfigProperty(name = "keycloak.admin.url", defaultValue = "http://localhost:8180")
     String adminUrl;
@@ -180,31 +193,18 @@ public class KeycloakAdminService {
     /**
      * Login/logout events since dateFrom. Keycloak's events endpoint only accepts day-granularity
      * dateFrom/dateTo (yyyy-MM-dd), finer filtering against the sync watermark happens client-side
-     * on the returned "time" field.
+     * on the returned "time" field. Paginates via first/max: a day with more than one page of
+     * events (e.g. a credential-stuffing burst, the exact scenario this ingestion exists to catch)
+     * previously had its overflow silently and permanently dropped by a single unpaginated call.
      */
     public List<KeycloakLoginEvent> fetchLoginEvents(LocalDate dateFrom) throws Exception {
-        String token = getAdminToken();
-        String url = adminUrl + "/admin/realms/" + appRealm + "/events?dateFrom=" + dateFrom + "&max=1000";
-
-        HttpRequest req = HttpRequest.newBuilder(URI.create(url))
-            .GET()
-            .header("Authorization", "Bearer " + token)
-            .timeout(Duration.ofSeconds(20))
-            .build();
-
-        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-        if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
-            throw new RuntimeException("Failed to fetch Keycloak login events: " + resp.statusCode());
-        }
-
-        List<KeycloakLoginEvent> events = new ArrayList<>();
-        for (JsonNode node : mapper.readTree(resp.body())) {
+        return fetchPaged("events", dateFrom, node -> {
             Map<String, String> details = new HashMap<>();
             JsonNode detailsNode = node.get("details");
             if (detailsNode != null) {
                 detailsNode.fields().forEachRemaining(e -> details.put(e.getKey(), e.getValue().asText()));
             }
-            events.add(new KeycloakLoginEvent(
+            return new KeycloakLoginEvent(
                 node.path("time").asLong(),
                 node.path("type").asText(null),
                 node.path("realmId").asText(null),
@@ -213,31 +213,15 @@ public class KeycloakAdminService {
                 node.path("sessionId").asText(null),
                 node.path("ipAddress").asText(null),
                 node.path("error").asText(null),
-                details));
-        }
-        return events;
+                details);
+        });
     }
 
-    /** Admin console/API events since dateFrom, same day-granularity caveat as fetchLoginEvents. */
+    /** Admin console/API events since dateFrom, same day-granularity and pagination caveats as fetchLoginEvents. */
     public List<KeycloakAdminEvent> fetchAdminEvents(LocalDate dateFrom) throws Exception {
-        String token = getAdminToken();
-        String url = adminUrl + "/admin/realms/" + appRealm + "/admin-events?dateFrom=" + dateFrom + "&max=1000";
-
-        HttpRequest req = HttpRequest.newBuilder(URI.create(url))
-            .GET()
-            .header("Authorization", "Bearer " + token)
-            .timeout(Duration.ofSeconds(20))
-            .build();
-
-        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-        if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
-            throw new RuntimeException("Failed to fetch Keycloak admin events: " + resp.statusCode());
-        }
-
-        List<KeycloakAdminEvent> events = new ArrayList<>();
-        for (JsonNode node : mapper.readTree(resp.body())) {
+        return fetchPaged("admin-events", dateFrom, node -> {
             JsonNode authDetails = node.get("authDetails");
-            events.add(new KeycloakAdminEvent(
+            return new KeycloakAdminEvent(
                 node.path("time").asLong(),
                 node.path("realmId").asText(null),
                 node.path("operationType").asText(null),
@@ -246,7 +230,50 @@ public class KeycloakAdminService {
                 node.path("error").asText(null),
                 authDetails != null ? authDetails.path("userId").asText(null) : null,
                 authDetails != null ? authDetails.path("ipAddress").asText(null) : null,
-                authDetails != null ? authDetails.path("clientId").asText(null) : null));
+                authDetails != null ? authDetails.path("clientId").asText(null) : null);
+        });
+    }
+
+    /**
+     * Pages through a Keycloak realm event endpoint (/events or /admin-events) via first/max,
+     * stopping once a page comes back short of EVENTS_PAGE_SIZE. Bails out at MAX_EVENT_PAGES with
+     * a loud warning rather than looping forever, so an unusually busy window shows up in logs
+     * instead of silently under-syncing.
+     */
+    private <T> List<T> fetchPaged(String resource, LocalDate dateFrom, Function<JsonNode, T> toEvent) throws Exception {
+        String token = getAdminToken();
+        List<T> events = new ArrayList<>();
+
+        for (int page = 0; page < MAX_EVENT_PAGES; page++) {
+            int first = page * EVENTS_PAGE_SIZE;
+            String url = adminUrl + "/admin/realms/" + appRealm + "/" + resource
+                + "?dateFrom=" + dateFrom + "&first=" + first + "&max=" + EVENTS_PAGE_SIZE;
+
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                .GET()
+                .header("Authorization", "Bearer " + token)
+                .timeout(Duration.ofSeconds(20))
+                .build();
+
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+                throw new RuntimeException("Failed to fetch Keycloak " + resource + ": " + resp.statusCode());
+            }
+
+            int pageCount = 0;
+            for (JsonNode node : mapper.readTree(resp.body())) {
+                events.add(toEvent.apply(node));
+                pageCount++;
+            }
+
+            if (pageCount < EVENTS_PAGE_SIZE) {
+                return events;
+            }
+            if (page == MAX_EVENT_PAGES - 1) {
+                LOG.warnf("Keycloak %s returned a full page %d times in a row for dateFrom=%s (%d events so far); "
+                        + "stopping to avoid an unbounded loop, some events for this window may be missing",
+                    resource, MAX_EVENT_PAGES, dateFrom, events.size());
+            }
         }
         return events;
     }

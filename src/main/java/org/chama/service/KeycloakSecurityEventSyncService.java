@@ -15,7 +15,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Ingests Keycloak's own login and admin event log into keycloak_security_event, the "someone
@@ -70,13 +72,13 @@ public class KeycloakSecurityEventSyncService {
             return;
         }
 
+        List<KeycloakSecurityEvent> candidates = new ArrayList<>();
         for (var e : events) {
             Instant eventTime = Instant.ofEpochMilli(e.time());
             if (eventTime.isBefore(since)) continue;
 
             String dedupeKey = String.join("|", "LOGIN", String.valueOf(e.time()), nz(e.type()),
                 nz(e.userId()), nz(e.sessionId()), nz(e.ipAddress()), nz(e.error()));
-            if (repository.existsByDedupeKey(dedupeKey)) continue;
 
             KeycloakSecurityEvent row = new KeycloakSecurityEvent();
             row.source = KeycloakEventSource.LOGIN;
@@ -90,6 +92,19 @@ public class KeycloakSecurityEventSyncService {
             row.error = e.error();
             row.details = e.details().isEmpty() ? null : e.details().toString();
             row.dedupeKey = dedupeKey;
+            candidates.add(row);
+        }
+
+        // Single batched lookup instead of one existence check per candidate: this loop runs up to
+        // EVENTS_PAGE_SIZE-multiple rows per minute, and an N+1 query here scales worst exactly
+        // during the login burst this ingestion is meant to observe.
+        Set<String> existing = repository.findExistingDedupeKeys(candidates.stream().map(r -> r.dedupeKey).toList());
+        for (KeycloakSecurityEvent row : candidates) {
+            if (existing.contains(row.dedupeKey)) continue;
+            if ("LOGIN_ERROR".equals(row.type) && "user_temporarily_disabled".equals(row.error)) {
+                LOG.warnf("Keycloak account temporarily disabled by brute-force protection: user=%s ip=%s",
+                    row.keycloakUserId, row.ipAddress);
+            }
             repository.persist(row);
         }
     }
@@ -103,13 +118,13 @@ public class KeycloakSecurityEventSyncService {
             return;
         }
 
+        List<KeycloakSecurityEvent> candidates = new ArrayList<>();
         for (var e : events) {
             Instant eventTime = Instant.ofEpochMilli(e.time());
             if (eventTime.isBefore(since)) continue;
 
             String dedupeKey = String.join("|", "ADMIN", String.valueOf(e.time()), nz(e.operationType()),
                 nz(e.resourceType()), nz(e.resourcePath()), nz(e.userId()));
-            if (repository.existsByDedupeKey(dedupeKey)) continue;
 
             KeycloakSecurityEvent row = new KeycloakSecurityEvent();
             row.source = KeycloakEventSource.ADMIN;
@@ -123,6 +138,12 @@ public class KeycloakSecurityEventSyncService {
             row.resourceType = e.resourceType();
             row.resourcePath = e.resourcePath();
             row.dedupeKey = dedupeKey;
+            candidates.add(row);
+        }
+
+        Set<String> existing = repository.findExistingDedupeKeys(candidates.stream().map(r -> r.dedupeKey).toList());
+        for (KeycloakSecurityEvent row : candidates) {
+            if (existing.contains(row.dedupeKey)) continue;
             repository.persist(row);
         }
     }
