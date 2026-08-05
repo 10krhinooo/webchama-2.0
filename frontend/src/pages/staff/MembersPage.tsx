@@ -25,6 +25,7 @@ import PhoneInput from '../../components/ui/PhoneInput'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Pagination from '../../components/ui/Pagination'
+import Reveal from '../../components/ui/Reveal'
 import { usePagination } from '../../hooks/usePagination'
 
 const ALL_ROLES: MemberRoleType[] = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'MEMBER']
@@ -181,20 +182,20 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <Reveal eager className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-ink">Members</h1>
           {chama && <p className="text-sm text-muted">{chama.name}</p>}
         </div>
         {isChairperson && <Button onClick={openCreate}>+ Invite Member</Button>}
-      </div>
+      </Reveal>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={isChairperson} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
+        <Reveal eager delayMs={80} className="bg-white rounded-2xl shadow-card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-paper-dim border-b border-black/10">
               <tr>
@@ -240,7 +241,7 @@ export default function MembersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Reveal>
       )}
 
       {!loading && !roleLoading && (

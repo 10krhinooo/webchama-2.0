@@ -26,6 +26,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
+import Reveal from '../../components/ui/Reveal'
 import { usePagination } from '../../hooks/usePagination'
 
 const EMPTY_CONTRIBUTION_FORM = { memberId: '', period: '', amountDue: '' }
@@ -185,19 +186,19 @@ export default function ContributionsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <Reveal eager className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">
           {canManage ? 'Contributions' : 'My Contributions'}
         </h1>
         {canManage && <Button onClick={openCreate}>+ New Contribution</Button>}
-      </div>
+      </Reveal>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={canManage} />
       ) : (
-        <div className="bg-white rounded-2xl shadow-card overflow-x-auto">
+        <Reveal eager delayMs={80} className="bg-white rounded-2xl shadow-card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-paper-dim border-b border-black/10">
               <tr>
@@ -243,7 +244,7 @@ export default function ContributionsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Reveal>
       )}
 
       {!loading && !roleLoading && (

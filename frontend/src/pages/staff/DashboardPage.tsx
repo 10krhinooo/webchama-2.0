@@ -8,6 +8,7 @@ import { useMyMembership } from '../../hooks/useMyMembership'
 import ContributionPot from '../../components/marketing/ContributionPot'
 import { SkeletonBlock, SkeletonLine } from '../../components/ui/Skeleton'
 import TransientAlert from '../../components/ui/TransientAlert'
+import Reveal from '../../components/ui/Reveal'
 
 function formatMoney(amount: number, currency: string) {
   return `${currency} ${amount.toLocaleString()}`
@@ -76,16 +77,16 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <Reveal eager>
         <h1 className="font-heading text-2xl font-bold text-ink">{chama?.name ?? 'Dashboard'}</h1>
         <p className="text-sm text-muted">
           {isManager ? 'This cycle across all members' : 'Your contribution this cycle'}
         </p>
-      </div>
+      </Reveal>
 
       <TransientAlert variant="error" message={error} onDismiss={() => setError(null)} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <Reveal eager delayMs={80} className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl bg-white p-8 shadow-card">
           <ContributionPot
             percent={percent}
@@ -109,7 +110,7 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-      </div>
+      </Reveal>
     </div>
   )
 }
