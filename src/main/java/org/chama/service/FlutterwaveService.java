@@ -16,7 +16,7 @@ import java.time.Duration;
 
 /**
  * Flutterwave Standard checkout, the diaspora-contribution channel for members without M-Pesa or
- * paying from outside Kenya (MIGRATION_PLAN.md section 9).
+ * paying from outside Kenya.
  */
 @ApplicationScoped
 public class FlutterwaveService {

@@ -56,8 +56,8 @@ public class Payout extends PanacheEntityBase {
     @Column(name = "disbursed_at")
     public Instant disbursedAt;
 
-    // Marking a payout disbursed is a claim-once transition (MIGRATION_PLAN.md section 7);
-    // @Version closes the race the status check in PayoutService can't close alone.
+    // Marking a payout disbursed is a claim-once transition; @Version closes the race the
+    // status check in PayoutService can't close alone.
     @Version
     @Column(nullable = false)
     public long version;

@@ -17,8 +17,8 @@ import java.util.List;
 
 /**
  * SUPER_ADMIN-only read view over ingested Keycloak login/admin events (see
- * KeycloakSecurityEventSyncService), the cross-chama platform oversight view MIGRATION_PLAN.md
- * section 5 describes for SUPER_ADMIN. Platform-level, not chama-scoped, so this goes through
+ * KeycloakSecurityEventSyncService), the cross-chama platform oversight view intended for
+ * SUPER_ADMIN. Platform-level, not chama-scoped, so this goes through
  * CurrentUser.isSuperAdmin() directly rather than TenantAccessService, which only resolves
  * per-chama roles.
  */
