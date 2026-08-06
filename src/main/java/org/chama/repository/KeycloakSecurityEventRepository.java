@@ -6,10 +6,13 @@ import org.chama.domain.model.KeycloakSecurityEvent;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @ApplicationScoped
 public class KeycloakSecurityEventRepository implements PanacheRepository<KeycloakSecurityEvent> {
@@ -22,8 +25,22 @@ public class KeycloakSecurityEventRepository implements PanacheRepository<Keyclo
         return Optional.ofNullable(max);
     }
 
-    public boolean existsByDedupeKey(String dedupeKey) {
-        return count("dedupeKey", dedupeKey) > 0;
+    /**
+     * Which of these dedupe keys have already been ingested, as a single batched lookup rather
+     * than one exists-check per candidate row. A poll can carry up to a few thousand candidate
+     * events (see KeycloakAdminService's page size), and checking each individually against the DB
+     * turned the sync into an N+1 query storm that scaled worst during exactly the load spike
+     * (a login burst) this ingestion exists to observe.
+     */
+    public Set<String> findExistingDedupeKeys(Collection<String> dedupeKeys) {
+        if (dedupeKeys.isEmpty()) {
+            return Set.of();
+        }
+        List<String> found = getEntityManager()
+            .createQuery("select e.dedupeKey from KeycloakSecurityEvent e where e.dedupeKey in :keys", String.class)
+            .setParameter("keys", dedupeKeys)
+            .getResultList();
+        return new HashSet<>(found);
     }
 
     /**

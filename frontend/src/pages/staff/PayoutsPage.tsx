@@ -26,6 +26,7 @@ import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
+import Reveal from '../../components/ui/Reveal'
 
 const EMPTY_SCHEDULE_FORM = { rotationOrderType: 'SENIORITY' as RotationOrderType }
 const EMPTY_PAYOUT_FORM = { scheduledDate: '' }
@@ -186,9 +187,9 @@ export default function PayoutsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <Reveal eager className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">Payouts</h1>
-      </div>
+      </Reveal>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
@@ -196,7 +197,7 @@ export default function PayoutsPage() {
         <TablePageSkeleton withFilter={false} withButton={canManage} />
       ) : (
         <>
-          <section className="space-y-3">
+          <Reveal eager delayMs={80} as="section" className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-heading text-lg font-semibold text-ink">Rotation Schedule</h2>
               {canManage && <Button onClick={openScheduleModal}>Generate Schedule</Button>}
@@ -224,9 +225,9 @@ export default function PayoutsPage() {
                 ))}
               </TableBody>
             </Table>
-          </section>
+          </Reveal>
 
-          <section className="space-y-3">
+          <Reveal eager delayMs={160} as="section" className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-heading text-lg font-semibold text-ink">{canManage ? 'Payouts' : 'My Payouts'}</h2>
               {canManage && <Button onClick={openPayoutModal}>Create Next Payout</Button>}
@@ -264,7 +265,7 @@ export default function PayoutsPage() {
                 ))}
               </TableBody>
             </Table>
-          </section>
+          </Reveal>
 
           {canManage && chama && (
             <section className="space-y-3 rounded-xl border border-black/10 bg-white p-4">

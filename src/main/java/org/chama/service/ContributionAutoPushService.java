@@ -13,7 +13,7 @@ import org.jboss.logging.Logger;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -54,12 +54,17 @@ public class ContributionAutoPushService {
     // as a broad pre-filter in the repository query; the exact per-chama interval is checked here.
     private static final int MIN_RETRY_HOURS = 1;
 
+    // Every chama and member is Kenya-based, so a contribution is "due today" against the Nairobi
+    // calendar day, never UTC or the server's own timezone, both of which disagree with Nairobi
+    // for part of every day (see ContributionService.CHAMA_ZONE for the same reasoning).
+    private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
+
     @Scheduled(every = "1h", identity = "contribution-auto-stk-push")
     void fireDueAutoPushes() {
         if (!autoPushEnabled) {
             return;
         }
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(CHAMA_ZONE);
         Instant earliestPossibleRetry = Instant.now().minus(Duration.ofHours(MIN_RETRY_HOURS));
 
         List<Long> dueContributionIds = QuarkusTransaction.requiringNew().call(() ->

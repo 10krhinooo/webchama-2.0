@@ -23,6 +23,7 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Textarea from '../../components/ui/Textarea'
 import Pagination from '../../components/ui/Pagination'
+import Reveal from '../../components/ui/Reveal'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 
@@ -139,50 +140,52 @@ export default function ChamasPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <Reveal eager className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">Chamas</h1>
         <Button onClick={openCreate}>+ New Chama</Button>
-      </div>
+      </Reveal>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
       {loading ? (
         <TablePageSkeleton withFilter={false} />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Contribution</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {chamas.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">You are not part of any chama yet.</TableCell></TableRow>
-            )}
-            {pageItems.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="font-medium text-ink">
-                  <Link to={`/chamas/${c.id}/members`} className="hover:underline">{c.name}</Link>
-                </TableCell>
-                <TableCell className="text-muted">{c.type.replaceAll('_', ' ')}</TableCell>
-                <TableCell className="font-mono text-muted">
-                  {c.currency} {c.contributionAmount.toLocaleString()} / {c.contributionFrequency.toLowerCase()}
-                </TableCell>
-                <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-3">
-                    <button onClick={() => openEdit(c)} className="text-primary text-xs hover:underline">Edit</button>
-                    <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
-                  </div>
-                </TableCell>
+        <Reveal eager delayMs={80}>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Contribution</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {chamas.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">You are not part of any chama yet.</TableCell></TableRow>
+              )}
+              {pageItems.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium text-ink">
+                    <Link to={`/chamas/${c.id}/members`} className="hover:underline">{c.name}</Link>
+                  </TableCell>
+                  <TableCell className="text-muted">{c.type.replaceAll('_', ' ')}</TableCell>
+                  <TableCell className="font-mono text-muted">
+                    {c.currency} {c.contributionAmount.toLocaleString()} / {c.contributionFrequency.toLowerCase()}
+                  </TableCell>
+                  <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-3">
+                      <button onClick={() => openEdit(c)} className="text-primary text-xs hover:underline">Edit</button>
+                      <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Reveal>
       )}
 
       {!loading && (

@@ -30,6 +30,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
+import Reveal from '../../components/ui/Reveal'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 
@@ -241,7 +242,7 @@ export default function ContributionsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <Reveal eager className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">
           {canManage ? 'Contributions' : 'My Contributions'}
         </h1>
@@ -268,77 +269,79 @@ export default function ContributionsPage() {
             </label>
           </div>
         )}
-      </div>
+      </Reveal>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={canManage} />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {canManage && <TableHead>Member</TableHead>}
-              <TableHead>Period</TableHead>
-              <TableHead>Due</TableHead>
-              <TableHead>Paid</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contributions.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted">No contributions yet.</TableCell></TableRow>
-            )}
-            {pageItems.map((c) => {
-              const latestPayment = latestPaymentFor(payments, c.id)
-              const mpesaPending = latestPayment?.method === 'MPESA' && latestPayment.status === 'PENDING'
-              return (
-                <TableRow key={c.id}>
-                  {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
-                  <TableCell className="text-muted">{c.period}</TableCell>
-                  <TableCell className="font-mono text-muted">{c.amountDue.toLocaleString()}</TableCell>
-                  <TableCell className="font-mono text-muted">{c.amountPaid.toLocaleString()}</TableCell>
-                  <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
-                  <TableCell>
-                    {latestPayment ? (
-                      <Badge
-                        label={`${latestPayment.method} ${latestPayment.status}`}
-                        variant={paymentStatusVariant(latestPayment.status)}
-                      />
-                    ) : (
-                      <span className="text-xs text-muted">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-3">
-                      {canManage ? (
-                        <>
-                          {c.status !== 'PAID' && (
-                            <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
-                          )}
-                          <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
-                        </>
+        <Reveal eager delayMs={80}>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                {canManage && <TableHead>Member</TableHead>}
+                <TableHead>Period</TableHead>
+                <TableHead>Due</TableHead>
+                <TableHead>Paid</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contributions.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted">No contributions yet.</TableCell></TableRow>
+              )}
+              {pageItems.map((c) => {
+                const latestPayment = latestPaymentFor(payments, c.id)
+                const mpesaPending = latestPayment?.method === 'MPESA' && latestPayment.status === 'PENDING'
+                return (
+                  <TableRow key={c.id}>
+                    {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
+                    <TableCell className="text-muted">{c.period}</TableCell>
+                    <TableCell className="font-mono text-muted">{c.amountDue.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-muted">{c.amountPaid.toLocaleString()}</TableCell>
+                    <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
+                    <TableCell>
+                      {latestPayment ? (
+                        <Badge
+                          label={`${latestPayment.method} ${latestPayment.status}`}
+                          variant={paymentStatusVariant(latestPayment.status)}
+                        />
                       ) : (
-                        c.status !== 'PAID' && (
-                          mpesaPending ? (
-                            <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
-                          ) : (
-                            <>
-                              <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
-                              <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
-                            </>
-                          )
-                        )
+                        <span className="text-xs text-muted">—</span>
                       )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-3">
+                        {canManage ? (
+                          <>
+                            {c.status !== 'PAID' && (
+                              <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
+                            )}
+                            <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+                          </>
+                        ) : (
+                          c.status !== 'PAID' && (
+                            mpesaPending ? (
+                              <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
+                            ) : (
+                              <>
+                                <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
+                                <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
+                              </>
+                            )
+                          )
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </Reveal>
       )}
 
       {!loading && !roleLoading && (

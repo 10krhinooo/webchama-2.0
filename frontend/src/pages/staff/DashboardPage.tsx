@@ -15,6 +15,7 @@ import { useActivityFeed } from '../../hooks/useActivityFeed'
 import ContributionPot from '../../components/marketing/ContributionPot'
 import { SkeletonBlock, SkeletonLine } from '../../components/ui/Skeleton'
 import TransientAlert from '../../components/ui/TransientAlert'
+import Reveal from '../../components/ui/Reveal'
 
 const ACTIVE_LOAN_STATUSES: Loan['status'][] = ['APPROVED', 'DISBURSED', 'REPAYING']
 
@@ -170,12 +171,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <Reveal eager>
         <h1 className="font-heading text-2xl font-bold text-ink">{chama?.name ?? 'Dashboard'}</h1>
         <p className="text-sm text-muted">
           {isManager ? 'This cycle across all members' : 'Your contribution this cycle'}
         </p>
-      </div>
+      </Reveal>
 
       <TransientAlert variant="error" message={error} onDismiss={() => setError(null)} />
 
@@ -188,7 +189,7 @@ export default function DashboardPage() {
         )
       })()}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <Reveal eager delayMs={80} className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl bg-white p-8 shadow-card">
           <ContributionPot
             percent={percent}
@@ -238,7 +239,7 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      </div>
+      </Reveal>
 
       {(isChairperson || isTreasurer || isSecretary) && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

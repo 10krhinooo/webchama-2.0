@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import WeaveMark from "../marketing/WeaveMark"
@@ -11,11 +11,34 @@ const sectionLinks = [
 ]
 
 export default function PublicNav() {
+  const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  useEffect(() => {
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 24)
+        ticking = false
+      })
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
   return (
-    <header className="border-b border-ink/10 bg-paper/90 backdrop-blur">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <header
+      className={`sticky top-0 z-50 border-b border-ink/10 bg-paper/90 backdrop-blur transition-shadow duration-300 ${
+        scrolled ? "shadow-card" : "shadow-none"
+      }`}
+    >
+      <nav
+        className={`nav-shrink mx-auto flex max-w-6xl origin-top items-center justify-between px-6 py-4 transition-transform duration-300 ${
+          scrolled ? "scale-[0.97]" : "scale-100"
+        }`}
+      >
         <a href="/" className="flex items-center gap-2 font-heading text-lg font-bold text-ink">
           <WeaveMark className="h-6 w-6 text-primary" />
           Webchama

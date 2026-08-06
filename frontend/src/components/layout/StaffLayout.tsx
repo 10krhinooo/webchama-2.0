@@ -8,9 +8,13 @@ import { useMyMembership } from '../../hooks/useMyMembership'
 import { roleBadgeText } from '../../utils/roleBadges'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+  `sidebar-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
     isActive ? 'bg-primary text-white' : 'text-paper/70 hover:bg-white/10 hover:text-paper'
   }`
+
+/** Explicit per-item stagger rather than CSS nth-child, since a heading (`This chama`) sits between
+ * the top-level and chama-scoped links, which would throw off nth-child's sibling count. */
+const navDelay = (index: number) => ({ animationDelay: `${index * 40}ms` })
 
 function useChamaName(chamaId: number | undefined) {
   const [chama, setChama] = useState<Chama | null>(null)
@@ -46,6 +50,7 @@ export default function StaffLayout() {
   )
   const [navOpen, setNavOpen] = useState(false)
 
+  // Close the mobile drawer on every navigation rather than leaving it open over the new page.
   useEffect(() => {
     setNavOpen(false)
   }, [location.pathname])
@@ -91,7 +96,7 @@ export default function StaffLayout() {
 
         <nav className="flex-1 space-y-1 px-3 py-4">
           {!keycloak.hasRealmRole('SUPER_ADMIN') && (
-            <NavLink to="/my-chamas" end className={navLinkClass}>
+            <NavLink to="/my-chamas" end className={navLinkClass} style={navDelay(0)}>
               <Building2 className="h-4 w-4" />
               My Chamas
             </NavLink>
@@ -99,11 +104,11 @@ export default function StaffLayout() {
 
           {keycloak.hasRealmRole('SUPER_ADMIN') && (
             <>
-              <NavLink to="/admin/overview" className={navLinkClass}>
+              <NavLink to="/admin/overview" className={navLinkClass} style={navDelay(0)}>
                 <Gauge className="h-4 w-4" />
                 Platform Overview
               </NavLink>
-              <NavLink to="/admin/security-events" className={navLinkClass}>
+              <NavLink to="/admin/security-events" className={navLinkClass} style={navDelay(1)}>
                 <AlertTriangle className="h-4 w-4" />
                 Security Events
               </NavLink>
@@ -120,42 +125,42 @@ export default function StaffLayout() {
                   </span>
                 )}
               </div>
-              <NavLink to={`/chamas/${chamaId}/dashboard`} className={navLinkClass}>
+              <NavLink to={`/chamas/${chamaId}/dashboard`} className={navLinkClass} style={navDelay(2)}>
                 <LayoutDashboard className="h-4 w-4" />
                 Dashboard
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/members`} className={navLinkClass}>
+              <NavLink to={`/chamas/${chamaId}/members`} className={navLinkClass} style={navDelay(3)}>
                 <Users className="h-4 w-4" />
                 Members
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/contributions`} className={navLinkClass}>
+              <NavLink to={`/chamas/${chamaId}/contributions`} className={navLinkClass} style={navDelay(4)}>
                 <Wallet className="h-4 w-4" />
                 Contributions
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/loans`} className={navLinkClass}>
+              <NavLink to={`/chamas/${chamaId}/loans`} className={navLinkClass} style={navDelay(5)}>
                 <HandCoins className="h-4 w-4" />
                 Loans
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/payouts`} className={navLinkClass}>
+              <NavLink to={`/chamas/${chamaId}/payouts`} className={navLinkClass} style={navDelay(6)}>
                 <RotateCw className="h-4 w-4" />
                 Payouts
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/welfare-fund`} className={navLinkClass}>
+              <NavLink to={`/chamas/${chamaId}/welfare-fund`} className={navLinkClass} style={navDelay(7)}>
                 <HeartHandshake className="h-4 w-4" />
                 Welfare Fund
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass}>
+              <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass} style={navDelay(8)}>
                 <Vote className="h-4 w-4" />
                 Resolutions
               </NavLink>
               {!roleLoading && isManager && (
-                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass}>
+                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass} style={navDelay(9)}>
                   <FileText className="h-4 w-4" />
                   Documents
                 </NavLink>
               )}
               {!roleLoading && isManager && (
-                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass}>
+                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass} style={navDelay(10)}>
                   <ShieldCheck className="h-4 w-4" />
                   Approvals
                 </NavLink>
@@ -219,7 +224,9 @@ export default function StaffLayout() {
         </header>
 
         <main className="flex-1 overflow-x-auto p-6 lg:p-8">
-          <Outlet />
+          <div key={location.pathname} className="page-transition">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

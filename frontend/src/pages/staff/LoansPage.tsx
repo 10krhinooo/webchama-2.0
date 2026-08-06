@@ -26,6 +26,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
+import Reveal from '../../components/ui/Reveal'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 
 const EMPTY_FORM = { memberId: '', principal: '', interestRate: '', interestMethod: 'FLAT' as InterestMethod, termMonths: '' }
@@ -191,75 +192,77 @@ export default function LoansPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <Reveal eager className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">{canManage ? 'Loans' : 'My Loans'}</h1>
         <Button onClick={openCreate}>+ Request Loan</Button>
-      </div>
+      </Reveal>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {canManage && <TableHead>Member</TableHead>}
-              {canManage && <TableHead>Credit Score</TableHead>}
-              <TableHead>Principal</TableHead>
-              <TableHead>Interest</TableHead>
-              <TableHead>Term</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loans.length === 0 && (
-              <TableRow><TableCell colSpan={canManage ? 7 : 5} className="py-10 text-center text-sm text-muted">No loans yet.</TableCell></TableRow>
-            )}
-            {pageItems.map((loan) => (
-              <TableRow key={loan.id}>
-                {canManage && <TableCell className="font-medium text-ink">{loan.memberName}</TableCell>}
-                {canManage && (
-                  <TableCell>
-                    {creditScores[loan.memberId] !== undefined
-                      ? <Badge label={String(creditScores[loan.memberId])} variant={creditScoreVariant(creditScores[loan.memberId])} />
-                      : <span className="text-muted text-xs">—</span>}
-                  </TableCell>
-                )}
-                <TableCell className="font-mono text-muted">{loan.principal.toLocaleString()}</TableCell>
-                <TableCell className="text-muted">
-                  {loan.interestRate}% ({loan.interestMethod === 'FLAT' ? 'Flat' : 'Reducing balance'})
-                </TableCell>
-                <TableCell className="text-muted">{loan.termMonths} mo</TableCell>
-                <TableCell><Badge label={loan.status} variant={loanStatusVariant(loan.status)} /></TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-3">
-                    {canManage && loan.status === 'REQUESTED' && (
-                      <button
-                        onClick={() => handleApprove(loan)}
-                        disabled={approvingId === loan.id}
-                        className="text-primary text-xs hover:underline disabled:opacity-50"
-                      >
-                        {approvingId === loan.id ? 'Approving…' : 'Approve'}
-                      </button>
-                    )}
-                    {canManage && loan.status === 'REQUESTED' && (
-                      <button
-                        onClick={() => handleReject(loan)}
-                        disabled={approvingId === loan.id}
-                        className="text-danger text-xs hover:underline disabled:opacity-50"
-                      >
-                        Reject
-                      </button>
-                    )}
-                    <button onClick={() => openSchedule(loan)} className="text-primary text-xs hover:underline">View Schedule</button>
-                  </div>
-                </TableCell>
+        <Reveal eager delayMs={80}>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                {canManage && <TableHead>Member</TableHead>}
+                {canManage && <TableHead>Credit Score</TableHead>}
+                <TableHead>Principal</TableHead>
+                <TableHead>Interest</TableHead>
+                <TableHead>Term</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {loans.length === 0 && (
+                <TableRow><TableCell colSpan={canManage ? 7 : 5} className="py-10 text-center text-sm text-muted">No loans yet.</TableCell></TableRow>
+              )}
+              {pageItems.map((loan) => (
+                <TableRow key={loan.id}>
+                  {canManage && <TableCell className="font-medium text-ink">{loan.memberName}</TableCell>}
+                  {canManage && (
+                    <TableCell>
+                      {creditScores[loan.memberId] !== undefined
+                        ? <Badge label={String(creditScores[loan.memberId])} variant={creditScoreVariant(creditScores[loan.memberId])} />
+                        : <span className="text-muted text-xs">—</span>}
+                    </TableCell>
+                  )}
+                  <TableCell className="font-mono text-muted">{loan.principal.toLocaleString()}</TableCell>
+                  <TableCell className="text-muted">
+                    {loan.interestRate}% ({loan.interestMethod === 'FLAT' ? 'Flat' : 'Reducing balance'})
+                  </TableCell>
+                  <TableCell className="text-muted">{loan.termMonths} mo</TableCell>
+                  <TableCell><Badge label={loan.status} variant={loanStatusVariant(loan.status)} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-3">
+                      {canManage && loan.status === 'REQUESTED' && (
+                        <button
+                          onClick={() => handleApprove(loan)}
+                          disabled={approvingId === loan.id}
+                          className="text-primary text-xs hover:underline disabled:opacity-50"
+                        >
+                          {approvingId === loan.id ? 'Approving…' : 'Approve'}
+                        </button>
+                      )}
+                      {canManage && loan.status === 'REQUESTED' && (
+                        <button
+                          onClick={() => handleReject(loan)}
+                          disabled={approvingId === loan.id}
+                          className="text-danger text-xs hover:underline disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      )}
+                      <button onClick={() => openSchedule(loan)} className="text-primary text-xs hover:underline">View Schedule</button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Reveal>
       )}
 
       {!loading && !roleLoading && (
