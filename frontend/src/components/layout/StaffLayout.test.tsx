@@ -180,4 +180,40 @@ describe('StaffLayout', () => {
     fireEvent.click(backdrop as Element)
     expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeNull()
   })
+
+  it('falls back to the preferred username when the token has no name', () => {
+    mockUseKeycloak.mockReturnValue({
+      keycloak: {
+        logout,
+        tokenParsed: { preferred_username: 'grace_w' },
+        hasRealmRole: vi.fn().mockReturnValue(false),
+      },
+    })
+    renderAt('/chamas')
+    expect(screen.getByText('grace_w')).toBeTruthy()
+  })
+
+  it('falls back to "Account" when the token has no name or username', () => {
+    mockUseKeycloak.mockReturnValue({
+      keycloak: {
+        logout,
+        tokenParsed: undefined,
+        hasRealmRole: vi.fn().mockReturnValue(false),
+      },
+    })
+    renderAt('/chamas')
+    expect(screen.getByText('Account')).toBeTruthy()
+  })
+
+  it('shows a "?" avatar when the display name has no initials to show', () => {
+    mockUseKeycloak.mockReturnValue({
+      keycloak: {
+        logout,
+        tokenParsed: { name: '' },
+        hasRealmRole: vi.fn().mockReturnValue(false),
+      },
+    })
+    renderAt('/chamas')
+    expect(screen.getByText('?')).toBeTruthy()
+  })
 })

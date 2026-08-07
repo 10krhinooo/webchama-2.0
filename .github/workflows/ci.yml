@@ -30,14 +30,13 @@ jobs:
         # never set this in a shared/production environment (see keycloak/dev-realm-entrypoint.sh).
         run: CHAMA_DEV_REALM_IMPORT=true docker compose up -d
 
-      - name: Create the isolated test database
+      - name: Wait for Postgres to be ready
         # @QuarkusTest wipes every table in @BeforeEach, so it must never share a database with
         # anything else, %test.quarkus.datasource.jdbc.url points at chama_test for this reason.
-        # docker-compose.yml only creates the chama database, so chama_test needs an explicit step.
+        # chama_test itself is created by postgres-init/01-create-test-db.sql on container init.
         run: |
           for i in $(seq 1 30); do
-            if docker exec webchama-postgres pg_isready -U chama -d chama > /dev/null 2>&1; then
-              docker exec webchama-postgres psql -U chama -d chama -c "CREATE DATABASE chama_test OWNER chama;"
+            if docker exec webchama-postgres pg_isready -U chama -d chama_test > /dev/null 2>&1; then
               exit 0
             fi
             sleep 2

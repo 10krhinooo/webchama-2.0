@@ -54,7 +54,7 @@ public class WelfareFundService {
             // Scale explicitly to match the NUMERIC(12,2) column: a plain BigDecimal.ZERO has
             // scale 0 and would serialize as "0" instead of "0.00" for a fund that hasn't been
             // reloaded from the database yet within the same request.
-            fund.balance = BigDecimal.ZERO.setScale(2);
+            fund.balance = BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.UNNECESSARY);
             welfareFundRepository.persist(fund);
             return fund;
         });

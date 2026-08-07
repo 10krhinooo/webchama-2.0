@@ -169,6 +169,9 @@ describe('MembersPage', () => {
     fireEvent.click(screen.getByText('Reissue invite'))
     await waitFor(() => expect(mockResendInvite).toHaveBeenCalledWith(3, 1))
     expect(screen.getByText('NewTemp123!')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Done'))
+    await waitFor(() => expect(screen.queryByText('NewTemp123!')).toBeNull())
   })
 
   it('shows an error notice when reissuing an invite fails', async () => {
