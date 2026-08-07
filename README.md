@@ -29,10 +29,11 @@ For a deeper walkthrough of the architecture, key files, common tasks, and debug
 # Backend config, copy once, application.properties is gitignored
 cp src/main/resources/example.application.properties src/main/resources/application.properties
 
-# Infrastructure: PostgreSQL 16 + Keycloak 24. CHAMA_DEV_REALM_IMPORT=true opts in to importing
-# the demo realm below; without it Keycloak boots with no realm at all (audit finding P0-2, the
-# demo realm is committed to git and must never be imported outside an isolated local/dev setup).
-CHAMA_DEV_REALM_IMPORT=true docker compose up -d
+# Infrastructure: PostgreSQL 16 + Keycloak 24, importing the demo realm below (audit finding
+# P0-2: the realm is committed to git and must never be imported outside an isolated local/dev
+# setup). Set CHAMA_SUPERADMIN_PASSWORD to pick your own admin password; otherwise a fixed dev
+# default is used, see keycloak/dev-realm-entrypoint.sh.
+docker compose up -d
 
 # Backend, http://localhost:8080 (Dev UI at /q/dev/)
 ./mvnw quarkus:dev
@@ -45,9 +46,10 @@ Postgres runs on host port 5434 (not 5432) to avoid colliding with other local p
 8180.
 
 Seed users (Keycloak, realm `chama`): `chairperson1/Chairperson1!`, `treasurer1/Treasurer1!`,
-`secretary1/Secretary1!`, `member1/Member1!`. The `admin` SUPER_ADMIN user's password is generated fresh
-on every `docker compose up` instead of being a fixed value in git; read it from the Keycloak container's
-startup logs: `docker compose logs keycloak | grep "Generated SUPER_ADMIN password"`.
+`secretary1/Secretary1!`, `member1/Member1!`, and `admin/Superadmin1!` (SUPER_ADMIN, override with
+`CHAMA_SUPERADMIN_PASSWORD`). None of these are fixed values in `realm-chama.json` except the seed
+users; the SUPER_ADMIN password is substituted in at container start, see
+`keycloak/dev-realm-entrypoint.sh`.
 
 ## Features
 
