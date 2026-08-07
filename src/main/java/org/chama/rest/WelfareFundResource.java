@@ -7,6 +7,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -17,6 +18,7 @@ import org.chama.dto.CreateWelfareWithdrawalDto;
 import org.chama.dto.InitiateWelfareMpesaPaymentDto;
 import org.chama.dto.PaymentDto;
 import org.chama.dto.RecordWelfareContributionDto;
+import org.chama.dto.UpdateWelfareFundTargetDto;
 import org.chama.dto.WelfareContributionDto;
 import org.chama.dto.WelfareFundDto;
 import org.chama.dto.WelfareWithdrawalDto;
@@ -57,6 +59,14 @@ public class WelfareFundResource {
     public WelfareFundDto getFund(@PathParam("chamaId") Long chamaId) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
         return WelfareFundDto.from(welfareFundService.getOrCreate(chamaId));
+    }
+
+    /** Chairperson-only goal setting, mirroring ChamaResource.update's savingsTarget field. */
+    @PUT
+    @Path("/target")
+    public WelfareFundDto updateTarget(@PathParam("chamaId") Long chamaId, @Valid UpdateWelfareFundTargetDto dto) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
+        return WelfareFundDto.from(welfareFundService.updateTarget(chamaId, dto.target()));
     }
 
     @GET

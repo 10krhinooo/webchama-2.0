@@ -1,14 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import DashboardPage from './DashboardPage'
 
 vi.mock('../../api/chamas', () => ({
   getChama: vi.fn(),
   getSavingsProgress: vi.fn(),
+  updateChama: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
+}))
+vi.mock('../../api/welfareFund', () => ({
+  getWelfareFund: vi.fn(),
+  updateWelfareFundTarget: vi.fn(),
 }))
 vi.mock('../../api/contributions', () => ({
   getContributions: vi.fn(),
@@ -39,8 +44,9 @@ vi.mock('../../hooks/useActivityFeed', () => ({
   useActivityFeed: vi.fn(),
 }))
 
-import { getChama, getSavingsProgress } from '../../api/chamas'
+import { getChama, getSavingsProgress, updateChama } from '../../api/chamas'
 import { getMembers } from '../../api/members'
+import { getWelfareFund, updateWelfareFundTarget } from '../../api/welfareFund'
 import { getContributions, getMyContributions } from '../../api/contributions'
 import { getLoans, getMyLoans, getLoanRepayments } from '../../api/loans'
 import { getPayouts, getMyPayouts } from '../../api/payouts'
@@ -52,7 +58,10 @@ import { useActivityFeed } from '../../hooks/useActivityFeed'
 
 const mockGetChama = getChama as ReturnType<typeof vi.fn>
 const mockGetSavingsProgress = getSavingsProgress as ReturnType<typeof vi.fn>
+const mockUpdateChama = updateChama as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
+const mockGetWelfareFund = getWelfareFund as ReturnType<typeof vi.fn>
+const mockUpdateWelfareFundTarget = updateWelfareFundTarget as ReturnType<typeof vi.fn>
 const mockGetContributions = getContributions as ReturnType<typeof vi.fn>
 const mockGetMyContributions = getMyContributions as ReturnType<typeof vi.fn>
 const mockGetLoans = getLoans as ReturnType<typeof vi.fn>
@@ -105,6 +114,9 @@ describe('DashboardPage', () => {
     mockGetPendingApprovals.mockResolvedValue([])
     mockGetMeetings.mockResolvedValue([])
     mockGetResolutions.mockResolvedValue([])
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 0, target: null })
+    mockUpdateChama.mockResolvedValue(chama)
+    mockUpdateWelfareFundTarget.mockResolvedValue({ chamaId: 3, balance: 0, target: null })
     mockUseActivityFeed.mockReturnValue({ entries: [], loading: false })
   })
 
@@ -164,6 +176,83 @@ describe('DashboardPage', () => {
     expect(screen.getByText('1 active loan')).toBeTruthy()
     expect(screen.getByText('Next payout')).toBeTruthy()
     expect(screen.getByText('X')).toBeTruthy()
+  })
+
+  it('lets a chairperson set a savings goal for the first time', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockUpdateChama.mockResolvedValue({ ...chama, savingsTarget: 50000 })
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('No savings goal set yet.')).toBeTruthy())
+    fireEvent.click(screen.getByText('Edit savings goal'))
+    fireEvent.change(screen.getByLabelText('Savings goal'), { target: { value: '50000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(mockUpdateChama).toHaveBeenCalledWith(3, expect.objectContaining({ savingsTarget: 50000 })))
+    await waitFor(() => expect(screen.queryByText('Edit Savings Goal')).toBeNull())
+  })
+
+  it('shows an error notice when saving the savings goal fails', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockUpdateChama.mockRejectedValue(new Error('could not save goal'))
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Edit savings goal')).toBeTruthy())
+    fireEvent.click(screen.getByText('Edit savings goal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(screen.getByText('could not save goal')).toBeTruthy())
+  })
+
+  it('shows the welfare fund KPI and lets a chairperson edit its goal', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 4000, target: 10000 })
+    mockUpdateWelfareFundTarget.mockResolvedValue({ chamaId: 3, balance: 4000, target: 20000 })
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Welfare fund')).toBeTruthy())
+    expect(mockGetWelfareFund).toHaveBeenCalledWith(3)
+    expect(screen.getByText('KES 4,000')).toBeTruthy()
+    expect(screen.getByText('of KES 10,000 goal')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Edit goal'))
+    fireEvent.change(screen.getByLabelText('Welfare fund goal'), { target: { value: '20000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(mockUpdateWelfareFundTarget).toHaveBeenCalledWith(3, { target: 20000 }))
+    await waitFor(() => expect(screen.getByText('of KES 20,000 goal')).toBeTruthy())
+  })
+
+  it('shows an error notice when saving the welfare fund goal fails', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 4000, target: null })
+    mockUpdateWelfareFundTarget.mockRejectedValue(new Error('could not save welfare goal'))
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Edit goal')).toBeTruthy())
+    fireEvent.click(screen.getByText('Edit goal'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(screen.getByText('could not save welfare goal')).toBeTruthy())
+  })
+
+  it('does not show the welfare fund KPI for a plain member', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: false, isTreasurer: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([])
+
+    renderAt()
+
+    await waitFor(() => expect(screen.getByText('Tumaini Chama')).toBeTruthy())
+    expect(mockGetWelfareFund).not.toHaveBeenCalled()
+    expect(screen.queryByText('Welfare fund')).toBeNull()
   })
 
   it("computes the member's own loan balance from repayment schedules", async () => {

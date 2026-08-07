@@ -55,7 +55,8 @@ BEGIN
 
     FOR i IN 1..array_length(chama_names, 1) LOOP
         INSERT INTO chama (name, description, type, currency, contribution_frequency,
-                            contribution_amount, meeting_day, status, created_at, approval_threshold, savings_target)
+                            contribution_amount, meeting_day, status, created_at, approval_threshold, savings_target,
+                            join_code)
         VALUES (
             chama_names[i],
             'Demo chama seeded for KPI showcase.',
@@ -68,7 +69,8 @@ BEGIN
             now() - (floor(random() * 200) || ' days')::interval
               - CASE WHEN i <= 3 THEN (floor(random() * 15) || ' days')::interval ELSE '0 days'::interval END,
             (500 + random() * 4000)::numeric(12,2),
-            (10000 + random() * 490000)::numeric(12,2)
+            (10000 + random() * 490000)::numeric(12,2),
+            upper(substr(md5(random()::text || i), 1, 8))
         )
         RETURNING id INTO v_chama_id;
 

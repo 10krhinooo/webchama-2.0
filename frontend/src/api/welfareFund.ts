@@ -6,6 +6,11 @@ export type WelfareContributionStatus = 'PENDING' | 'PAID'
 export interface WelfareFund {
   chamaId: number
   balance: number
+  target: number | null
+}
+
+export interface UpdateWelfareFundTargetRequest {
+  target?: number
 }
 
 export interface WelfareContribution {
@@ -43,6 +48,14 @@ export interface CreateWelfareWithdrawalRequest {
 
 export async function getWelfareFund(chamaId: number): Promise<WelfareFund> {
   const { data } = await client.get<WelfareFund>(`/chamas/${chamaId}/welfare-fund`)
+  return data
+}
+
+export async function updateWelfareFundTarget(
+  chamaId: number,
+  payload: UpdateWelfareFundTargetRequest,
+): Promise<WelfareFund> {
+  const { data } = await client.put<WelfareFund>(`/chamas/${chamaId}/welfare-fund/target`, payload)
   return data
 }
 

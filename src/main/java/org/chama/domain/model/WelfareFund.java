@@ -38,6 +38,11 @@ public class WelfareFund extends PanacheEntityBase {
     @Column(nullable = false)
     public BigDecimal balance = BigDecimal.ZERO.setScale(2, RoundingMode.UNNECESSARY);
 
+    // Optional goal amount a chairperson can set for the fund, mirroring chama.savings_target
+    // (issue #179). Null means no goal is set, distinct from a goal of zero.
+    @Column
+    public BigDecimal target;
+
     @Version
     @Column(nullable = false)
     public long version;

@@ -74,6 +74,7 @@ export default function LoansPage() {
   const [scheduleLoan, setScheduleLoan] = useState<Loan | null>(null)
   const [repayments, setRepayments] = useState<LoanRepayment[]>([])
   const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [scheduleNotice, setScheduleNotice] = useState<string | null>(null)
   const [payingRepayment, setPayingRepayment] = useState<LoanRepayment | null>(null)
   const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT_FORM)
   const [paymentSaving, setPaymentSaving] = useState(false)
@@ -162,9 +163,11 @@ export default function LoansPage() {
 
   const openSchedule = (loan: Loan) => {
     setScheduleLoan(loan)
+    setScheduleNotice(null)
     setScheduleLoading(true)
     getLoanRepayments(chamaId, loan.id)
       .then(setRepayments)
+      .catch((err) => setScheduleNotice(extractErrorMessage(err)))
       .finally(() => setScheduleLoading(false))
   }
 
@@ -313,9 +316,12 @@ export default function LoansPage() {
 
       {scheduleLoan && (
         <Modal title={`Repayment Schedule — ${scheduleLoan.memberName}`} onClose={() => setScheduleLoan(null)}>
+          {scheduleNotice && (
+            <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2 mb-4">{scheduleNotice}</div>
+          )}
           {scheduleLoading ? (
             <p className="text-sm text-muted">Loading…</p>
-          ) : (
+          ) : scheduleNotice ? null : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-ink/60">

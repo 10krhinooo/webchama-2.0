@@ -4,6 +4,7 @@ vi.mock('./client', () => ({
   client: {
     get: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
   },
 }))
 
@@ -16,10 +17,12 @@ import {
   payWelfareContributionWithMpesa,
   getWelfareWithdrawals,
   createWelfareWithdrawal,
+  updateWelfareFundTarget,
 } from './welfareFund'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
 const mockPost = client.post as ReturnType<typeof vi.fn>
+const mockPut = client.put as ReturnType<typeof vi.fn>
 
 describe('welfareFund api', () => {
   beforeEach(() => {
@@ -31,6 +34,13 @@ describe('welfareFund api', () => {
     const result = await getWelfareFund(3)
     expect(mockGet).toHaveBeenCalledWith('/chamas/3/welfare-fund')
     expect(result).toEqual({ chamaId: 3, balance: 5000 })
+  })
+
+  it('updateWelfareFundTarget puts the payload and unwraps data', async () => {
+    mockPut.mockResolvedValue({ data: { chamaId: 3, balance: 5000, target: 20000 } })
+    const result = await updateWelfareFundTarget(3, { target: 20000 })
+    expect(mockPut).toHaveBeenCalledWith('/chamas/3/welfare-fund/target', { target: 20000 })
+    expect(result).toEqual({ chamaId: 3, balance: 5000, target: 20000 })
   })
 
   it('getWelfareContributions fetches the chama-wide list', async () => {
