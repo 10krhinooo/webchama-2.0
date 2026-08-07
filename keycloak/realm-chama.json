@@ -72,7 +72,7 @@
       "firstName": "Webchama",
       "lastName": "SuperAdmin",
       "credentials": [
-        { "type": "password", "value": "SuperAdmin1234!", "temporary": false }
+        { "type": "password", "value": "__SUPER_ADMIN_PASSWORD__", "temporary": false }
       ],
       "realmRoles": ["SUPER_ADMIN"]
     },

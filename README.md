@@ -29,8 +29,10 @@ For a deeper walkthrough of the architecture, key files, common tasks, and debug
 # Backend config, copy once, application.properties is gitignored
 cp src/main/resources/example.application.properties src/main/resources/application.properties
 
-# Infrastructure: PostgreSQL 16 + Keycloak 24
-docker compose up -d
+# Infrastructure: PostgreSQL 16 + Keycloak 24. CHAMA_DEV_REALM_IMPORT=true opts in to importing
+# the demo realm below; without it Keycloak boots with no realm at all (audit finding P0-2, the
+# demo realm is committed to git and must never be imported outside an isolated local/dev setup).
+CHAMA_DEV_REALM_IMPORT=true docker compose up -d
 
 # Backend, http://localhost:8080 (Dev UI at /q/dev/)
 ./mvnw quarkus:dev
@@ -42,8 +44,10 @@ cd frontend && npm install && npm run dev
 Postgres runs on host port 5434 (not 5432) to avoid colliding with other local projects. Keycloak runs on
 8180.
 
-Seed users (Keycloak, realm `chama`): `admin/SuperAdmin1234!` (SUPER_ADMIN), `chairperson1/Chairperson1!`,
-`treasurer1/Treasurer1!`, `secretary1/Secretary1!`, `member1/Member1!`.
+Seed users (Keycloak, realm `chama`): `chairperson1/Chairperson1!`, `treasurer1/Treasurer1!`,
+`secretary1/Secretary1!`, `member1/Member1!`. The `admin` SUPER_ADMIN user's password is generated fresh
+on every `docker compose up` instead of being a fixed value in git; read it from the Keycloak container's
+startup logs: `docker compose logs keycloak | grep "Generated SUPER_ADMIN password"`.
 
 ## Features
 
