@@ -15,7 +15,7 @@ import {
   type Payment,
   type PaymentMethod,
 } from '../../api/contributions'
-import { getMembers, updateMyAutoPay, type Member } from '../../api/members'
+import { getMembers, updateMyAutoPay, exportMyData, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -225,6 +225,26 @@ export default function ContributionsPage() {
     }
   }
 
+  const [exportingData, setExportingData] = useState(false)
+
+  const handleExportMyData = async () => {
+    setExportingData(true)
+    try {
+      const data = await exportMyData(chamaId)
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `webchama-my-data-chama-${chamaId}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setExportingData(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!deleting) return
     setDeleteLoading(true)
@@ -246,10 +266,9 @@ export default function ContributionsPage() {
         <h1 className="font-heading text-2xl font-bold text-ink">
           {canManage ? 'Contributions' : 'My Contributions'}
         </h1>
-        {canManage && <Button onClick={openCreate}>+ New Contribution</Button>}
-        {!canManage && !roleLoading && (
+        {!roleLoading && (
           <div className="flex items-center gap-4">
-            {streak !== null && streak > 0 && (
+            {!canManage && streak !== null && streak > 0 && (
               <span
                 data-testid="contribution-streak"
                 className="flex items-center gap-1 text-sm font-medium text-warning"
@@ -257,16 +276,22 @@ export default function ContributionsPage() {
                 🔥 {streak} on-time streak
               </span>
             )}
-            <label className="flex items-center gap-2 text-sm text-ink/80">
-              <input
-                type="checkbox"
-                checked={autoPayEnabled}
-                disabled={autoPaySaving}
-                onChange={handleToggleAutoPay}
-                aria-label="Auto-pay via M-Pesa"
-              />
-              Auto-pay on due date
-            </label>
+            {!canManage && (
+              <label className="flex items-center gap-2 text-sm text-ink/80">
+                <input
+                  type="checkbox"
+                  checked={autoPayEnabled}
+                  disabled={autoPaySaving}
+                  onChange={handleToggleAutoPay}
+                  aria-label="Auto-pay via M-Pesa"
+                />
+                Auto-pay on due date
+              </label>
+            )}
+            <LoadingButton variant="secondary" loading={exportingData} onClick={handleExportMyData}>
+              Export my data
+            </LoadingButton>
+            {canManage && <Button onClick={openCreate}>+ New Contribution</Button>}
           </div>
         )}
       </Reveal>

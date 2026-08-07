@@ -20,6 +20,7 @@ import {
   updateMyAutoPay,
   deleteMember,
   getCreditScore,
+  exportMyData,
   type CreateMemberRequest,
 } from './members'
 
@@ -101,5 +102,12 @@ describe('members api', () => {
     const result = await getCreditScore(3, 4)
     expect(mockGet).toHaveBeenCalledWith('/chamas/3/members/4/credit-score')
     expect(result).toEqual({ memberId: 4, score: 82 })
+  })
+
+  it('exportMyData fetches the caller own data export and unwraps data', async () => {
+    mockGet.mockResolvedValue({ data: { profile: { fullName: 'Jane Doe' } } })
+    const result = await exportMyData(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/members/mine/export')
+    expect(result).toEqual({ profile: { fullName: 'Jane Doe' } })
   })
 })

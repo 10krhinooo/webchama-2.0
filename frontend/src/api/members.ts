@@ -49,6 +49,13 @@ export async function getMembers(chamaId: number): Promise<Member[]> {
   return data
 }
 
+// Untyped: a GDPR self-service export of everything the platform holds about the caller within
+// this chama, passed straight through to a JSON download rather than modeled field by field.
+export async function exportMyData(chamaId: number): Promise<unknown> {
+  const { data } = await client.get(`/chamas/${chamaId}/members/mine/export`)
+  return data
+}
+
 export async function getMyMembership(chamaId: number): Promise<Member> {
   const { data } = await client.get<Member>(`/chamas/${chamaId}/members/mine`)
   return data
