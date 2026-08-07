@@ -13,6 +13,7 @@ import jakarta.persistence.Version;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 
 /**
@@ -35,7 +36,7 @@ public class WelfareFund extends PanacheEntityBase {
     public Chama chama;
 
     @Column(nullable = false)
-    public BigDecimal balance = BigDecimal.ZERO.setScale(2);
+    public BigDecimal balance = BigDecimal.ZERO.setScale(2, RoundingMode.UNNECESSARY);
 
     @Version
     @Column(nullable = false)

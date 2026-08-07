@@ -12,6 +12,7 @@ import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.Chama;
+import org.chama.domain.model.Contribution;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
 import org.chama.repository.ApprovalRepository;
@@ -41,6 +42,7 @@ import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
@@ -215,6 +217,37 @@ class MemberResourceTest {
 
     @Test
     @TestSecurity(user = "chair-1")
+    void deletingAMemberWithContributionHistoryIsRejectedInsteadOfCrashing() {
+        Long memberWithHistoryId = QuarkusTransaction.requiringNew().call(() -> {
+            Member member = new Member();
+            member.chama = chamaRepository.findById(chamaId);
+            member.keycloakUserId = "member-with-history";
+            member.fullName = "Has History";
+            member.phone = "254700000099";
+            member.status = org.chama.domain.enums.MemberStatus.ACTIVE;
+            memberRepository.persist(member);
+
+            Contribution contribution = new Contribution();
+            contribution.chama = chamaRepository.findById(chamaId);
+            contribution.member = member;
+            contribution.period = LocalDate.of(2026, 1, 1);
+            contribution.amountDue = new BigDecimal("500");
+            contributionRepository.persist(contribution);
+
+            return member.id;
+        });
+
+        given()
+            .when().delete("/api/chamas/{chamaId}/members/{id}", chamaId, memberWithHistoryId)
+            .then().statusCode(400);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/members/{id}", chamaId, memberWithHistoryId)
+            .then().statusCode(200);
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
     void sendsACredentialEmailWhenANewAccountIsProvisioned() {
         String createBody = """
             {"email":"emailed.member@example.com","fullName":"Emailed Member","phone":"254700000008","roles":["MEMBER"]}
@@ -254,6 +287,57 @@ class MemberResourceTest {
             .then().statusCode(201);
 
         assertEquals(0, mailbox.getMailsSentTo("no.new.email@example.com").size());
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void resendInviteResetsThePasswordAndReSendsTheCredentialEmail() throws Exception {
+        String createBody = """
+            {"email":"resend.member@example.com","fullName":"Resend Member","phone":"254700000010","roles":["MEMBER"]}
+            """;
+        int memberId = given()
+            .contentType("application/json")
+            .body(createBody)
+            .when().post("/api/chamas/{chamaId}/members", chamaId)
+            .then().statusCode(201)
+            .extract().path("member.id");
+
+        Mockito.when(keycloakAdminService.getUserEmail("kc-generated-id")).thenReturn("resend.member@example.com");
+        Mockito.when(keycloakAdminService.generateTempPassword()).thenReturn("Resent5678!");
+
+        given()
+            .when().post("/api/chamas/{chamaId}/members/{id}/resend-invite", chamaId, memberId)
+            .then()
+                .statusCode(200)
+                .body("member.id", equalTo(memberId))
+                .body("temporaryPassword", equalTo("Resent5678!"));
+
+        Mockito.verify(keycloakAdminService).resetPassword("kc-generated-id", "Resent5678!");
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<Mail> sent = mailbox.getMailsSentTo("resend.member@example.com");
+            assertEquals(2, sent.size());
+            assertTrue(sent.get(1).getHtml().contains("Resent5678!"));
+        });
+    }
+
+    @Test
+    @TestSecurity(user = "not-a-member")
+    void onlyAChairpersonCanResendAnInvite() {
+        int memberId = QuarkusTransaction.requiringNew().call(() -> {
+            Member member = new Member();
+            member.chama = chamaRepository.findById(chamaId);
+            member.keycloakUserId = "guarded-kc-id";
+            member.fullName = "Guarded Member";
+            member.phone = "254700000011";
+            member.status = org.chama.domain.enums.MemberStatus.ACTIVE;
+            memberRepository.persist(member);
+            return member.id.intValue();
+        });
+
+        given()
+            .when().post("/api/chamas/{chamaId}/members/{id}/resend-invite", chamaId, memberId)
+            .then().statusCode(403);
     }
 
     @Test

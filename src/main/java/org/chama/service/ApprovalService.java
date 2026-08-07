@@ -8,12 +8,15 @@ import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.ApprovalStatus;
 import org.chama.domain.enums.ApprovalTargetType;
+import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.Approval;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.MemberRoleRepository;
+import org.chama.service.notification.ApprovalNotificationEmailService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.math.BigDecimal;
@@ -42,7 +45,13 @@ public class ApprovalService {
     MemberRepository memberRepository;
 
     @Inject
+    MemberRoleRepository memberRoleRepository;
+
+    @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    ApprovalNotificationEmailService approvalNotificationEmailService;
 
     /** Whether this amount requires dual sign-off before it can be disbursed, for this chama. */
     public boolean requiresApproval(Chama chama, BigDecimal amount) {
@@ -103,13 +112,25 @@ public class ApprovalService {
 
         activityLogService.log(chama, ActivityEventType.APPROVAL_REQUESTED,
             "Dual sign-off requested for " + chama.currency + " " + amount + " (" + beneficiary.fullName + ")");
+
+        List<ApprovalNotificationEmailService.Recipient> eligibleSigners = memberRoleRepository
+            .findMembersWithAnyRole(chamaId, List.of(MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON))
+            .stream()
+            .filter(m -> !m.id.equals(requestedBy.id))
+            .map(m -> new ApprovalNotificationEmailService.Recipient(m.keycloakUserId, m.fullName))
+            .toList();
+        approvalNotificationEmailService.sendRequested(eligibleSigners, requestedBy.fullName, chama.name,
+            chama.currency, amount, beneficiary.fullName, reason);
         return approval;
     }
 
     /**
      * The "checker" step. The first call records the first signatory and leaves the request
      * PENDING; the second call must come from a different member and flips it to APPROVED. A
-     * single signatory can never satisfy both slots.
+     * single signatory can never satisfy both slots, and the member who requested the approval
+     * (the "maker") can never also act as a checker on their own request (issue P1-9), otherwise
+     * one TREASURER could request a disbursement and immediately supply the first sign-off
+     * themselves, leaving only one other person's agreement standing between them and the payout.
      */
     @Transactional
     public Approval approve(Long chamaId, Long approvalId, Long signerMemberId) {
@@ -118,6 +139,10 @@ public class ApprovalService {
             throw new BadRequestException("Only a pending approval can be signed off");
         }
         Member signer = memberRepository.findByIdOptional(signerMemberId).orElseThrow(NotFoundException::new);
+
+        if (approval.requestedBy.id.equals(signer.id)) {
+            throw new BadRequestException("The member who requested this approval cannot also sign off on it");
+        }
 
         if (approval.firstApprover == null) {
             approval.firstApprover = signer;
@@ -136,6 +161,8 @@ public class ApprovalService {
             "Dual sign-off cleared for " + approval.chama.currency + " " + approval.amount
                 + " (" + approval.member.fullName + ") by " + approval.firstApprover.fullName
                 + " and " + signer.fullName);
+        approvalNotificationEmailService.sendCleared(approval.requestedBy.keycloakUserId, approval.requestedBy.fullName,
+            approval.chama.name, approval.chama.currency, approval.amount, approval.member.fullName);
         return approval;
     }
 

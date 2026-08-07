@@ -11,6 +11,7 @@ import org.chama.domain.model.Member;
 import org.chama.domain.model.WelfareContribution;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.WelfareContributionRepository;
+import org.chama.service.notification.PaymentReceiptEmailService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,6 +42,9 @@ public class WelfareContributionService {
 
     @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    PaymentReceiptEmailService paymentReceiptEmailService;
 
     public List<WelfareContribution> listForChama(Long chamaId) {
         return welfareContributionRepository.findByChama(chamaId);
@@ -92,6 +96,9 @@ public class WelfareContributionService {
         welfareFundService.credit(chamaId, scaledAmount);
         activityLogService.log(contribution.chama, ActivityEventType.WELFARE_CONTRIBUTION_PAID,
             member.fullName + " contributed " + contribution.chama.currency + " " + scaledAmount + " to the welfare fund");
+
+        paymentReceiptEmailService.sendWelfareReceipt(member.keycloakUserId, member.fullName,
+            contribution.chama.name, contribution.chama.currency, scaledAmount, method, contribution.paidAt);
         return contribution;
     }
 
@@ -106,6 +113,9 @@ public class WelfareContributionService {
         welfareFundService.credit(chamaId, contribution.amount);
         activityLogService.log(contribution.chama, ActivityEventType.WELFARE_CONTRIBUTION_PAID,
             contribution.member.fullName + " contributed " + contribution.chama.currency + " " + contribution.amount + " to the welfare fund");
+
+        paymentReceiptEmailService.sendWelfareReceipt(contribution.member.keycloakUserId, contribution.member.fullName,
+            contribution.chama.name, contribution.chama.currency, contribution.amount, method, contribution.paidAt);
         return contribution;
     }
 }

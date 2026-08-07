@@ -11,6 +11,7 @@ import org.chama.domain.model.Member;
 import org.chama.dto.CreateContributionDto;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.service.notification.PaymentReceiptEmailService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -37,6 +38,9 @@ public class ContributionService {
 
     @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    PaymentReceiptEmailService paymentReceiptEmailService;
 
     public List<Contribution> listForChama(Long chamaId) {
         return contributionRepository.findByChama(chamaId);
@@ -113,6 +117,13 @@ public class ContributionService {
             : ContributionStatus.PARTIAL;
         activityLogService.log(contribution.chama, ActivityEventType.CONTRIBUTION_PAID,
             contribution.member.fullName + " paid " + contribution.chama.currency + " " + amount + " towards their contribution");
+
+        BigDecimal remaining = contribution.amountDue.subtract(contribution.amountPaid);
+        paymentReceiptEmailService.sendContributionReceipt(
+            contribution.member.keycloakUserId, contribution.member.fullName,
+            contribution.chama.name, contribution.chama.currency,
+            amount, contribution.amountDue, remaining.max(BigDecimal.ZERO),
+            contribution.period, method, contribution.paidAt);
         return contribution;
     }
 

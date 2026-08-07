@@ -22,11 +22,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * Backs the M-Pesa B2C loan payout flow. A row is created PENDING
- * as soon as Daraja's B2C paymentrequest call is acknowledged, since that 200 response only means
- * the request was accepted, not that money has moved. It is only ever moved to COMPLETED/FAILED
- * by the ResultURL/QueueTimeOutURL callback (B2cCallbackResource) or the reconciliation sweep
- * (LoanDisbursementService.reconcileStalePending), never by the initiating call itself.
+ * Backs the M-Pesa B2C loan payout flow. A row is created INITIATING and committed before Daraja's
+ * B2C paymentrequest call is even made (so a commit failure after Safaricom accepts the payout can
+ * never lose the only record it happened), moves to PENDING once that call is acknowledged, since
+ * the 200 response only means the request was accepted, not that money has moved. It is only ever
+ * moved to COMPLETED/FAILED by the ResultURL/QueueTimeOutURL callback (B2cCallbackResource) or the
+ * reconciliation sweep (LoanDisbursementService.reconcileStalePending), never by the initiating
+ * call itself.
  */
 @Entity
 @Table(name = "loan_disbursement")
@@ -41,11 +43,14 @@ public class LoanDisbursement extends PanacheEntityBase {
     public Loan loan;
 
     // Safaricom-assigned identifiers from the synchronous paymentrequest acknowledgement, used to
-    // match an inbound callback (or a reconciliation query result) back to this row.
-    @Column(name = "conversation_id", nullable = false, unique = true)
+    // match an inbound callback (or a reconciliation query result) back to this row. Null until
+    // that acknowledgement arrives: the row is persisted (status INITIATING) before the B2C call
+    // fires, precisely so a commit failure after Safaricom accepts the payout can never lose the
+    // only record that it happened (issue P0-3).
+    @Column(name = "conversation_id", unique = true)
     public String conversationId;
 
-    @Column(name = "originator_conversation_id", nullable = false)
+    @Column(name = "originator_conversation_id")
     public String originatorConversationId;
 
     @Column(name = "target_phone", nullable = false)
@@ -57,7 +62,7 @@ public class LoanDisbursement extends PanacheEntityBase {
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "loan_disbursement_status")
-    public LoanDisbursementStatus status = LoanDisbursementStatus.PENDING;
+    public LoanDisbursementStatus status = LoanDisbursementStatus.INITIATING;
 
     @Column(name = "result_code")
     public String resultCode;

@@ -15,9 +15,19 @@ import org.chama.domain.model.MemberRole;
 import org.chama.dto.CreateMemberDto;
 import org.chama.dto.JoinChamaDto;
 import org.chama.dto.UpdateMemberDto;
+import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
+import org.chama.repository.ContributionRepository;
+import org.chama.repository.GeneratedDocumentRepository;
+import org.chama.repository.LoanRepository;
+import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
+import org.chama.repository.PaymentRepository;
+import org.chama.repository.PenaltyRepository;
+import org.chama.repository.PayoutRepository;
+import org.chama.repository.ResolutionVoteRepository;
+import org.chama.repository.WelfareContributionRepository;
 import org.chama.security.CurrentUser;
 import org.chama.service.notification.MemberInvitationEmailService;
 
@@ -58,6 +68,36 @@ public class MemberService {
 
     @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    ContributionRepository contributionRepository;
+
+    @Inject
+    LoanRepository loanRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
+
+    @Inject
+    PenaltyRepository penaltyRepository;
+
+    @Inject
+    PayoutRepository payoutRepository;
+
+    @Inject
+    WelfareContributionRepository welfareContributionRepository;
+
+    @Inject
+    MeetingAttendanceRepository meetingAttendanceRepository;
+
+    @Inject
+    ResolutionVoteRepository resolutionVoteRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
+    GeneratedDocumentRepository generatedDocumentRepository;
 
     public List<Member> listForChama(Long chamaId) {
         return memberRepository.findByChama(chamaId);
@@ -114,6 +154,35 @@ public class MemberService {
         }
         activityLogService.log(member.chama, ActivityEventType.MEMBER_INVITED, member.fullName + " was invited to the chama");
         return new MemberProvisioningResult(member, temporaryPassword);
+    }
+
+    /**
+     * Recovery path for an invite whose original email never arrived, or whose one-time temporary
+     * password was lost before anyone wrote it down (issue P1-11): resets the member's Keycloak
+     * password to a new random temporary one and re-sends the credential email. Returns the new
+     * password too, same as {@link #create}, so a chairperson can share it directly if the email
+     * still doesn't land.
+     */
+    @Transactional
+    public String resendInvite(Long chamaId, Long memberId) {
+        Member member = get(chamaId, memberId);
+        String temporaryPassword = keycloakAdminService.generateTempPassword();
+        String email;
+        try {
+            email = keycloakAdminService.getUserEmail(member.keycloakUserId);
+            keycloakAdminService.resetPassword(member.keycloakUserId, temporaryPassword);
+        } catch (Exception e) {
+            throw new WebApplicationException(e, Response.status(502)
+                .entity(Map.of("userMessage", "Could not reset this member's password right now. Try again shortly."))
+                .build());
+        }
+
+        if (email != null) {
+            memberInvitationEmailService.sendCredentials(email, member.fullName, temporaryPassword);
+        }
+        activityLogService.log(member.chama, ActivityEventType.MEMBER_INVITE_RESENT,
+            member.fullName + "'s invite was resent");
+        return temporaryPassword;
     }
 
     /**
@@ -187,10 +256,38 @@ public class MemberService {
         return member;
     }
 
+    /**
+     * A hard delete only ever removes the member and role rows: any contribution, loan, payment,
+     * penalty, payout, welfare, meeting/vote, approval, or document history is left in place by
+     * rejecting the delete outright rather than either crashing on the first NOT NULL foreign key
+     * it hits or silently cascading away financial/governance records (issue P0-6). Deleting a
+     * member who has ever been financially or governance-active should go through
+     * {@link #updateStatus} to {@code MemberStatus.EXITED} instead, which keeps their history.
+     */
     @Transactional
     public void delete(Long chamaId, Long memberId) {
         Member member = get(chamaId, memberId);
+        if (hasHistory(memberId)) {
+            throw new BadRequestException(
+                "This member has contribution, loan, payment, or other activity history and can't "
+                    + "be deleted. Set their status to EXITED instead to preserve that history.");
+        }
         memberRoleRepository.delete("member.id", memberId);
         memberRepository.delete(member);
+    }
+
+    private boolean hasHistory(Long memberId) {
+        return contributionRepository.count("member.id", memberId) > 0
+            || loanRepository.count("member.id = ?1 or approvedBy.id = ?1", memberId) > 0
+            || paymentRepository.count("member.id", memberId) > 0
+            || penaltyRepository.count("member.id = ?1 or decidedBy.id = ?1", memberId) > 0
+            || payoutRepository.count("member.id", memberId) > 0
+            || welfareContributionRepository.count("member.id", memberId) > 0
+            || meetingAttendanceRepository.count("member.id", memberId) > 0
+            || resolutionVoteRepository.count("member.id", memberId) > 0
+            || approvalRepository.count(
+                "member.id = ?1 or requestedBy.id = ?1 or firstApprover.id = ?1 or secondApprover.id = ?1",
+                memberId) > 0
+            || generatedDocumentRepository.count("member.id", memberId) > 0;
     }
 }

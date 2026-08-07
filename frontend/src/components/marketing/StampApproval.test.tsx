@@ -55,4 +55,28 @@ describe('StampApproval', () => {
     expect(screen.getByText('Treasurer')).toBeTruthy()
     expect(screen.getByText('Chairperson')).toBeTruthy()
   })
+
+  it('skips the reveal transition and stamp delay when the user prefers reduced motion', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList) as typeof window.matchMedia
+
+    render(<StampApproval />)
+    const requested = screen.getByText('Requested').parentElement as HTMLElement
+    const approved = screen.getByText('Approved').parentElement as HTMLElement
+
+    expect(requested.style.transition).toBe('none')
+    expect(approved.style.transition).toBe('none')
+
+    window.matchMedia = originalMatchMedia
+  })
 })

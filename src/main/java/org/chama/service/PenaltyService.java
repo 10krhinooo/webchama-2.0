@@ -11,6 +11,7 @@ import org.chama.domain.model.Penalty;
 import org.chama.dto.CreatePenaltyDto;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.PenaltyRepository;
+import org.chama.service.notification.PenaltyStatusEmailService;
 
 import java.time.Instant;
 import java.util.List;
@@ -26,6 +27,9 @@ public class PenaltyService {
 
     @Inject
     ChamaService chamaService;
+
+    @Inject
+    PenaltyStatusEmailService penaltyStatusEmailService;
 
     public List<Penalty> listForChama(Long chamaId) {
         return penaltyRepository.findByChama(chamaId);
@@ -68,6 +72,8 @@ public class PenaltyService {
         penalty.status = PenaltyStatus.APPROVED;
         penalty.decidedBy = memberRepository.findByIdOptional(deciderMemberId).orElseThrow(NotFoundException::new);
         penalty.decidedAt = Instant.now();
+        penaltyStatusEmailService.sendIssued(penalty.member.keycloakUserId, penalty.member.fullName,
+            penalty.chama.name, penalty.chama.currency, penalty.amount, reasonLabel(penalty.reason));
         return penalty;
     }
 
@@ -81,6 +87,17 @@ public class PenaltyService {
         penalty.decidedBy = memberRepository.findByIdOptional(deciderMemberId).orElseThrow(NotFoundException::new);
         penalty.decidedAt = Instant.now();
         penalty.waiverReason = waiverReason;
+        penaltyStatusEmailService.sendWaived(penalty.member.keycloakUserId, penalty.member.fullName,
+            penalty.chama.name, penalty.chama.currency, penalty.amount, waiverReason);
         return penalty;
+    }
+
+    private static String reasonLabel(org.chama.domain.enums.PenaltyReason reason) {
+        return switch (reason) {
+            case LATE_CONTRIBUTION -> "Late contribution";
+            case MISSED_MEETING -> "Missed meeting";
+            case LOAN_DEFAULT -> "Loan default";
+            case OTHER -> "Other";
+        };
     }
 }

@@ -48,6 +48,7 @@ import java.time.LocalDate;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.argThat;
 
@@ -214,7 +215,10 @@ class PaymentFlowResourceTest {
                 .statusCode(201)
                 .body("status", equalTo("PENDING"))
                 .body("method", equalTo("MPESA"))
-                .body("providerReference", equalTo("ws_CO_123"));
+                // providerReference (the Daraja CheckoutRequestID) is deliberately not returned to
+                // the member who can trigger it: exposing it would hand back the one credential a
+                // forged M-Pesa callback needs.
+                .body("providerReference", nullValue());
     }
 
     @Test
@@ -260,6 +264,8 @@ class PaymentFlowResourceTest {
     @TestSecurity(user = "treasurer-1")
     void mpesaCallbackMarksPaymentAndContributionPaid() {
         seedPendingPayment("ws_CO_999", PaymentMethod.MPESA);
+        Mockito.when(mpesaService.queryStkStatus("ws_CO_999"))
+            .thenReturn(new MpesaService.StkQueryResult("0", "The service request is processed successfully."));
 
         String callbackBody = "{\"Body\":{\"stkCallback\":{"
             + "\"CheckoutRequestID\":\"ws_CO_999\",\"ResultCode\":0,\"ResultDesc\":\"Success\","
@@ -287,6 +293,8 @@ class PaymentFlowResourceTest {
     @TestSecurity(user = "treasurer-1")
     void mpesaCallbackIsIdempotentOnRetry() {
         seedPendingPayment("ws_CO_retry", PaymentMethod.MPESA);
+        Mockito.when(mpesaService.queryStkStatus("ws_CO_retry"))
+            .thenReturn(new MpesaService.StkQueryResult("0", "The service request is processed successfully."));
 
         String callbackBody = "{\"Body\":{\"stkCallback\":{"
             + "\"CheckoutRequestID\":\"ws_CO_retry\",\"ResultCode\":0,\"ResultDesc\":\"Success\","
@@ -308,6 +316,8 @@ class PaymentFlowResourceTest {
     @TestSecurity(user = "treasurer-1")
     void mpesaCallbackWithNonZeroResultCodeMarksPaymentFailedWithoutCreditingContribution() {
         seedPendingPayment("ws_CO_cancelled", PaymentMethod.MPESA);
+        Mockito.when(mpesaService.queryStkStatus("ws_CO_cancelled"))
+            .thenReturn(new MpesaService.StkQueryResult("1032", "Request cancelled by user."));
 
         String callbackBody = "{\"Body\":{\"stkCallback\":{"
             + "\"CheckoutRequestID\":\"ws_CO_cancelled\",\"ResultCode\":1032,\"ResultDesc\":\"Cancelled\"}}}";

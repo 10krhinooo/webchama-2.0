@@ -8,6 +8,10 @@ import org.chama.domain.model.Payment;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+// providerReference (the Daraja CheckoutRequestID / Flutterwave tx_ref) is deliberately not
+// exposed here: for M-Pesa it's the one credential a forged mpesa-callback POST needs, and it's
+// handed to the same member who can trigger the payment. Card checkout gets its txRef through a
+// dedicated response (ContributionResource.payWithCard), not this DTO.
 public record PaymentDto(
     Long id,
     Long chamaId,
@@ -18,7 +22,6 @@ public record PaymentDto(
     BigDecimal amount,
     PaymentMethod method,
     PaymentStatus status,
-    String providerReference,
     String mpesaReceiptNumber,
     Instant paidAt,
     Instant createdAt) {
@@ -34,7 +37,6 @@ public record PaymentDto(
             payment.amount,
             payment.method,
             payment.status,
-            payment.providerReference,
             payment.mpesaReceiptNumber,
             payment.paidAt,
             payment.createdAt);

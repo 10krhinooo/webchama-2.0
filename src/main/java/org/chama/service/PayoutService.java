@@ -19,6 +19,7 @@ import org.chama.dto.GeneratePayoutScheduleDto;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.PayoutRepository;
 import org.chama.repository.PayoutScheduleRepository;
+import org.chama.service.notification.PayoutStatusEmailService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -51,6 +52,9 @@ public class PayoutService {
 
     @Inject
     ApprovalService approvalService;
+
+    @Inject
+    PayoutStatusEmailService payoutStatusEmailService;
 
     public List<PayoutSchedule> listSchedule(Long chamaId) {
         return payoutScheduleRepository.findByChama(chamaId);
@@ -156,6 +160,8 @@ public class PayoutService {
         payout.scheduledDate = dto.scheduledDate();
         payout.amount = chama.contributionAmount.multiply(BigDecimal.valueOf(active.size()));
         payoutRepository.persist(payout);
+        payoutStatusEmailService.sendScheduled(turn.member.keycloakUserId, turn.member.fullName,
+            chama.name, chama.currency, payout.roundNumber, payout.amount, payout.scheduledDate);
         return payout;
     }
 
@@ -177,6 +183,8 @@ public class PayoutService {
         payout.disbursedAt = Instant.now();
         activityLogService.log(payout.chama, ActivityEventType.PAYOUT_DISBURSED,
             payout.member.fullName + " received their round " + payout.roundNumber + " payout of " + payout.chama.currency + " " + payout.amount);
+        payoutStatusEmailService.sendDisbursed(payout.member.keycloakUserId, payout.member.fullName,
+            payout.chama.name, payout.chama.currency, payout.roundNumber, payout.amount);
         return payout;
     }
 

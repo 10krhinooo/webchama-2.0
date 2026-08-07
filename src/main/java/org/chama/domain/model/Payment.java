@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.chama.domain.enums.PaymentMethod;
 import org.chama.domain.enums.PaymentPurpose;
 import org.chama.domain.enums.PaymentStatus;
@@ -83,4 +84,10 @@ public class Payment extends PanacheEntityBase {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     public Instant createdAt;
+
+    // Two near-simultaneous webhook deliveries for the same payment can both read status =
+    // PENDING before either commits; without this, both would credit the balance (issue P0-5).
+    @Version
+    @Column(nullable = false)
+    public long version;
 }

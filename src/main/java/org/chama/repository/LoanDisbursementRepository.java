@@ -24,4 +24,9 @@ public class LoanDisbursementRepository implements PanacheRepository<LoanDisburs
     public List<LoanDisbursement> findPendingOlderThan(Instant cutoff) {
         return list("status = ?1 and requestedAt < ?2", LoanDisbursementStatus.PENDING, cutoff);
     }
+
+    /** Rows still claimed but never acknowledged by Safaricom past the reconciliation timeout window. */
+    public List<LoanDisbursement> findInitiatingOlderThan(Instant cutoff) {
+        return list("status = ?1 and requestedAt < ?2", LoanDisbursementStatus.INITIATING, cutoff);
+    }
 }

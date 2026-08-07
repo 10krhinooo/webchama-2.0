@@ -147,6 +147,35 @@ public class KeycloakAdminService {
         return null;
     }
 
+    /**
+     * Sets a fresh temporary password on an existing account, requiring a change on next login,
+     * same as {@link #createUser}'s initial credential. Backs the resend-invite recovery path
+     * (issue P1-11): an invite whose original email never arrived, or whose one-time temporary
+     * password was lost before anyone wrote it down, previously had no way back in short of a
+     * chairperson deleting and recreating the member.
+     */
+    public void resetPassword(String keycloakUserId, String newTemporaryPassword) throws Exception {
+        String token = getAdminToken();
+
+        ObjectNode cred = mapper.createObjectNode();
+        cred.put("type", "password");
+        cred.put("value", newTemporaryPassword);
+        cred.put("temporary", true);
+
+        HttpRequest req = HttpRequest.newBuilder(
+                URI.create(adminUrl + "/admin/realms/" + appRealm + "/users/" + keycloakUserId + "/reset-password"))
+            .PUT(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(cred)))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + token)
+            .timeout(Duration.ofSeconds(15))
+            .build();
+
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+            throw new RuntimeException("Keycloak password reset failed: " + resp.statusCode() + " " + resp.body());
+        }
+    }
+
     /** The account's current email, used to resolve a document/notification recipient at send time. */
     public String getUserEmail(String keycloakUserId) throws Exception {
         String token = getAdminToken();

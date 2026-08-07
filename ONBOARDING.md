@@ -79,7 +79,8 @@ Three architectural decisions are worth understanding before you change anything
 | `frontend/src/auth/` | `KeycloakProvider`, `ProtectedRoute` |
 | `docker-compose.yml` | Local Postgres + Keycloak |
 | `postgres-init/` | SQL run once against a fresh Postgres data volume (currently: creating the `chama_test` database) |
-| `keycloak/realm-chama.json` | The `chama` realm definition Keycloak imports on first boot |
+| `keycloak/realm-chama.json` | The `chama` realm definition Keycloak imports on first boot, dev-only, see `keycloak/dev-realm-entrypoint.sh` |
+| `Dockerfile`, `frontend/Dockerfile`, `DEPLOYMENT.md` | Backend/frontend container images and the runbook for running them somewhere real |
 
 ## Common developer tasks
 

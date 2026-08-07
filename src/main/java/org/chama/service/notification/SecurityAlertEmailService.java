@@ -35,6 +35,10 @@ public class SecurityAlertEmailService {
     @Inject
     Mailer mailer;
 
+    // Optional<String> rather than a plain String with an empty defaultValue: SmallRye Config's
+    // built-in String converter treats an empty-string default as absent and rejects it at
+    // startup ("considered to be null"), so Optional is the only idiomatic way to express a
+    // MicroProfile Config property that is allowed to be genuinely unset.
     @ConfigProperty(name = "app.security.alert-emails")
     Optional<String> alertEmails;
 

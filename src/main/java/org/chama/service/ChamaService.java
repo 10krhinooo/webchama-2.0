@@ -15,6 +15,7 @@ import org.chama.dto.UpdateAutoPushSettingsDto;
 import org.chama.dto.UpdateChamaDto;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
+import org.chama.repository.LoanDisbursementRepository;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MeetingAttendanceRepository;
@@ -57,6 +58,9 @@ public class ChamaService {
 
     @Inject
     LoanRepaymentRepository loanRepaymentRepository;
+
+    @Inject
+    LoanDisbursementRepository loanDisbursementRepository;
 
     @Inject
     LoanRepository loanRepository;
@@ -197,6 +201,9 @@ public class ChamaService {
         // issues with the final chamaRepository.deleteById(id) below.
         paymentRepository.delete("chama.id", id);
         loanRepaymentRepository.delete("loan.chama.id", id);
+        // Must run before loanRepository.delete below: loan_disbursement.loan_id is a NOT NULL FK
+        // with no cascade (issue P1-7).
+        loanDisbursementRepository.delete("loan.chama.id", id);
         loanRepository.delete("chama.id", id);
         payoutRepository.delete("chama.id", id);
         payoutScheduleRepository.delete("chama.id", id);

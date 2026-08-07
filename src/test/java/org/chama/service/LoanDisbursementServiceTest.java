@@ -363,9 +363,13 @@ class LoanDisbursementServiceTest {
 
     @Test
     void reconcileStalePendingQueriesOnlyDisbursementsPastTheTimeout() {
-        Long loanId = persistLoan(LoanStatus.APPROVED);
-        Long staleId = seedDisbursement(loanId, "AG_STALE");
-        Long freshId = seedDisbursement(loanId, "AG_FRESH");
+        // Two different loans: idx_loan_disbursement_one_active_per_loan forbids two PENDING
+        // disbursement rows against the same loan, and this test only cares about the staleness
+        // filter, not about both rows sharing a loan.
+        Long staleLoanId = persistLoan(LoanStatus.APPROVED);
+        Long freshLoanId = persistLoan(LoanStatus.APPROVED);
+        Long staleId = seedDisbursement(staleLoanId, "AG_STALE");
+        Long freshId = seedDisbursement(freshLoanId, "AG_FRESH");
 
         // requestedAt is @Column(updatable = false), a normal entity-field assignment inside a
         // transaction would be silently ignored by Hibernate's flush; a bulk HQL update bypasses
@@ -390,8 +394,47 @@ class LoanDisbursementServiceTest {
             disbursement.originatorConversationId = "orig-" + conversationId;
             disbursement.targetPhone = "254700000201";
             disbursement.amount = new BigDecimal("5000");
+            disbursement.status = LoanDisbursementStatus.PENDING;
             loanDisbursementRepository.persist(disbursement);
             return disbursement.id;
         });
+    }
+
+    @Test
+    void initiateClaimsTheLoanSoASecondCallCannotDoubleDisburse() {
+        Long loanId = persistLoan(LoanStatus.APPROVED);
+        Mockito.when(b2cClient.requestPayout(eq("254700000201"), any(BigDecimal.class), anyString()))
+            .thenReturn(new DarajaB2cClient.B2cAckResult("AG_ONCE", "16740-1"));
+
+        loanDisbursementService.initiate(chamaId, loanId);
+
+        // The loan is no longer APPROVED (claimed into DISBURSEMENT_PENDING), so a second call,
+        // whether a genuine double-click or a client retry, is rejected before any second B2C call.
+        assertThrows(BadRequestException.class, () -> loanDisbursementService.initiate(chamaId, loanId));
+        Mockito.verify(b2cClient, Mockito.times(1)).requestPayout(anyString(), any(BigDecimal.class), anyString());
+    }
+
+    @Test
+    void initiateReleasesTheClaimAndReopensTheLoanWhenTheB2cCallFails() {
+        Long loanId = persistLoan(LoanStatus.APPROVED);
+        Mockito.when(b2cClient.requestPayout(eq("254700000201"), any(BigDecimal.class), anyString()))
+            .thenThrow(new RuntimeException("B2C request rejected: insufficient utility balance"));
+
+        assertThrows(RuntimeException.class, () -> loanDisbursementService.initiate(chamaId, loanId));
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            Loan loan = loanRepository.findById(loanId);
+            assertEquals(LoanStatus.APPROVED, loan.status);
+        });
+        // The claimed row persisted before the failed call is not silently lost, it is marked FAILED.
+        assertEquals(1, loanDisbursementRepository.findByLoan(loanId).size());
+        assertEquals(LoanDisbursementStatus.FAILED, loanDisbursementRepository.findByLoan(loanId).get(0).status);
+
+        // And the loan can now be retried.
+        Mockito.reset(b2cClient);
+        Mockito.when(b2cClient.requestPayout(eq("254700000201"), any(BigDecimal.class), anyString()))
+            .thenReturn(new DarajaB2cClient.B2cAckResult("AG_RETRY", "16740-2"));
+        LoanDisbursement retried = loanDisbursementService.initiate(chamaId, loanId);
+        assertEquals(LoanDisbursementStatus.PENDING, retried.status);
     }
 }

@@ -25,16 +25,18 @@ jobs:
         run: cp src/main/resources/example.application.properties src/main/resources/application.properties
 
       - name: Start Postgres and Keycloak (docker compose)
-        run: docker compose up -d
+        # CHAMA_DEV_REALM_IMPORT opts in to importing keycloak/realm-chama.json, required here since
+        # CI's own Postgres/Keycloak containers are as isolated a dev environment as it gets, but
+        # never set this in a shared/production environment (see keycloak/dev-realm-entrypoint.sh).
+        run: CHAMA_DEV_REALM_IMPORT=true docker compose up -d
 
-      - name: Create the isolated test database
+      - name: Wait for Postgres to be ready
         # @QuarkusTest wipes every table in @BeforeEach, so it must never share a database with
         # anything else, %test.quarkus.datasource.jdbc.url points at chama_test for this reason.
-        # docker-compose.yml only creates the chama database, so chama_test needs an explicit step.
+        # chama_test itself is created by postgres-init/01-create-test-db.sql on container init.
         run: |
           for i in $(seq 1 30); do
-            if docker exec webchama-postgres pg_isready -U chama -d chama > /dev/null 2>&1; then
-              docker exec webchama-postgres psql -U chama -d chama -c "CREATE DATABASE chama_test OWNER chama;"
+            if docker exec webchama-postgres pg_isready -U chama -d chama_test > /dev/null 2>&1; then
               exit 0
             fi
             sleep 2
@@ -108,3 +110,19 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: frontend
+
+  # Proves the images DEPLOYMENT.md describes actually build from a fresh checkout, not just that
+  # a Dockerfile is present (audit finding P1-10). Doesn't push anywhere, no registry is
+  # configured for this repo; that's the next step once one exists.
+  docker-images:
+    name: Docker images build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t webchama-backend .
+
+      - name: Build frontend image
+        run: docker build -t webchama-frontend --build-arg VITE_KEYCLOAK_URL=https://auth.example.com frontend/

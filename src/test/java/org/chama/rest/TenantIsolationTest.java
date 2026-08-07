@@ -34,6 +34,7 @@ import org.chama.repository.PaymentRepository;
 import org.chama.repository.WelfareContributionRepository;
 import org.chama.repository.WelfareFundRepository;
 import org.chama.repository.WelfareWithdrawalRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -148,20 +149,32 @@ class TenantIsolationTest {
 
             Chama chamaA = newChama("Chama A");
             chamaRepository.persist(chamaA);
-            Member chairA = newMember(chamaA, "user-chair-a", "Chair A");
+            Member chairA = newMember(chamaA, "user-chair-a", "Chair A", "254700000001");
             memberRepository.persist(chairA);
             assignRole(chairA, MemberRoleType.CHAIRPERSON);
-            Member plainA = newMember(chamaA, "user-member-a", "Member A");
+            Member plainA = newMember(chamaA, "user-member-a", "Member A", "254700000002");
             memberRepository.persist(plainA);
             assignRole(plainA, MemberRoleType.MEMBER);
             chamaAId = chamaA.id;
 
             Chama chamaB = newChama("Chama B");
             chamaRepository.persist(chamaB);
-            Member chairB = newMember(chamaB, "user-chair-b", "Chair B");
+            Member chairB = newMember(chamaB, "user-chair-b", "Chair B", "254700000001");
             memberRepository.persist(chairB);
             assignRole(chairB, MemberRoleType.CHAIRPERSON);
             chamaBId = chamaB.id;
+        });
+    }
+
+    // Resolution rows are the only thing this class persists that other @QuarkusTest classes'
+    // own cleanup doesn't account for (they delete meeting/member, not resolution), so without
+    // this an uncommitted-by-teardown resolution here fails a later class's meeting/member
+    // deleteAll() with a foreign key violation, depending on which class Surefire runs next.
+    @AfterEach
+    void cleanupResolutions() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            resolutionVoteRepository.deleteAll();
+            resolutionRepository.deleteAll();
         });
     }
 
@@ -176,12 +189,12 @@ class TenantIsolationTest {
         return chama;
     }
 
-    private Member newMember(Chama chama, String keycloakUserId, String fullName) {
+    private Member newMember(Chama chama, String keycloakUserId, String fullName, String phone) {
         Member member = new Member();
         member.chama = chama;
         member.keycloakUserId = keycloakUserId;
         member.fullName = fullName;
-        member.phone = "254700000000";
+        member.phone = phone;
         member.status = MemberStatus.ACTIVE;
         return member;
     }

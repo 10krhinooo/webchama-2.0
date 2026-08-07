@@ -45,4 +45,24 @@ describe('Reveal', () => {
     render(<Reveal eager>Above the fold</Reveal>)
     expect(screen.getByText('Above the fold').style.opacity).toBe('1')
   })
+
+  it('skips the transition when the user prefers reduced motion', () => {
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList) as typeof window.matchMedia
+
+    render(<Reveal eager>Above the fold</Reveal>)
+    expect(screen.getByText('Above the fold').style.transition).toBe('none')
+
+    window.matchMedia = originalMatchMedia
+  })
 })
