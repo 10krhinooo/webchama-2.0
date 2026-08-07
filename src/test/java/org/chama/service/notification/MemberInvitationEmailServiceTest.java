@@ -23,4 +23,17 @@ class MemberInvitationEmailServiceTest {
         assertTrue(html.indexOf("<script>") < 0);
         assertTrue(html.indexOf("<img") < 0);
     }
+
+    @Test
+    void buildPlainTextIncludesTheCredentialsAndSignInLink() {
+        MemberInvitationEmailService service = new MemberInvitationEmailService();
+        service.frontendUrl = "http://localhost:5173";
+
+        String text = service.buildPlainText("Jane Doe", "jane@example.com", "Temp1234!");
+
+        assertTrue(text.contains("Jane"));
+        assertTrue(text.contains("jane@example.com"));
+        assertTrue(text.contains("Temp1234!"));
+        assertTrue(text.contains("http://localhost:5173"));
+    }
 }
