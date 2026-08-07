@@ -17,6 +17,7 @@ import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.Penalty;
 import org.chama.dto.CreatePenaltyDto;
 import org.chama.dto.PenaltyDto;
+import org.chama.dto.SettlePenaltyDto;
 import org.chama.dto.WaivePenaltyDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
@@ -84,6 +85,15 @@ public class PenaltyResource {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
         var decider = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
         return PenaltyDto.from(penaltyService.waive(chamaId, id, decider.id, dto.reason()));
+    }
+
+    /** CHAIRPERSON/TREASURER-only: record a member settling an APPROVED penalty. */
+    @PUT
+    @Path("/{id}/settle")
+    public PenaltyDto settle(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id, SettlePenaltyDto dto) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        var decider = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        return PenaltyDto.from(penaltyService.settle(chamaId, id, decider.id, dto.methodOrDefault()));
     }
 
     private void requireTreasuryRoleOrOwnPenalty(Long chamaId, Penalty penalty) {

@@ -20,16 +20,20 @@ public class PenaltyRepository implements PanacheRepository<Penalty> {
     }
 
     /**
-     * Penalties approved (the point they become a confirmed, collectible amount, not merely
-     * imposed) strictly before a statement period (issue #66's opening balance).
+     * Penalties confirmed (the point they become a confirmed, collectible amount, not merely
+     * imposed) strictly before a statement period (issue #66's opening balance). Includes PAID as
+     * well as APPROVED, a since-settled penalty was still confirmed/imposed in this period, it
+     * just no longer needs collecting; excluding it would make a statement understate what a
+     * member owed at the time.
      */
     public List<Penalty> findApprovedByChamaBefore(Long chamaId, Instant before) {
-        return list("chama.id = ?1 and status = ?2 and decidedAt < ?3", chamaId, PenaltyStatus.APPROVED, before);
+        return list("chama.id = ?1 and status in (?2, ?3) and decidedAt < ?4",
+            chamaId, PenaltyStatus.APPROVED, PenaltyStatus.PAID, before);
     }
 
-    /** Penalties approved within a statement period, start inclusive, end exclusive. */
+    /** Penalties confirmed (APPROVED or since-settled PAID) within a statement period, start inclusive, end exclusive. */
     public List<Penalty> findApprovedByChamaBetween(Long chamaId, Instant startInclusive, Instant endExclusive) {
-        return list("chama.id = ?1 and status = ?2 and decidedAt >= ?3 and decidedAt < ?4",
-            chamaId, PenaltyStatus.APPROVED, startInclusive, endExclusive);
+        return list("chama.id = ?1 and status in (?2, ?3) and decidedAt >= ?4 and decidedAt < ?5",
+            chamaId, PenaltyStatus.APPROVED, PenaltyStatus.PAID, startInclusive, endExclusive);
     }
 }

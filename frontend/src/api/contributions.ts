@@ -66,6 +66,8 @@ export interface Payment {
   memberId: number
   contributionId: number | null
   welfareContributionId: number | null
+  loanRepaymentId: number | null
+  penaltyId: number | null
   purpose: PaymentPurpose
   amount: number
   method: PaymentMethod

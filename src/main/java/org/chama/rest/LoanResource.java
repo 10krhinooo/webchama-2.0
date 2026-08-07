@@ -120,7 +120,7 @@ public class LoanResource {
                                              @PathParam("repaymentId") Long repaymentId,
                                              @Valid RecordLoanRepaymentDto dto) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
-        return LoanRepaymentDto.from(loanService.recordRepayment(chamaId, id, repaymentId, dto.amount()));
+        return LoanRepaymentDto.from(loanService.recordRepayment(chamaId, id, repaymentId, dto.amount(), dto.methodOrDefault()));
     }
 
     private void requireTreasuryRoleOrOwnLoan(Long chamaId, Loan loan) {
