@@ -517,4 +517,24 @@ class MemberResourceTest {
             .when().put("/api/chamas/{chamaId}/members/{id}/status", chamaId, 999999)
             .then().statusCode(403);
     }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void aMemberCanExportTheirOwnData() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/mine/export", chamaId)
+            .then()
+                .statusCode(200)
+                .body("profile.fullName", equalTo("Chair One"))
+                .body("contributions", equalTo(List.of()))
+                .body("loans", equalTo(List.of()));
+    }
+
+    @Test
+    @TestSecurity(user = "not-a-member")
+    void nonMemberCannotExportData() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/mine/export", chamaId)
+            .then().statusCode(403);
+    }
 }

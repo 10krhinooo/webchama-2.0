@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.CreateMemberDto;
 import org.chama.dto.CreditScoreDto;
+import org.chama.dto.MemberDataExportDto;
 import org.chama.dto.MemberDto;
 import org.chama.dto.MemberInvitationDto;
 import org.chama.dto.UpdateAutoPayDto;
@@ -70,6 +71,14 @@ public class MemberResource {
         tenantAccessService.requireMembership(currentUser, chamaId);
         var member = memberService.get(chamaId, id);
         return MemberDto.from(member, memberService.rolesOf(member.id));
+    }
+
+    /** Self-service GDPR Article 20 data export (issue #180): a member's own data, never another member's. */
+    @GET
+    @Path("/mine/export")
+    public MemberDataExportDto exportMyData(@PathParam("chamaId") Long chamaId) {
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        return memberService.exportData(chamaId, member);
     }
 
     /** CHAIRPERSON/TREASURER, or the member themselves, can view their own credit score. */

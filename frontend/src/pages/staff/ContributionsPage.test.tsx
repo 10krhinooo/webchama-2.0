@@ -19,6 +19,7 @@ vi.mock('../../api/contributions', () => ({
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
   updateMyAutoPay: vi.fn(),
+  exportMyData: vi.fn(),
 }))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
@@ -39,7 +40,7 @@ import {
   getPayments,
   getMyPayments,
 } from '../../api/contributions'
-import { getMembers, updateMyAutoPay } from '../../api/members'
+import { getMembers, updateMyAutoPay, exportMyData } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 
@@ -55,6 +56,7 @@ const mockGetPayments = getPayments as ReturnType<typeof vi.fn>
 const mockGetMyPayments = getMyPayments as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUpdateMyAutoPay = updateMyAutoPay as ReturnType<typeof vi.fn>
+const mockExportMyData = exportMyData as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 const mockSavePendingCardPayment = savePendingCardPayment as ReturnType<typeof vi.fn>
 
@@ -484,6 +486,48 @@ describe('ContributionsPage', () => {
     await waitFor(() => expect(screen.getByText('PAID')).toBeTruthy())
     expect(screen.queryByText('Pay via M-Pesa')).toBeNull()
     expect(screen.queryByText('Pay by Card')).toBeNull()
+  })
+
+  it('exports the member own data as a JSON download when the button is clicked', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockExportMyData.mockResolvedValue({ profile: { fullName: 'Jane Doe' } })
+
+    const clickSpy = vi.fn()
+    const originalCreateElement = document.createElement.bind(document)
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreateElement(tag)
+      if (tag === 'a') el.click = clickSpy
+      return el
+    })
+    const createObjectUrlSpy = vi.fn().mockReturnValue('blob:mock')
+    const revokeObjectUrlSpy = vi.fn()
+    URL.createObjectURL = createObjectUrlSpy
+    URL.revokeObjectURL = revokeObjectUrlSpy
+
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Export my data')).toBeTruthy())
+    fireEvent.click(screen.getByText('Export my data'))
+
+    await waitFor(() => expect(mockExportMyData).toHaveBeenCalledWith(3))
+    expect(createObjectUrlSpy).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:mock')
+
+    createElementSpy.mockRestore()
+  })
+
+  it('shows an error notice when exporting data fails', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([contribution])
+    mockExportMyData.mockRejectedValue(new Error('export unavailable'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Export my data')).toBeTruthy())
+    fireEvent.click(screen.getByText('Export my data'))
+
+    await waitFor(() => expect(screen.getByText('export unavailable')).toBeTruthy())
   })
 
   describe('card payment', () => {

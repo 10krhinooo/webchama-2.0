@@ -12,13 +12,23 @@ import org.chama.domain.enums.MemberRoleType;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.MemberRole;
+import org.chama.dto.ContributionDto;
 import org.chama.dto.CreateMemberDto;
 import org.chama.dto.JoinChamaDto;
+import org.chama.dto.LoanDto;
+import org.chama.dto.LoanRepaymentDto;
+import org.chama.dto.MeetingAttendanceDto;
+import org.chama.dto.MemberDataExportDto;
+import org.chama.dto.MemberDto;
+import org.chama.dto.PaymentDto;
+import org.chama.dto.PenaltyDto;
 import org.chama.dto.UpdateMemberDto;
+import org.chama.dto.WelfareContributionDto;
 import org.chama.repository.ApprovalRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.GeneratedDocumentRepository;
+import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MemberRepository;
@@ -76,6 +86,9 @@ public class MemberService {
     LoanRepository loanRepository;
 
     @Inject
+    LoanRepaymentRepository loanRepaymentRepository;
+
+    @Inject
     PaymentRepository paymentRepository;
 
     @Inject
@@ -113,6 +126,24 @@ public class MemberService {
 
     public List<org.chama.domain.enums.MemberRoleType> rolesOf(Long memberId) {
         return memberRoleRepository.findRoleTypesForMember(memberId);
+    }
+
+    /**
+     * GDPR Article 20 self-service data export (issue #180): everything the platform holds about
+     * one member within one chama, structured and machine-readable. Callers must already have
+     * verified the member belongs to the requesting user, see MemberResource.exportMyData.
+     */
+    public MemberDataExportDto exportData(Long chamaId, Member member) {
+        return new MemberDataExportDto(
+            java.time.Instant.now(),
+            MemberDto.from(member, rolesOf(member.id)),
+            contributionRepository.findByChamaAndMember(chamaId, member.id).stream().map(ContributionDto::from).toList(),
+            loanRepository.findByChamaAndMember(chamaId, member.id).stream().map(LoanDto::from).toList(),
+            loanRepaymentRepository.findByChamaAndMember(chamaId, member.id).stream().map(LoanRepaymentDto::from).toList(),
+            paymentRepository.findByChamaAndMember(chamaId, member.id).stream().map(PaymentDto::from).toList(),
+            welfareContributionRepository.findByChamaAndMember(chamaId, member.id).stream().map(WelfareContributionDto::from).toList(),
+            penaltyRepository.findByChamaAndMember(chamaId, member.id).stream().map(PenaltyDto::from).toList(),
+            meetingAttendanceRepository.findByChamaAndMember(chamaId, member.id).stream().map(MeetingAttendanceDto::from).toList());
     }
 
     @Transactional
