@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Retry;
+import org.eclipse.microprofile.faulttolerance.Timeout;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
@@ -17,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,8 +33,16 @@ import java.util.function.Function;
  * carries the operations this domain actually needs: chama-scoped roles are
  * never Keycloak roles (see TenantAccessService), so this never assigns
  * realm roles on user creation.
+ *
+ * <p>{@code @Timeout}/{@code @CircuitBreaker} apply class-wide so a degraded Keycloak doesn't tie
+ * up a worker thread for the full manual HTTP timeout on every request and a sustained outage
+ * fails fast. {@code @Retry} is added to the idempotent reads and to {@link #resetPassword} and
+ * {@link #ensureEventsEnabled} (both converge to the same end state on repeat), but not to
+ * {@link #createUser}, which would create a duplicate account on retry after an ambiguous failure.
  */
 @ApplicationScoped
+@Timeout(value = 30, unit = ChronoUnit.SECONDS)
+@CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.5, delay = 30, delayUnit = ChronoUnit.SECONDS)
 public class KeycloakAdminService {
 
     private static final Logger LOG = Logger.getLogger(KeycloakAdminService.class);
@@ -47,11 +59,11 @@ public class KeycloakAdminService {
     @ConfigProperty(name = "keycloak.admin.url", defaultValue = "http://localhost:8180")
     String adminUrl;
 
-    @ConfigProperty(name = "keycloak.admin.username", defaultValue = "admin")
-    String adminUsername;
+    @ConfigProperty(name = "keycloak.admin.client-id", defaultValue = "webchama-backend")
+    String adminClientId;
 
-    @ConfigProperty(name = "keycloak.admin.password", defaultValue = "admin")
-    String adminPassword;
+    @ConfigProperty(name = "keycloak.admin.client-secret", defaultValue = "webchama-backend-secret")
+    String adminClientSecret;
 
     @ConfigProperty(name = "keycloak.app.realm", defaultValue = "chama")
     String appRealm;
@@ -60,14 +72,19 @@ public class KeycloakAdminService {
         .connectTimeout(Duration.ofSeconds(10)).build();
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * Authenticates as the {@code webchama-backend} client's own service account (chama realm's
+     * realm-management roles manage-users/manage-events/view-events) rather than a master-realm
+     * admin/password grant (audit finding P2-13): a compromise of this token can only affect the
+     * chama realm, never any other realm hosted on the same Keycloak instance.
+     */
     private String getAdminToken() throws Exception {
-        String body = "grant_type=password"
-            + "&client_id=" + URLEncoder.encode("admin-cli", StandardCharsets.UTF_8)
-            + "&username=" + URLEncoder.encode(adminUsername, StandardCharsets.UTF_8)
-            + "&password=" + URLEncoder.encode(adminPassword, StandardCharsets.UTF_8);
+        String body = "grant_type=client_credentials"
+            + "&client_id=" + URLEncoder.encode(adminClientId, StandardCharsets.UTF_8)
+            + "&client_secret=" + URLEncoder.encode(adminClientSecret, StandardCharsets.UTF_8);
 
         HttpRequest req = HttpRequest.newBuilder(
-                URI.create(adminUrl + "/realms/master/protocol/openid-connect/token"))
+                URI.create(adminUrl + "/realms/" + appRealm + "/protocol/openid-connect/token"))
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .timeout(Duration.ofSeconds(15))
@@ -83,7 +100,13 @@ public class KeycloakAdminService {
     /**
      * Creates a user with a temporary password that must be changed on first
      * login. Username is set to the email, matching how members log in.
+     * {@code skipOn = RuntimeException.class} (overriding the class-level circuit breaker) so a
+     * business-level rejection (e.g. a duplicate-email 409) never trips the breaker for unrelated
+     * invites; a genuine transport failure still throws the checked IOException uncaught, which
+     * does count.
      */
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.5, delay = 30, delayUnit = ChronoUnit.SECONDS,
+        skipOn = RuntimeException.class)
     public String createUser(String email, String fullName, String tempPassword) throws Exception {
         String token = getAdminToken();
         String baseUrl = adminUrl + "/admin/realms/" + appRealm;
@@ -124,6 +147,7 @@ public class KeycloakAdminService {
     }
 
     /** Finds an existing account by email, so inviting the same person to a second chama reuses it. */
+    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS)
     public String findUserByEmail(String email) throws Exception {
         String token = getAdminToken();
         String url = adminUrl + "/admin/realms/" + appRealm + "/users?email="
@@ -152,8 +176,14 @@ public class KeycloakAdminService {
      * same as {@link #createUser}'s initial credential. Backs the resend-invite recovery path
      * (issue P1-11): an invite whose original email never arrived, or whose one-time temporary
      * password was lost before anyone wrote it down, previously had no way back in short of a
-     * chairperson deleting and recreating the member.
+     * chairperson deleting and recreating the member. {@code skipOn = RuntimeException.class} on
+     * the circuit breaker (overriding the class-level default) for the same reason as
+     * {@link #getUserEmail}: a stale/deleted keycloakUserId 404 is a business condition, not an
+     * infrastructure failure, and shouldn't trip the breaker for other members' resets.
      */
+    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS)
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.5, delay = 30, delayUnit = ChronoUnit.SECONDS,
+        skipOn = RuntimeException.class)
     public void resetPassword(String keycloakUserId, String newTemporaryPassword) throws Exception {
         String token = getAdminToken();
 
@@ -176,7 +206,17 @@ public class KeycloakAdminService {
         }
     }
 
-    /** The account's current email, used to resolve a document/notification recipient at send time. */
+    /**
+     * The account's current email, used to resolve a document/notification recipient at send
+     * time. {@code skipOn = RuntimeException.class} on the circuit breaker below (overriding the
+     * class-level default) so a plain "no such user" 404 for one stale/deleted keycloakUserId,
+     * thrown as a RuntimeException below, never counts as an infrastructure failure and trips the
+     * breaker for every other, unrelated lookup; a genuine transport failure (timeout, connection
+     * refused) still throws the checked IOException from {@code http.send} uncaught, which does
+     * count. Not retried for the same reason a 404 would just keep failing.
+     */
+    @CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.5, delay = 30, delayUnit = ChronoUnit.SECONDS,
+        skipOn = RuntimeException.class)
     public String getUserEmail(String keycloakUserId) throws Exception {
         String token = getAdminToken();
         HttpRequest req = HttpRequest.newBuilder(
@@ -207,6 +247,7 @@ public class KeycloakAdminService {
      * deliberately, the admin event "representation" payload can carry arbitrary user PII and
      * this app has no use for it beyond operationType/resourceType/resourcePath.
      */
+    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS)
     public void ensureEventsEnabled() throws Exception {
         String token = getAdminToken();
 
@@ -243,6 +284,7 @@ public class KeycloakAdminService {
      * events (e.g. a credential-stuffing burst, the exact scenario this ingestion exists to catch)
      * previously had its overflow silently and permanently dropped by a single unpaginated call.
      */
+    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS)
     public List<KeycloakLoginEvent> fetchLoginEvents(LocalDate dateFrom) throws Exception {
         return fetchPaged("events", dateFrom, node -> {
             Map<String, String> details = new HashMap<>();
@@ -264,6 +306,7 @@ public class KeycloakAdminService {
     }
 
     /** Admin console/API events since dateFrom, same day-granularity and pagination caveats as fetchLoginEvents. */
+    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS)
     public List<KeycloakAdminEvent> fetchAdminEvents(LocalDate dateFrom) throws Exception {
         return fetchPaged("admin-events", dateFrom, node -> {
             JsonNode authDetails = node.get("authDetails");

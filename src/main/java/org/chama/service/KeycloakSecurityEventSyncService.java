@@ -57,7 +57,8 @@ public class KeycloakSecurityEventSyncService {
     }
 
     @Transactional
-    @Scheduled(every = "1m", identity = "keycloak-security-event-sync")
+    @Scheduled(every = "1m", identity = "keycloak-security-event-sync",
+        concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void sync() {
         Instant watermark = repository.findMaxEventTime().orElse(Instant.now().minus(INITIAL_BACKFILL));
         Instant sinceMillis = watermark.minus(OVERLAP_BUFFER);

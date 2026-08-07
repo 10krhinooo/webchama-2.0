@@ -192,7 +192,8 @@ public class LoanDisbursementService {
      * the loan or risks a second real payout.
      */
     @Transactional
-    @Scheduled(every = "5m", identity = "b2c-disbursement-reconciliation")
+    @Scheduled(every = "5m", identity = "b2c-disbursement-reconciliation",
+        concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void reconcileStalePending() {
         Instant cutoff = Instant.now().minus(RECONCILE_TIMEOUT);
         List<LoanDisbursement> stale = loanDisbursementRepository.findPendingOlderThan(cutoff);
