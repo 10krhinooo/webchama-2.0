@@ -3,6 +3,9 @@ package org.chama.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.chama.config.B2cConfig;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Retry;
+import org.eclipse.microprofile.faulttolerance.Timeout;
 import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
@@ -12,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
 /**
@@ -19,8 +23,16 @@ import java.util.Base64;
  * provider integration and LoanDisbursementService's DB orchestration on top of it. Kept separate
  * so the HTTP/error-mapping logic can be exercised against a local stub server (DarajaB2cClientTest)
  * without needing a database, the same pattern MpesaServiceTest uses for STK push.
+ *
+ * <p>{@code @Timeout}/{@code @CircuitBreaker} apply class-wide so a degraded Safaricom doesn't tie
+ * up a worker thread for the full manual HTTP timeout on every request. {@code @Retry} is only
+ * added to {@link #queryTransactionStatus}, which only re-triggers an async result callback and is
+ * safe to repeat; {@link #requestPayout} is never retried automatically, an ambiguous outcome after
+ * a network-level failure could otherwise fire a second real payout to the same member.
  */
 @ApplicationScoped
+@Timeout(value = 45, unit = ChronoUnit.SECONDS)
+@CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.5, delay = 30, delayUnit = ChronoUnit.SECONDS)
 public class DarajaB2cClient {
 
     private static final Logger LOG = Logger.getLogger(DarajaB2cClient.class);
@@ -93,6 +105,7 @@ public class DarajaB2cClient {
      * arrives asynchronously through the same ResultURL callback, this call only re-triggers it
      * (issue #35), the synchronous response here only confirms Daraja accepted the query.
      */
+    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS)
     public void queryTransactionStatus(String originatorConversationId) {
         try {
             String token = getAccessToken();

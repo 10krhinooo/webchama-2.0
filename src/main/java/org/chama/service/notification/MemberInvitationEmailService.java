@@ -45,11 +45,31 @@ public class MemberInvitationEmailService {
     public void sendCredentials(String toEmail, String fullName, String temporaryPassword) {
         MAIL_EXECUTOR.runAsync(() -> {
             try {
-                mailer.send(Mail.withHtml(toEmail, "Your Webchama account is ready", buildHtml(fullName, toEmail, temporaryPassword)));
+                mailer.send(Mail.withText(toEmail, "Your Webchama account is ready", buildPlainText(fullName, toEmail, temporaryPassword))
+                    .setHtml(buildHtml(fullName, toEmail, temporaryPassword)));
             } catch (Exception e) {
                 LOG.warnf(e, "Failed to send invite credentials email to %s", toEmail);
             }
         });
+    }
+
+    // A plain-text part (AUDIT_PLAN.md P3) alongside the HTML one, for any mail client that
+    // prefers/requires text/plain, or flags HTML-only mail as more likely to be spam.
+    String buildPlainText(String fullName, String email, String temporaryPassword) {
+        String firstName = fullName == null || fullName.isBlank() ? "there" : fullName.trim().split("\\s+", 2)[0];
+        return """
+            Hi %s,
+
+            You have been added as a member on Webchama. Use the credentials below to sign in, \
+            you will be asked to set your own password on first login.
+
+            Email: %s
+            Temporary password: %s
+
+            Sign in: %s
+
+            You are receiving this because a chairperson added you to a chama on Webchama.
+            """.formatted(firstName, email, temporaryPassword, frontendUrl);
     }
 
     String buildHtml(String fullName, String email, String temporaryPassword) {

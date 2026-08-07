@@ -71,6 +71,13 @@ public class PaymentService {
 
         Payment payment = newPendingPayment(contribution, caller, PaymentMethod.MPESA);
         paymentRepository.persist(payment);
+        try {
+            paymentRepository.flush();
+        } catch (jakarta.persistence.PersistenceException e) {
+            throw new BadRequestException(
+                "An M-Pesa payment request was already sent for this contribution. "
+                    + "Check your phone, or wait a few minutes and try again.");
+        }
 
         try {
             String checkoutId = mpesaService.stkPush(caller.phone, remaining,
@@ -117,11 +124,27 @@ public class PaymentService {
     @Transactional
     public CardPaymentInit initiateCardPayment(Long chamaId, Long contributionId, Member caller, String email) {
         Contribution contribution = contributionFor(chamaId, contributionId, caller);
+        paymentRepository.findPendingByContribution(contributionId).ifPresent(existing -> {
+            throw new BadRequestException(
+                "A payment request was already sent for this contribution. "
+                    + "Check your email, or wait a few minutes and try again.");
+        });
         BigDecimal remaining = remainingBalance(contribution);
 
         Payment payment = newPendingPayment(contribution, caller, PaymentMethod.CARD);
         payment.providerReference = "CHAMA-" + chamaId + "-C" + contributionId + "-" + System.currentTimeMillis();
         paymentRepository.persist(payment);
+        try {
+            // Forces the flush now so a race against another request (both passing the
+            // findPendingByContribution check above before either commits) surfaces here as the
+            // idx_payment_one_pending_per_contribution constraint violation, not as an opaque 500
+            // once this transaction eventually commits.
+            paymentRepository.flush();
+        } catch (jakarta.persistence.PersistenceException e) {
+            throw new BadRequestException(
+                "A payment request was already sent for this contribution. "
+                    + "Check your email, or wait a few minutes and try again.");
+        }
 
         try {
             String link = flutterwaveService.initializePayment(
@@ -253,6 +276,14 @@ public class PaymentService {
             contributionService.recordPayment(payment.chama.id, payment.contribution.id, payment.amount, payment.method);
         } else if (payment.welfareContribution != null) {
             welfareContributionService.markPaid(payment.chama.id, payment.welfareContribution.id, payment.method);
+        } else if (payment.loanRepayment != null) {
+            payment.loanRepayment.amountPaid = payment.loanRepayment.amountPaid.add(payment.amount);
+            payment.loanRepayment.status = payment.loanRepayment.amountPaid.compareTo(payment.loanRepayment.amountDue) >= 0
+                ? org.chama.domain.enums.LoanRepaymentStatus.PAID
+                : org.chama.domain.enums.LoanRepaymentStatus.PARTIAL;
+        } else if (payment.penalty != null) {
+            payment.penalty.status = org.chama.domain.enums.PenaltyStatus.PAID;
+            payment.penalty.decidedAt = Instant.now();
         }
     }
 
@@ -264,7 +295,8 @@ public class PaymentService {
      * reconciliation sweep, STK Query returns the result synchronously, so this applies it directly
      * rather than just re-triggering an async callback.
      */
-    @Scheduled(every = "5m", identity = "mpesa-stk-reconciliation")
+    @Scheduled(every = "5m", identity = "mpesa-stk-reconciliation",
+        concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void reconcileStalePendingMpesaPayments() {
         if (!reconciliationEnabled) {
             return;

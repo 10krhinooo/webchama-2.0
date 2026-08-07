@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import org.chama.domain.enums.ChamaStatus;
 import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -78,8 +79,9 @@ public class Chama extends PanacheEntityBase {
     @Column(name = "auto_push_retry_hours", nullable = false)
     public int autoPushRetryHours = 24;
 
-    @Column(name = "created_at", nullable = false)
-    public Instant createdAt = Instant.now();
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    public Instant createdAt;
 
     // Short shareable code an already-registered user redeems to self-join this chama (issue
     // #170), instead of only via chairperson-added-by-email. ChamaService.create() generates this

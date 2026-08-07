@@ -43,7 +43,7 @@ All read only under the `%prod` profile (`quarkus.profile=prod`, the default whe
 |---|---|
 | `KEYCLOAK_URL` | Base URL of the Keycloak server (OIDC + Admin API) |
 | `KEYCLOAK_CLIENT_SECRET` | Secret for the `webchama-backend` confidential client |
-| `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` | Service credentials `KeycloakAdminService` uses to provision members on invite |
+| `KEYCLOAK_ADMIN_CLIENT_ID` / `KEYCLOAK_ADMIN_CLIENT_SECRET` | The `webchama-backend` client's own service-account credentials, scoped to the chama realm's `manage-users`/`manage-events`/`view-events` roles, `KeycloakAdminService` uses these to provision members on invite (not a master-realm admin account) |
 | `MPESA_CONSUMER_KEY` / `MPESA_CONSUMER_SECRET` | Daraja app credentials, STK push |
 | `MPESA_SHORTCODE` / `MPESA_TILL_NUMBER` / `MPESA_PASSKEY` | Daraja STK push config |
 | `MPESA_CALLBACK_URL` | Publicly reachable URL for `/api/payments/mpesa-callback` |
@@ -53,11 +53,9 @@ All read only under the `%prod` profile (`quarkus.profile=prod`, the default whe
 | `FLUTTERWAVE_SECRET_KEY` / `FLUTTERWAVE_SECRET_HASH` | Flutterwave app credentials and webhook verification |
 | `FLUTTERWAVE_CALLBACK_URL` / `FLUTTERWAVE_REDIRECT_URL` | Publicly reachable webhook and post-checkout redirect URLs |
 
-The datasource URL/credentials and mailer settings are not yet profile-gated the same way (see
-`AUDIT_PLAN.md` P2 finding on master-realm admin credentials, and the mailer's committed Gmail
-credentials, both out of this pass's scope); override
-`quarkus.datasource.jdbc.url`/`.username`/`.password` and `quarkus.mailer.*` the same way if
-deploying anywhere the defaults in `application.properties` shouldn't apply.
+The datasource URL/credentials and mailer's committed Gmail credentials are not yet profile-gated
+the same way; override `quarkus.datasource.jdbc.url`/`.username`/`.password` and `quarkus.mailer.*`
+the same way if deploying anywhere the defaults in `application.properties` shouldn't apply.
 
 ## Frontend runtime configuration
 
@@ -81,7 +79,7 @@ docker run -d --name postgres --network webchama \
 docker run -d --name backend --network webchama -p 8080:8080 \
   -e KEYCLOAK_URL=https://auth.example.com \
   -e KEYCLOAK_CLIENT_SECRET=... \
-  -e KEYCLOAK_ADMIN_USERNAME=... -e KEYCLOAK_ADMIN_PASSWORD=... \
+  -e KEYCLOAK_ADMIN_CLIENT_ID=webchama-backend -e KEYCLOAK_ADMIN_CLIENT_SECRET=... \
   -e MPESA_CONSUMER_KEY=... -e MPESA_CONSUMER_SECRET=... \
   -e MPESA_SHORTCODE=... -e MPESA_TILL_NUMBER=... -e MPESA_PASSKEY=... \
   -e MPESA_CALLBACK_URL=https://api.example.com/api/payments/mpesa-callback \

@@ -137,7 +137,8 @@ public class RateLimitFilter implements ContainerRequestFilter {
     }
 
     /** Bounds memory growth from unique-IP churn over app uptime. */
-    @Scheduled(every = "10m", identity = "rate-limit-cleanup")
+    @Scheduled(every = "10m", identity = "rate-limit-cleanup",
+        concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void cleanup() {
         long cutoff = System.currentTimeMillis() - STALE_AFTER_MILLIS;
         counters.entrySet().removeIf(e -> e.getValue().isStale(cutoff));

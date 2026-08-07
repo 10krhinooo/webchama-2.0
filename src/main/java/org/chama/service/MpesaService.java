@@ -3,6 +3,9 @@ package org.chama.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.chama.config.MpesaConfig;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Retry;
+import org.eclipse.microprofile.faulttolerance.Timeout;
 import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
@@ -14,13 +17,23 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
 /**
  * Daraja STK push integration for chama contribution payments. C2B till reconciliation and the
  * startup URL-registration job are not implemented here (issue #23, optional, deferred).
+ *
+ * <p>{@code @Timeout}/{@code @CircuitBreaker} apply class-wide so a degraded Daraja doesn't tie up
+ * a worker thread for the full manual HTTP timeout on every request and a sustained outage fails
+ * fast instead. {@code @Retry} is only added to {@link #queryStkStatus}, a read-only query safe to
+ * repeat; {@link #stkPush} is deliberately never retried automatically, since a retry after a
+ * network-level failure (where it's unknown whether Daraja already queued the push) would risk
+ * sending a member a second STK prompt for the same payment.
  */
 @ApplicationScoped
+@Timeout(value = 45, unit = ChronoUnit.SECONDS)
+@CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.5, delay = 30, delayUnit = ChronoUnit.SECONDS)
 public class MpesaService {
 
     private static final Logger LOG = Logger.getLogger(MpesaService.class);
@@ -126,6 +139,7 @@ public class MpesaService {
     }
 
     /** Queries the status of a previously initiated STK push via the M-Pesa Express STK Query endpoint. */
+    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS)
     public StkQueryResult queryStkStatus(String checkoutRequestId) {
         try {
             String token = getAccessToken();

@@ -5,11 +5,16 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.enums.PaymentMethod;
+import org.chama.domain.enums.PaymentPurpose;
+import org.chama.domain.enums.PaymentStatus;
 import org.chama.domain.enums.PenaltyStatus;
 import org.chama.domain.model.Member;
+import org.chama.domain.model.Payment;
 import org.chama.domain.model.Penalty;
 import org.chama.dto.CreatePenaltyDto;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.repository.PenaltyRepository;
 import org.chama.service.notification.PenaltyStatusEmailService;
 
@@ -21,6 +26,9 @@ public class PenaltyService {
 
     @Inject
     PenaltyRepository penaltyRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
 
     @Inject
     MemberRepository memberRepository;
@@ -89,6 +97,37 @@ public class PenaltyService {
         penalty.waiverReason = waiverReason;
         penaltyStatusEmailService.sendWaived(penalty.member.keycloakUserId, penalty.member.fullName,
             penalty.chama.name, penalty.chama.currency, penalty.amount, waiverReason);
+        return penalty;
+    }
+
+    /**
+     * Records a treasurer-confirmed settlement of an APPROVED penalty, creating a {@code Payment}
+     * row (purpose PENALTY) so this channel gets the same ledger/audit trail as contributions and
+     * welfare payments (AUDIT_PLAN.md P2-16), instead of the fine simply staying APPROVED forever
+     * with no record of whether or how it was ever actually collected.
+     */
+    @Transactional
+    public Penalty settle(Long chamaId, Long penaltyId, Long deciderMemberId, PaymentMethod method) {
+        Penalty penalty = get(chamaId, penaltyId);
+        if (penalty.status != PenaltyStatus.APPROVED) {
+            throw new BadRequestException("Only an approved penalty can be settled");
+        }
+        penalty.status = PenaltyStatus.PAID;
+        penalty.decidedBy = memberRepository.findByIdOptional(deciderMemberId).orElseThrow(NotFoundException::new);
+        penalty.decidedAt = Instant.now();
+
+        Payment payment = new Payment();
+        payment.chama = penalty.chama;
+        payment.member = penalty.member;
+        payment.penalty = penalty;
+        payment.purpose = PaymentPurpose.PENALTY;
+        payment.amount = penalty.amount;
+        payment.method = method;
+        payment.status = PaymentStatus.SUCCESS;
+        payment.paidAt = Instant.now();
+        payment.providerReference = "CHAMA-" + chamaId + "-PN" + penaltyId + "-" + System.currentTimeMillis();
+        paymentRepository.persist(payment);
+
         return penalty;
     }
 

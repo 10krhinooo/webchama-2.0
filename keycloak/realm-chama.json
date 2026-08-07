@@ -36,10 +36,10 @@
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "webchama-backend-secret",
-      "bearerOnly": true,
+      "bearerOnly": false,
       "publicClient": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
+      "serviceAccountsEnabled": true,
       "standardFlowEnabled": false
     },
     {
@@ -65,6 +65,14 @@
   ],
 
   "users": [
+    {
+      "username": "service-account-webchama-backend",
+      "enabled": true,
+      "serviceAccountClientId": "webchama-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "manage-events", "view-events"]
+      }
+    },
     {
       "username": "admin",
       "enabled": true,

@@ -63,7 +63,8 @@ public class ContributionAutoPushService {
     // for part of every day (see ContributionService.CHAMA_ZONE for the same reasoning).
     private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
 
-    @Scheduled(every = "1h", identity = "contribution-auto-stk-push")
+    @Scheduled(every = "1h", identity = "contribution-auto-stk-push",
+        concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void fireDueAutoPushes() {
         if (!autoPushEnabled) {
             return;

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.chama.config.FlutterwaveConfig;
+import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
+import org.eclipse.microprofile.faulttolerance.Timeout;
 import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
@@ -13,12 +15,23 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Flutterwave Standard checkout, the diaspora-contribution channel for members without M-Pesa or
  * paying from outside Kenya.
+ *
+ * <p>{@code @Timeout}/{@code @CircuitBreaker} apply class-wide so a degraded Flutterwave doesn't
+ * tie up a worker thread for the full manual HTTP timeout on every request and a sustained outage
+ * fails fast. No {@code @Retry} here: the verify methods deliberately swallow every failure into a
+ * {@code false} return (a caller-facing "not verified" signal), so an interceptor-level retry would
+ * never see an exception to act on; {@link #initializePayment} is a non-idempotent write that
+ * shouldn't be auto-retried anyway, since a retry after a network-level failure could create a
+ * second hosted checkout session for the same contribution.
  */
 @ApplicationScoped
+@Timeout(value = 20, unit = ChronoUnit.SECONDS)
+@CircuitBreaker(requestVolumeThreshold = 4, failureRatio = 0.5, delay = 30, delayUnit = ChronoUnit.SECONDS)
 public class FlutterwaveService {
 
     private static final Logger LOG = Logger.getLogger(FlutterwaveService.class);

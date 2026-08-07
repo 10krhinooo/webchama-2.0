@@ -8,13 +8,18 @@ import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.LoanRepaymentStatus;
 import org.chama.domain.enums.LoanStatus;
+import org.chama.domain.enums.PaymentMethod;
+import org.chama.domain.enums.PaymentPurpose;
+import org.chama.domain.enums.PaymentStatus;
 import org.chama.domain.model.Loan;
 import org.chama.domain.model.LoanRepayment;
 import org.chama.domain.model.Member;
+import org.chama.domain.model.Payment;
 import org.chama.dto.CreateLoanDto;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.repository.PaymentRepository;
 import org.chama.service.notification.LoanStatusEmailService;
 
 import java.math.BigDecimal;
@@ -35,6 +40,9 @@ public class LoanService {
 
     @Inject
     LoanRepaymentRepository loanRepaymentRepository;
+
+    @Inject
+    PaymentRepository paymentRepository;
 
     @Inject
     MemberRepository memberRepository;
@@ -124,8 +132,15 @@ public class LoanService {
         return loan;
     }
 
+    /**
+     * Records a treasurer-entered loan repayment. Creates a {@code Payment} row (purpose
+     * LOAN_REPAYMENT) alongside the installment update, closing the gap where this channel had no
+     * ledger/audit trail the way contribution and welfare payments do (AUDIT_PLAN.md P2-16); the
+     * installment's own PAID-status guard above is this method's idempotency check, there being no
+     * online callback to dedupe against here.
+     */
     @Transactional
-    public LoanRepayment recordRepayment(Long chamaId, Long loanId, Long repaymentId, BigDecimal amount) {
+    public LoanRepayment recordRepayment(Long chamaId, Long loanId, Long repaymentId, BigDecimal amount, PaymentMethod method) {
         get(chamaId, loanId);
         LoanRepayment repayment = loanRepaymentRepository.findByIdOptional(repaymentId).orElseThrow(NotFoundException::new);
         if (!repayment.loan.id.equals(loanId)) {
@@ -139,6 +154,19 @@ public class LoanService {
         repayment.status = repayment.amountPaid.compareTo(repayment.amountDue) >= 0
             ? LoanRepaymentStatus.PAID
             : LoanRepaymentStatus.PARTIAL;
+
+        Payment payment = new Payment();
+        payment.chama = repayment.loan.chama;
+        payment.member = repayment.loan.member;
+        payment.loanRepayment = repayment;
+        payment.purpose = PaymentPurpose.LOAN_REPAYMENT;
+        payment.amount = amount;
+        payment.method = method;
+        payment.status = PaymentStatus.SUCCESS;
+        payment.paidAt = Instant.now();
+        payment.providerReference = "CHAMA-" + chamaId + "-LR" + repaymentId + "-" + System.currentTimeMillis();
+        paymentRepository.persist(payment);
+
         return repayment;
     }
 
@@ -188,10 +216,9 @@ public class LoanService {
         if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
             return principal.divide(BigDecimal.valueOf(termMonths), CALC_SCALE, RoundingMode.HALF_UP);
         }
-        double p = principal.doubleValue();
-        double r = monthlyRate.doubleValue();
-        double factor = Math.pow(1 + r, termMonths);
-        double payment = p * r * factor / (factor - 1);
-        return BigDecimal.valueOf(payment);
+        BigDecimal factor = BigDecimal.ONE.add(monthlyRate).pow(termMonths);
+        BigDecimal numerator = principal.multiply(monthlyRate).multiply(factor);
+        BigDecimal denominator = factor.subtract(BigDecimal.ONE);
+        return numerator.divide(denominator, CALC_SCALE, RoundingMode.HALF_UP);
     }
 }
