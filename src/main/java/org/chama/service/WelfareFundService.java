@@ -60,6 +60,14 @@ public class WelfareFundService {
         });
     }
 
+    /** Chairperson-set goal amount for the fund, mirroring ChamaService.update's savingsTarget. */
+    @Transactional
+    public WelfareFund updateTarget(Long chamaId, BigDecimal target) {
+        WelfareFund fund = getOrCreate(chamaId);
+        fund.target = target;
+        return fund;
+    }
+
     @Transactional
     public void credit(Long chamaId, BigDecimal amount) {
         WelfareFund fund = getOrCreate(chamaId);

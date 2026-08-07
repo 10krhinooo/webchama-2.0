@@ -175,6 +175,18 @@ class WelfareFundResourceTest {
             payerRole.role = MemberRoleType.MEMBER;
             payerRole.persist();
             memberId = payer.id;
+
+            Member chairperson = new Member();
+            chairperson.chama = chama;
+            chairperson.keycloakUserId = "welfare-chairperson";
+            chairperson.fullName = "Chairperson One";
+            chairperson.phone = "254700000003";
+            chairperson.status = MemberStatus.ACTIVE;
+            memberRepository.persist(chairperson);
+            MemberRole chairpersonRole = new MemberRole();
+            chairpersonRole.member = chairperson;
+            chairpersonRole.role = MemberRoleType.CHAIRPERSON;
+            chairpersonRole.persist();
         });
     }
 
@@ -334,6 +346,62 @@ class WelfareFundResourceTest {
             .then()
                 .statusCode(200)
                 .body("balance", equalTo(100.0f));
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-chairperson")
+    void chairpersonSetsWelfareFundTarget() {
+        given()
+            .contentType("application/json")
+            .body("{\"target\":50000}")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/target", chamaId)
+            .then()
+                .statusCode(200)
+                .body("target", equalTo(50000));
+
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaId)
+            .then()
+                .statusCode(200)
+                .body("target", equalTo(50000));
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-chairperson")
+    void chairpersonClearsWelfareFundTargetWithNoBody() {
+        given()
+            .contentType("application/json")
+            .body("{\"target\":50000}")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/target", chamaId)
+            .then().statusCode(200);
+
+        given()
+            .contentType("application/json")
+            .body("{}")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/target", chamaId)
+            .then()
+                .statusCode(200)
+                .body("target", nullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-treasurer")
+    void treasurerCannotSetWelfareFundTarget() {
+        given()
+            .contentType("application/json")
+            .body("{\"target\":50000}")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/target", chamaId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-payer")
+    void plainMemberCannotSetWelfareFundTarget() {
+        given()
+            .contentType("application/json")
+            .body("{\"target\":50000}")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/target", chamaId)
+            .then().statusCode(403);
     }
 
     @Test

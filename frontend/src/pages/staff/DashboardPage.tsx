@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { getChama, getSavingsProgress, type Chama, type SavingsProgress } from '../../api/chamas'
+import { getChama, getSavingsProgress, updateChama, type Chama, type SavingsProgress } from '../../api/chamas'
 import { getMembers } from '../../api/members'
 import { getContributions, getMyContributions, type Contribution, type ContributionStatus } from '../../api/contributions'
 import { getLoans, getMyLoans, getLoanRepayments, type Loan } from '../../api/loans'
@@ -9,6 +9,7 @@ import { getPayouts, getMyPayouts, type Payout } from '../../api/payouts'
 import { getPendingApprovals, type Approval } from '../../api/approvals'
 import { getMeetings, type Meeting } from '../../api/meetings'
 import { getResolutions } from '../../api/resolutions'
+import { getWelfareFund, updateWelfareFundTarget, type WelfareFund } from '../../api/welfareFund'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { useActivityFeed } from '../../hooks/useActivityFeed'
@@ -16,6 +17,10 @@ import ContributionPot from '../../components/marketing/ContributionPot'
 import { SkeletonBlock, SkeletonLine } from '../../components/ui/Skeleton'
 import TransientAlert from '../../components/ui/TransientAlert'
 import Reveal from '../../components/ui/Reveal'
+import Modal from '../../components/ui/Modal'
+import FormField from '../../components/ui/FormField'
+import Input from '../../components/ui/Input'
+import LoadingButton from '../../components/ui/LoadingButton'
 
 const ACTIVE_LOAN_STATUSES: Loan['status'][] = ['APPROVED', 'DISBURSED', 'REPAYING']
 
@@ -32,6 +37,8 @@ const ACTIVITY_EVENT_LABELS: Record<string, string> = {
   LOAN_APPROVED: 'Loan approved',
   PAYOUT_DISBURSED: 'Payout disbursed',
   DOCUMENT_GENERATED: 'Document generated',
+  CHAMA_MARKED_INACTIVE: 'Chama marked inactive',
+  CHAMA_REACTIVATED: 'Chama reactivated',
 }
 
 function formatMoney(amount: number, currency: string) {
@@ -81,6 +88,7 @@ export default function DashboardPage() {
 
   const [chama, setChama] = useState<Chama | null>(null)
   const [savingsProgress, setSavingsProgress] = useState<SavingsProgress | null>(null)
+  const [welfareFund, setWelfareFund] = useState<WelfareFund | null>(null)
   const [memberCount, setMemberCount] = useState<number | null>(null)
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [outstandingLoanTotal, setOutstandingLoanTotal] = useState(0)
@@ -126,11 +134,13 @@ export default function DashboardPage() {
       isManager ? getPendingApprovals(chamaId) : Promise.resolve([]),
       isSecretary ? getMeetings(chamaId) : Promise.resolve([]),
       isSecretary ? getResolutions(chamaId) : Promise.resolve([]),
+      isManager ? getWelfareFund(chamaId) : Promise.resolve(null),
     ])
-      .then(([chamaData, savingsData, members, contributionData, loanSummary, payouts, approvals, meetings, resolutions]) => {
+      .then(([chamaData, savingsData, members, contributionData, loanSummary, payouts, approvals, meetings, resolutions, welfareFundData]) => {
         if (cancelled) return
         setChama(chamaData)
         setSavingsProgress(savingsData)
+        setWelfareFund(welfareFundData)
         setMemberCount(members.length)
         setContributions(contributionData)
         setOutstandingLoanTotal(loanSummary.total)
@@ -152,6 +162,71 @@ export default function DashboardPage() {
       cancelled = true
     }
   }, [chamaId, isManager, isChairperson, isSecretary, roleLoading])
+
+  const [showGoalModal, setShowGoalModal] = useState(false)
+  const [goalForm, setGoalForm] = useState('')
+  const [goalSaving, setGoalSaving] = useState(false)
+  const [goalNotice, setGoalNotice] = useState<string | null>(null)
+
+  const openGoalEditor = () => {
+    setGoalForm(savingsProgress?.target != null ? String(savingsProgress.target) : '')
+    setGoalNotice(null)
+    setShowGoalModal(true)
+  }
+
+  const handleGoalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chama) return
+    setGoalSaving(true)
+    setGoalNotice(null)
+    try {
+      const updated = await updateChama(chama.id, {
+        name: chama.name,
+        description: chama.description ?? undefined,
+        type: chama.type,
+        currency: chama.currency,
+        contributionFrequency: chama.contributionFrequency,
+        contributionAmount: chama.contributionAmount,
+        meetingDay: chama.meetingDay ?? undefined,
+        savingsTarget: goalForm ? Number(goalForm) : undefined,
+      })
+      setChama(updated)
+      setSavingsProgress((current) => (current ? { ...current, target: updated.savingsTarget } : current))
+      setShowGoalModal(false)
+    } catch (err) {
+      setGoalNotice(extractErrorMessage(err))
+    } finally {
+      setGoalSaving(false)
+    }
+  }
+
+  const [showWelfareGoalModal, setShowWelfareGoalModal] = useState(false)
+  const [welfareGoalForm, setWelfareGoalForm] = useState('')
+  const [welfareGoalSaving, setWelfareGoalSaving] = useState(false)
+  const [welfareGoalNotice, setWelfareGoalNotice] = useState<string | null>(null)
+
+  const openWelfareGoalEditor = () => {
+    setWelfareGoalForm(welfareFund?.target != null ? String(welfareFund.target) : '')
+    setWelfareGoalNotice(null)
+    setShowWelfareGoalModal(true)
+  }
+
+  const handleWelfareGoalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setWelfareGoalSaving(true)
+    setWelfareGoalNotice(null)
+    try {
+      const updated = await updateWelfareFundTarget(chamaId, {
+        target: welfareGoalForm ? Number(welfareGoalForm) : undefined,
+      })
+      setWelfareFund(updated)
+      setShowWelfareGoalModal(false)
+    } catch (err) {
+      setWelfareGoalNotice(extractErrorMessage(err))
+    } finally {
+      setWelfareGoalSaving(false)
+    }
+  }
 
   if (loading || roleLoading) {
     return (
@@ -180,14 +255,25 @@ export default function DashboardPage() {
 
       <TransientAlert variant="error" message={error} onDismiss={() => setError(null)} />
 
-      {savingsProgress?.target != null && (() => {
-        const goal = savingsGoalProgress(savingsProgress, currency)
-        return (
-          <div className="rounded-2xl bg-white p-8 shadow-card">
-            <ContributionPot percent={goal.percent} label="Savings goal" sublabel={goal.sublabel} />
-          </div>
-        )
-      })()}
+      {(savingsProgress?.target != null || isChairperson) && (
+        <div className="rounded-2xl bg-white p-8 shadow-card">
+          {isChairperson && (
+            <div className="mb-4 flex justify-end">
+              <button onClick={openGoalEditor} className="text-primary text-xs hover:underline">
+                Edit savings goal
+              </button>
+            </div>
+          )}
+          {savingsProgress?.target != null ? (
+            (() => {
+              const goal = savingsGoalProgress(savingsProgress, currency)
+              return <ContributionPot percent={goal.percent} label="Savings goal" sublabel={goal.sublabel} />
+            })()
+          ) : (
+            <p className="text-sm text-muted">No savings goal set yet.</p>
+          )}
+        </div>
+      )}
 
       <Reveal eager delayMs={80} className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl bg-white p-8 shadow-card">
@@ -238,6 +324,24 @@ export default function DashboardPage() {
               <p className="mt-2 text-sm text-muted">No payout scheduled yet</p>
             )}
           </div>
+          {isManager && welfareFund && (
+            <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="flex items-start justify-between">
+                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
+                  Welfare fund
+                </p>
+                {isChairperson && (
+                  <button onClick={openWelfareGoalEditor} className="text-primary text-xs hover:underline">
+                    Edit goal
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 font-mono text-3xl font-bold text-ink">{formatMoney(welfareFund.balance, currency)}</p>
+              {welfareFund.target != null && (
+                <p className="mt-1 text-xs text-muted">of {formatMoney(welfareFund.target, currency)} goal</p>
+              )}
+            </div>
+          )}
         </div>
       </Reveal>
 
@@ -344,6 +448,52 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {showGoalModal && (
+        <Modal title="Edit Savings Goal" onClose={() => setShowGoalModal(false)}>
+          <form onSubmit={handleGoalSubmit} className="space-y-4">
+            {goalNotice && (
+              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{goalNotice}</div>
+            )}
+            <FormField label="Savings goal" htmlFor="dashboard-savings-goal" hint="Leave blank to clear the goal.">
+              <Input
+                id="dashboard-savings-goal"
+                type="number"
+                min="0"
+                step="0.01"
+                value={goalForm}
+                onChange={(e) => setGoalForm(e.target.value)}
+              />
+            </FormField>
+            <LoadingButton type="submit" loading={goalSaving} className="w-full">
+              Save
+            </LoadingButton>
+          </form>
+        </Modal>
+      )}
+
+      {showWelfareGoalModal && (
+        <Modal title="Edit Welfare Fund Goal" onClose={() => setShowWelfareGoalModal(false)}>
+          <form onSubmit={handleWelfareGoalSubmit} className="space-y-4">
+            {welfareGoalNotice && (
+              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{welfareGoalNotice}</div>
+            )}
+            <FormField label="Welfare fund goal" htmlFor="dashboard-welfare-goal" hint="Leave blank to clear the goal.">
+              <Input
+                id="dashboard-welfare-goal"
+                type="number"
+                min="0"
+                step="0.01"
+                value={welfareGoalForm}
+                onChange={(e) => setWelfareGoalForm(e.target.value)}
+              />
+            </FormField>
+            <LoadingButton type="submit" loading={welfareGoalSaving} className="w-full">
+              Save
+            </LoadingButton>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }
