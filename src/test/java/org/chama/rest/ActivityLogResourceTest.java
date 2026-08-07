@@ -139,9 +139,9 @@ class ActivityLogResourceTest {
             Chama other = newChama("Other Chama");
             otherChamaId = other.id;
 
-            newMember(chama, "activity-treasurer", MemberRoleType.TREASURER);
-            newMember(chama, "activity-secretary", MemberRoleType.SECRETARY);
-            newMember(chama, "activity-member", MemberRoleType.MEMBER);
+            newMember(chama, "activity-treasurer", "254700000301", MemberRoleType.TREASURER);
+            newMember(chama, "activity-secretary", "254700000302", MemberRoleType.SECRETARY);
+            newMember(chama, "activity-member", "254700000303", MemberRoleType.MEMBER);
 
             for (int i = 0; i < 3; i++) {
                 ActivityLog entry = new ActivityLog();
@@ -170,12 +170,12 @@ class ActivityLogResourceTest {
         return chama;
     }
 
-    private void newMember(Chama chama, String keycloakUserId, MemberRoleType roleType) {
+    private void newMember(Chama chama, String keycloakUserId, String phone, MemberRoleType roleType) {
         Member member = new Member();
         member.chama = chama;
         member.keycloakUserId = keycloakUserId;
         member.fullName = keycloakUserId;
-        member.phone = "254700000300";
+        member.phone = phone;
         member.status = MemberStatus.ACTIVE;
         member.joinDate = LocalDate.now();
         memberRepository.persist(member);

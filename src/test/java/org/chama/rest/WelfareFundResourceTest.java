@@ -262,6 +262,8 @@ class WelfareFundResourceTest {
     @TestSecurity(user = "welfare-treasurer")
     void mpesaCallbackMarksWelfareContributionPaidAndCreditsFund() {
         Long contributionId = seedPendingWelfareContribution("ws_CO_welfare_callback", new BigDecimal("400"));
+        Mockito.when(mpesaService.queryStkStatus("ws_CO_welfare_callback"))
+            .thenReturn(new MpesaService.StkQueryResult("0", "The service request is processed successfully."));
 
         String callbackBody = "{\"Body\":{\"stkCallback\":{"
             + "\"CheckoutRequestID\":\"ws_CO_welfare_callback\",\"ResultCode\":0,\"ResultDesc\":\"Success\","

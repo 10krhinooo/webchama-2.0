@@ -363,9 +363,13 @@ class LoanDisbursementServiceTest {
 
     @Test
     void reconcileStalePendingQueriesOnlyDisbursementsPastTheTimeout() {
-        Long loanId = persistLoan(LoanStatus.APPROVED);
-        Long staleId = seedDisbursement(loanId, "AG_STALE");
-        Long freshId = seedDisbursement(loanId, "AG_FRESH");
+        // Two different loans: idx_loan_disbursement_one_active_per_loan forbids two PENDING
+        // disbursement rows against the same loan, and this test only cares about the staleness
+        // filter, not about both rows sharing a loan.
+        Long staleLoanId = persistLoan(LoanStatus.APPROVED);
+        Long freshLoanId = persistLoan(LoanStatus.APPROVED);
+        Long staleId = seedDisbursement(staleLoanId, "AG_STALE");
+        Long freshId = seedDisbursement(freshLoanId, "AG_FRESH");
 
         // requestedAt is @Column(updatable = false), a normal entity-field assignment inside a
         // transaction would be silently ignored by Hibernate's flush; a bulk HQL update bypasses

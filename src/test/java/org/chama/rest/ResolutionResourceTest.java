@@ -31,6 +31,7 @@ import org.chama.repository.PayoutScheduleRepository;
 import org.chama.repository.PenaltyRepository;
 import org.chama.repository.ResolutionRepository;
 import org.chama.repository.ResolutionVoteRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -193,6 +194,18 @@ class ResolutionResourceTest {
             thirdRole.member = third;
             thirdRole.role = MemberRoleType.MEMBER;
             thirdRole.persist();
+        });
+    }
+
+    // Resolution rows are the only thing this class persists that other @QuarkusTest classes'
+    // own cleanup doesn't account for (they delete meeting/member, not resolution), so without
+    // this an uncommitted-by-teardown resolution here fails a later class's meeting/member
+    // deleteAll() with a foreign key violation, depending on which class Surefire runs next.
+    @AfterEach
+    void cleanupResolutions() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            resolutionVoteRepository.deleteAll();
+            resolutionRepository.deleteAll();
         });
     }
 

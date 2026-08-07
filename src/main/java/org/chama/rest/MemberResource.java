@@ -101,6 +101,10 @@ public class MemberResource {
      */
     @POST
     @Path("/{id}/resend-invite")
+    // Overrides the class-level @Consumes: this endpoint takes no request body, and axios
+    // (the frontend's HTTP client) sends a bodyless POST with no Content-Type header at all,
+    // which the class-level "application/json" restriction would otherwise reject with 415.
+    @Consumes(MediaType.WILDCARD)
     public MemberInvitationDto resendInvite(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
         String temporaryPassword = memberService.resendInvite(chamaId, id);
