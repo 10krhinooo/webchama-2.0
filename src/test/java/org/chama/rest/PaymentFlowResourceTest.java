@@ -48,6 +48,7 @@ import java.time.LocalDate;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.argThat;
 
@@ -214,7 +215,10 @@ class PaymentFlowResourceTest {
                 .statusCode(201)
                 .body("status", equalTo("PENDING"))
                 .body("method", equalTo("MPESA"))
-                .body("providerReference", equalTo("ws_CO_123"));
+                // providerReference (the Daraja CheckoutRequestID) is deliberately not returned to
+                // the member who can trigger it: exposing it would hand back the one credential a
+                // forged M-Pesa callback needs.
+                .body("providerReference", nullValue());
     }
 
     @Test

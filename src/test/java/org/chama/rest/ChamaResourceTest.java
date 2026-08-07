@@ -203,6 +203,50 @@ class ChamaResourceTest {
     }
 
     @Test
+    @TestSecurity(user = "founder")
+    void deletingAChamaWithADisbursedLoanDoesNotCrashOnTheLoanDisbursementForeignKey() {
+        int chamaId = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("id");
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            Chama chama = chamaRepository.findById((long) chamaId);
+
+            Member borrower = new Member();
+            borrower.chama = chama;
+            borrower.keycloakUserId = "founder-borrower";
+            borrower.fullName = "Borrower";
+            borrower.phone = "254700000077";
+            borrower.status = org.chama.domain.enums.MemberStatus.ACTIVE;
+            memberRepository.persist(borrower);
+
+            org.chama.domain.model.Loan loan = new org.chama.domain.model.Loan();
+            loan.chama = chama;
+            loan.member = borrower;
+            loan.principal = new BigDecimal("3000");
+            loan.interestRate = new BigDecimal("0");
+            loan.interestMethod = org.chama.domain.enums.InterestMethod.FLAT;
+            loan.termMonths = 3;
+            loan.status = org.chama.domain.enums.LoanStatus.DISBURSED;
+            loanRepository.persist(loan);
+
+            org.chama.domain.model.LoanDisbursement disbursement = new org.chama.domain.model.LoanDisbursement();
+            disbursement.loan = loan;
+            disbursement.conversationId = "AG_CHAMA_DELETE_1";
+            disbursement.originatorConversationId = "orig-AG_CHAMA_DELETE_1";
+            disbursement.targetPhone = "254700000077";
+            disbursement.amount = new BigDecimal("3000");
+            disbursement.status = org.chama.domain.enums.LoanDisbursementStatus.COMPLETED;
+            loanDisbursementRepository.persist(disbursement);
+        });
+
+        given().when().delete("/api/chamas/{id}", chamaId).then().statusCode(204);
+    }
+
+    @Test
     void creatingAChamaRequiresAuthentication() {
         given()
             .contentType("application/json")

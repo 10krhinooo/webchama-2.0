@@ -4,6 +4,8 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.BadRequestException;
+import org.chama.domain.enums.ApprovalStatus;
 import org.chama.domain.enums.ApprovalTargetType;
 import org.chama.domain.enums.ChamaStatus;
 import org.chama.domain.enums.ChamaType;
@@ -21,6 +23,7 @@ import org.chama.repository.ContributionRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
 import org.chama.repository.PaymentRepository;
+import org.chama.service.ApprovalService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +35,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @QuarkusTest
 class ApprovalResourceTest {
@@ -56,6 +61,9 @@ class ApprovalResourceTest {
 
     @Inject
     PaymentRepository paymentRepository;
+
+    @Inject
+    ApprovalService approvalService;
 
     private Long chamaId;
     private Long beneficiaryId;
@@ -168,17 +176,42 @@ class ApprovalResourceTest {
         int approvalId = given().contentType("application/json").body(requestBody("Loan disbursement"))
             .when().post("/api/chamas/{chamaId}/approvals", chamaId)
             .then().statusCode(201).extract().path("id");
+        Long chairpersonId = memberRepository.find("keycloakUserId", "approval-chairperson-1").firstResult().id;
 
-        given()
-            .when().put("/api/chamas/{chamaId}/approvals/{id}/approve", chamaId, approvalId)
-            .then()
-                .statusCode(200)
-                .body("status", equalTo("PENDING"))
-                .body("firstApproverMemberId", notNullValue());
+        // Requested by the treasurer, so the first sign-off must come from someone else (the
+        // chairperson here); requesterCannotSignOffOnTheirOwnRequest below covers the treasurer
+        // trying to sign their own request. @TestSecurity's identity is fixed per test method
+        // (see ResolutionResourceTest's castVote), so the chairperson's sign-off is exercised
+        // directly through the service rather than a second HTTP identity.
+        Approval firstSignOff = approvalService.approve(chamaId, (long) approvalId, chairpersonId);
+        assertEquals(ApprovalStatus.PENDING, firstSignOff.status);
+        assertEquals(chairpersonId, firstSignOff.firstApprover.id);
+
+        assertThrows(BadRequestException.class,
+            () -> approvalService.approve(chamaId, (long) approvalId, chairpersonId));
+    }
+
+    @Test
+    @TestSecurity(user = "approval-treasurer-1")
+    void requesterCannotSignOffOnTheirOwnRequest() {
+        int approvalId = given().contentType("application/json").body(requestBody("Loan disbursement"))
+            .when().post("/api/chamas/{chamaId}/approvals", chamaId)
+            .then().statusCode(201).extract().path("id");
 
         given()
             .when().put("/api/chamas/{chamaId}/approvals/{id}/approve", chamaId, approvalId)
             .then().statusCode(400);
+    }
+
+    @Test
+    void requesterCannotProvideTheSecondSignOffEither() {
+        // requestedBy = treasurer, firstApprover = chairperson (a legitimate distinct first
+        // sign-off); the treasurer still can't be the one to close it out as the second signatory.
+        int approvalId = seedPendingApprovalRequestedByTreasurerFirstSignedByChairperson();
+        Long treasurerId = memberRepository.find("keycloakUserId", "approval-treasurer-1").firstResult().id;
+
+        assertThrows(BadRequestException.class,
+            () -> approvalService.approve(chamaId, (long) approvalId, treasurerId));
     }
 
     @Test
@@ -239,6 +272,26 @@ class ApprovalResourceTest {
             approval.reason = "Loan disbursement";
             approval.requestedBy = treasurer;
             approval.firstApprover = treasurer;
+            approval.firstApprovedAt = Instant.now();
+            approvalRepository.persist(approval);
+            return approval.id.intValue();
+        });
+    }
+
+    private int seedPendingApprovalRequestedByTreasurerFirstSignedByChairperson() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            Member treasurer = memberRepository.find("keycloakUserId", "approval-treasurer-1").firstResult();
+            Member chairperson = memberRepository.find("keycloakUserId", "approval-chairperson-1").firstResult();
+
+            Approval approval = new Approval();
+            approval.chama = chamaRepository.findById(chamaId);
+            approval.targetType = ApprovalTargetType.LOAN_DISBURSEMENT;
+            approval.targetId = 1L;
+            approval.member = memberRepository.findById(beneficiaryId);
+            approval.amount = new BigDecimal("150000");
+            approval.reason = "Loan disbursement";
+            approval.requestedBy = treasurer;
+            approval.firstApprover = chairperson;
             approval.firstApprovedAt = Instant.now();
             approvalRepository.persist(approval);
             return approval.id.intValue();

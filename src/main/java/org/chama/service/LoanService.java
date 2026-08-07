@@ -15,6 +15,7 @@ import org.chama.dto.CreateLoanDto;
 import org.chama.repository.LoanRepaymentRepository;
 import org.chama.repository.LoanRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.service.notification.LoanStatusEmailService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -43,6 +44,9 @@ public class LoanService {
 
     @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    LoanStatusEmailService loanStatusEmailService;
 
     public List<Loan> listForChama(Long chamaId) {
         return loanRepository.findByChama(chamaId);
@@ -100,6 +104,8 @@ public class LoanService {
         loan.approvedAt = Instant.now();
         activityLogService.log(loan.chama, ActivityEventType.LOAN_APPROVED,
             loan.member.fullName + "'s loan of " + loan.chama.currency + " " + loan.principal + " was approved");
+        loanStatusEmailService.sendApproved(loan.member.keycloakUserId, loan.member.fullName,
+            loan.chama.name, loan.chama.currency, loan.principal);
         return loan;
     }
 
@@ -113,6 +119,8 @@ public class LoanService {
         loan.status = LoanStatus.REJECTED;
         activityLogService.log(loan.chama, ActivityEventType.LOAN_REJECTED,
             loan.member.fullName + "'s loan of " + loan.chama.currency + " " + loan.principal + " was rejected");
+        loanStatusEmailService.sendRejected(loan.member.keycloakUserId, loan.member.fullName,
+            loan.chama.name, loan.chama.currency, loan.principal);
         return loan;
     }
 

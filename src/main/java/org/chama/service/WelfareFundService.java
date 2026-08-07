@@ -5,11 +5,14 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import org.chama.domain.enums.ActivityEventType;
+import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.model.Member;
 import org.chama.domain.model.WelfareFund;
 import org.chama.domain.model.WelfareWithdrawal;
+import org.chama.repository.MemberRepository;
 import org.chama.repository.WelfareFundRepository;
 import org.chama.repository.WelfareWithdrawalRepository;
+import org.chama.service.notification.WelfareWithdrawalEmailService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -35,7 +38,13 @@ public class WelfareFundService {
     ChamaService chamaService;
 
     @Inject
+    MemberRepository memberRepository;
+
+    @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    WelfareWithdrawalEmailService welfareWithdrawalEmailService;
 
     @Transactional
     public WelfareFund getOrCreate(Long chamaId) {
@@ -79,6 +88,13 @@ public class WelfareFundService {
 
         activityLogService.log(fund.chama, ActivityEventType.WELFARE_FUND_WITHDRAWN,
             disbursedBy.fullName + " disbursed " + fund.chama.currency + " " + scaledAmount + " from the welfare fund: " + reason);
+
+        List<WelfareWithdrawalEmailService.Recipient> recipients = memberRepository.findByChama(chamaId).stream()
+            .filter(m -> m.status == MemberStatus.ACTIVE)
+            .map(m -> new WelfareWithdrawalEmailService.Recipient(m.keycloakUserId, m.fullName))
+            .toList();
+        welfareWithdrawalEmailService.sendWithdrawn(recipients, fund.chama.name, fund.chama.currency,
+            scaledAmount, reason, disbursedBy.fullName);
         return withdrawal;
     }
 }

@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.chama.domain.enums.ContributionStatus;
 import org.chama.domain.enums.PaymentMethod;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -70,4 +71,11 @@ public class Contribution extends PanacheEntityBase {
     // this contribution, so a subsequent sweep the same day skips it rather than double-firing.
     @Column(name = "last_auto_push_at")
     public Instant lastAutoPushAt;
+
+    // Two payments crediting this contribution at once (e.g. a manual record-payment racing a
+    // webhook) could otherwise both read the same amountPaid and one overwrite the other's credit
+    // (issue P0-5).
+    @Version
+    @Column(nullable = false)
+    public long version;
 }

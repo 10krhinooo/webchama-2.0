@@ -17,4 +17,5 @@ public enum ActivityEventType {
     LOAN_REJECTED,
     AUTO_STK_PUSH_SENT,
     MEMBER_JOINED,
+    MEMBER_INVITE_RESENT,
 }

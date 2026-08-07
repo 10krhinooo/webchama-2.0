@@ -47,6 +47,7 @@ import java.math.BigDecimal;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 
 @QuarkusTest
 class WelfareFundResourceTest {
@@ -232,7 +233,8 @@ class WelfareFundResourceTest {
                 .body("status", equalTo("PENDING"))
                 .body("purpose", equalTo("WELFARE"))
                 .body("method", equalTo("MPESA"))
-                .body("providerReference", equalTo("ws_CO_welfare_1"));
+                // Not returned to the member who can trigger it, see PaymentFlowResourceTest.
+                .body("providerReference", nullValue());
 
         given()
             .when().get("/api/chamas/{chamaId}/welfare-fund/contributions/mine", chamaId)

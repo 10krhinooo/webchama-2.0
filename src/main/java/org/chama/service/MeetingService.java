@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.AttendanceStatus;
+import org.chama.domain.enums.MemberStatus;
 import org.chama.domain.model.Meeting;
 import org.chama.domain.model.MeetingAttendance;
 import org.chama.domain.model.Member;
@@ -12,6 +13,7 @@ import org.chama.dto.CreateMeetingDto;
 import org.chama.repository.MeetingAttendanceRepository;
 import org.chama.repository.MeetingRepository;
 import org.chama.repository.MemberRepository;
+import org.chama.service.notification.MeetingNotificationEmailService;
 
 import java.util.List;
 
@@ -29,6 +31,9 @@ public class MeetingService {
 
     @Inject
     ChamaService chamaService;
+
+    @Inject
+    MeetingNotificationEmailService meetingNotificationEmailService;
 
     public List<Meeting> listForChama(Long chamaId) {
         return meetingRepository.findByChama(chamaId);
@@ -49,6 +54,8 @@ public class MeetingService {
         meeting.meetingDate = dto.meetingDate();
         meeting.agenda = dto.agenda();
         meetingRepository.persist(meeting);
+        meetingNotificationEmailService.sendMeetingScheduled(
+            activeMemberRecipients(chamaId), meeting.chama.name, meeting.meetingDate, meeting.agenda);
         return meeting;
     }
 
@@ -56,7 +63,16 @@ public class MeetingService {
     public Meeting updateMinutes(Long chamaId, Long meetingId, String minutes) {
         Meeting meeting = get(chamaId, meetingId);
         meeting.minutes = minutes;
+        meetingNotificationEmailService.sendMinutesPublished(
+            activeMemberRecipients(chamaId), meeting.chama.name, meeting.meetingDate);
         return meeting;
+    }
+
+    private List<MeetingNotificationEmailService.Recipient> activeMemberRecipients(Long chamaId) {
+        return memberRepository.findByChama(chamaId).stream()
+            .filter(m -> m.status == MemberStatus.ACTIVE)
+            .map(m -> new MeetingNotificationEmailService.Recipient(m.keycloakUserId, m.fullName))
+            .toList();
     }
 
     public List<MeetingAttendance> getAttendance(Long chamaId, Long meetingId) {

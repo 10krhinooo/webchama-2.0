@@ -390,8 +390,47 @@ class LoanDisbursementServiceTest {
             disbursement.originatorConversationId = "orig-" + conversationId;
             disbursement.targetPhone = "254700000201";
             disbursement.amount = new BigDecimal("5000");
+            disbursement.status = LoanDisbursementStatus.PENDING;
             loanDisbursementRepository.persist(disbursement);
             return disbursement.id;
         });
+    }
+
+    @Test
+    void initiateClaimsTheLoanSoASecondCallCannotDoubleDisburse() {
+        Long loanId = persistLoan(LoanStatus.APPROVED);
+        Mockito.when(b2cClient.requestPayout(eq("254700000201"), any(BigDecimal.class), anyString()))
+            .thenReturn(new DarajaB2cClient.B2cAckResult("AG_ONCE", "16740-1"));
+
+        loanDisbursementService.initiate(chamaId, loanId);
+
+        // The loan is no longer APPROVED (claimed into DISBURSEMENT_PENDING), so a second call,
+        // whether a genuine double-click or a client retry, is rejected before any second B2C call.
+        assertThrows(BadRequestException.class, () -> loanDisbursementService.initiate(chamaId, loanId));
+        Mockito.verify(b2cClient, Mockito.times(1)).requestPayout(anyString(), any(BigDecimal.class), anyString());
+    }
+
+    @Test
+    void initiateReleasesTheClaimAndReopensTheLoanWhenTheB2cCallFails() {
+        Long loanId = persistLoan(LoanStatus.APPROVED);
+        Mockito.when(b2cClient.requestPayout(eq("254700000201"), any(BigDecimal.class), anyString()))
+            .thenThrow(new RuntimeException("B2C request rejected: insufficient utility balance"));
+
+        assertThrows(RuntimeException.class, () -> loanDisbursementService.initiate(chamaId, loanId));
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            Loan loan = loanRepository.findById(loanId);
+            assertEquals(LoanStatus.APPROVED, loan.status);
+        });
+        // The claimed row persisted before the failed call is not silently lost, it is marked FAILED.
+        assertEquals(1, loanDisbursementRepository.findByLoan(loanId).size());
+        assertEquals(LoanDisbursementStatus.FAILED, loanDisbursementRepository.findByLoan(loanId).get(0).status);
+
+        // And the loan can now be retried.
+        Mockito.reset(b2cClient);
+        Mockito.when(b2cClient.requestPayout(eq("254700000201"), any(BigDecimal.class), anyString()))
+            .thenReturn(new DarajaB2cClient.B2cAckResult("AG_RETRY", "16740-2"));
+        LoanDisbursement retried = loanDisbursementService.initiate(chamaId, loanId);
+        assertEquals(LoanDisbursementStatus.PENDING, retried.status);
     }
 }

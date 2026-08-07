@@ -6,10 +6,12 @@ import org.chama.domain.model.LoanDisbursement;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+// conversationId is deliberately not exposed here: it's the only credential a forged B2C
+// callback needs, and handing it to the same TREASURER/CHAIRPERSON who can trigger a
+// disbursement would let them fabricate their own "payout succeeded" callback.
 public record LoanDisbursementDto(
     Long id,
     Long loanId,
-    String conversationId,
     String targetPhone,
     BigDecimal amount,
     LoanDisbursementStatus status,
@@ -23,7 +25,6 @@ public record LoanDisbursementDto(
         return new LoanDisbursementDto(
             disbursement.id,
             disbursement.loan.id,
-            disbursement.conversationId,
             disbursement.targetPhone,
             disbursement.amount,
             disbursement.status,

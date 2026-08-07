@@ -94,6 +94,20 @@ public class MemberResource {
             .build();
     }
 
+    /**
+     * Recovery path for an invite whose original email never arrived, or whose one-time temporary
+     * password was lost before anyone wrote it down (issue P1-11): resets the member's Keycloak
+     * password to a fresh temporary one and re-sends the credential email.
+     */
+    @POST
+    @Path("/{id}/resend-invite")
+    public MemberInvitationDto resendInvite(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);
+        String temporaryPassword = memberService.resendInvite(chamaId, id);
+        var member = memberService.get(chamaId, id);
+        return new MemberInvitationDto(MemberDto.from(member, memberService.rolesOf(member.id)), temporaryPassword);
+    }
+
     @PUT
     @Path("/{id}")
     public MemberDto update(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id, @Valid UpdateMemberDto dto) {

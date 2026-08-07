@@ -153,6 +153,13 @@ public class PaymentService {
         return verified;
     }
 
+    /**
+     * The callback body itself is never trusted as ground truth: it carries no signature, and its
+     * CheckoutRequestID is exposed back to the paying member (PaymentResource.mine()), so anyone
+     * can POST a fabricated ResultCode:0 body for a request they themselves triggered. Instead this
+     * only uses the callback as a "check now" trigger and re-queries Daraja's STK Query endpoint
+     * (the same authoritative source the reconciliation sweep uses) before flipping status.
+     */
     @Transactional
     public void handleMpesaCallback(MpesaCallbackDto dto) {
         if (dto.body() == null || dto.body().stkCallback() == null) return;
@@ -166,13 +173,19 @@ public class PaymentService {
         }
         if (payment.status != PaymentStatus.PENDING) return;
 
-        if (callback.resultCode() != 0) {
-            LOG.infof("[PAYMENT] M-Pesa callback result %d for payment %d, not marking success",
-                callback.resultCode(), payment.id);
-            payment.status = PaymentStatus.FAILED;
+        MpesaService.StkQueryResult result = mpesaService.queryStkStatus(payment.providerReference);
+        if ("PENDING".equals(result.resultCode())) {
+            LOG.infof("[PAYMENT] M-Pesa callback for payment %d received but Daraja still reports "
+                + "PENDING on re-query, leaving for the reconciliation sweep", payment.id);
             return;
         }
-        markSuccess(payment, callback.mpesaReceiptNumber());
+        if (result.isPaid()) {
+            markSuccess(payment, callback.mpesaReceiptNumber());
+        } else {
+            LOG.infof("[PAYMENT] M-Pesa re-verification result %s (%s) for payment %d, marking failed",
+                result.resultCode(), result.resultDesc(), payment.id);
+            payment.status = PaymentStatus.FAILED;
+        }
     }
 
     /**

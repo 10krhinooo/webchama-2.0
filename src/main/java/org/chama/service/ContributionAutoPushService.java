@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.model.Contribution;
 import org.chama.repository.ContributionRepository;
+import org.chama.service.notification.AutoPushFailedEmailService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -46,6 +47,9 @@ public class ContributionAutoPushService {
 
     @Inject
     ActivityLogService activityLogService;
+
+    @Inject
+    AutoPushFailedEmailService autoPushFailedEmailService;
 
     @ConfigProperty(name = "contribution.auto-push.enabled", defaultValue = "true")
     boolean autoPushEnabled;
@@ -88,7 +92,14 @@ public class ContributionAutoPushService {
         if (contribution.lastAutoPushAt != null && contribution.lastAutoPushAt.isAfter(retryCutoff)) {
             return;
         }
-        paymentService.initiateMpesaPayment(contribution.chama.id, contribution.id, contribution.member);
+        try {
+            paymentService.initiateMpesaPayment(contribution.chama.id, contribution.id, contribution.member);
+        } catch (RuntimeException e) {
+            autoPushFailedEmailService.sendPushFailed(contribution.member.keycloakUserId, contribution.member.fullName,
+                contribution.chama.name, contribution.chama.currency,
+                contribution.amountDue.subtract(contribution.amountPaid), contribution.period, e.getMessage());
+            throw e;
+        }
         contribution.lastAutoPushAt = Instant.now();
         activityLogService.log(contribution.chama, ActivityEventType.AUTO_STK_PUSH_SENT,
             "Auto STK push sent to " + contribution.member.fullName + " for their " + contribution.period + " contribution");
