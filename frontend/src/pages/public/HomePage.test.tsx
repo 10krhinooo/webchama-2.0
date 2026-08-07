@@ -1,11 +1,23 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import HomePage from './HomePage'
 
 vi.mock('@react-keycloak/web', () => ({
   useKeycloak: () => ({ keycloak: { register: vi.fn() } }),
 }))
+
+let capturedRoleGridCallback: IntersectionObserverCallback | null = null
+
+class CapturingIntersectionObserver {
+  constructor(callback: IntersectionObserverCallback) {
+    capturedRoleGridCallback = callback
+  }
+  observe = () => {}
+  unobserve = () => {}
+  disconnect = () => {}
+  takeRecords = () => []
+}
 
 function renderPage() {
   return render(
@@ -16,6 +28,30 @@ function renderPage() {
 }
 
 describe('HomePage', () => {
+  const originalIO = window.IntersectionObserver
+
+  beforeEach(() => {
+    capturedRoleGridCallback = null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).IntersectionObserver = CapturingIntersectionObserver
+  })
+
+  afterEach(() => {
+    window.IntersectionObserver = originalIO
+  })
+
+  it('marks the role grid in view once it intersects the viewport', () => {
+    renderPage()
+    expect(capturedRoleGridCallback).toBeTruthy()
+    act(() => {
+      capturedRoleGridCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(screen.getAllByText('Chairperson').length).toBeGreaterThan(0)
+  })
+
   it('renders the hero headline and primary call to action', () => {
     renderPage()
     expect(screen.getByText('Every shilling lands in the kiondo.')).toBeTruthy()
