@@ -54,7 +54,11 @@ startup logs: `docker compose logs keycloak | grep "Generated SUPER_ADMIN passwo
 - **Chamas and membership**: multi-tenant, a member can belong to several chamas via `member_role`, each
   with its own per-chama role. Tenant isolation is enforced on every request. An already-registered
   user can self-join another chama with a short join code (chairperson-generated, regenerable, and
-  emailable to a prospective member), instead of only being added manually by a chairperson.
+  emailable to a prospective member), instead of only being added manually by a chairperson. A
+  chairperson can also reissue a member's temporary password and re-send the credential email if the
+  original invite was lost or never arrived. Deleting a member with any financial history is
+  rejected in favor of marking them exited, so contribution/loan/payment/penalty records are never
+  silently lost.
 - **Contributions**: due dates, partial payments, overdue flagging, on-time streak tracking, and
   opt-in scheduled auto-STK-push so a member's contribution can be charged automatically when due.
 - **Payments**: M-Pesa STK Push and Flutterwave card checkout for contributions, self-service only (a
@@ -71,6 +75,9 @@ startup logs: `docker compose logs keycloak | grep "Generated SUPER_ADMIN passwo
   in-app voting/resolutions to digitize meeting decisions.
 - **Documents**: PDF statement and receipt generation, plus a freeform document generator, delivered
   by email.
+- **Notifications**: email alerts for approval requests, loan status changes (approved, disbursed,
+  failed), payment receipts, payout and penalty status, meeting scheduling, welfare withdrawals, and
+  failed auto-STK-push attempts.
 - **Audit trail**: an immutable activity log covering financial and governance events, and a synced
   feed of Keycloak security events (logins, failed attempts, password changes), viewable on a
   SUPER_ADMIN-only security events page with suspicious rows highlighted and email alerts on
