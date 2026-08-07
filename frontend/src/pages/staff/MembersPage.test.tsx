@@ -9,6 +9,7 @@ vi.mock('../../api/members', () => ({
   updateMember: vi.fn(),
   updateMemberStatus: vi.fn(),
   deleteMember: vi.fn(),
+  resendInvite: vi.fn(),
 }))
 vi.mock('../../api/chamas', () => ({
   getChama: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
-import { getMembers, createMember, updateMember, updateMemberStatus, deleteMember } from '../../api/members'
+import { getMembers, createMember, updateMember, updateMemberStatus, deleteMember, resendInvite } from '../../api/members'
 import { getChama, regenerateJoinCode, inviteToChama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
@@ -28,6 +29,7 @@ const mockCreateMember = createMember as ReturnType<typeof vi.fn>
 const mockUpdateMember = updateMember as ReturnType<typeof vi.fn>
 const mockUpdateMemberStatus = updateMemberStatus as ReturnType<typeof vi.fn>
 const mockDeleteMember = deleteMember as ReturnType<typeof vi.fn>
+const mockResendInvite = resendInvite as ReturnType<typeof vi.fn>
 const mockGetChama = getChama as ReturnType<typeof vi.fn>
 const mockRegenerateJoinCode = regenerateJoinCode as ReturnType<typeof vi.fn>
 const mockInviteToChama = inviteToChama as ReturnType<typeof vi.fn>
@@ -156,6 +158,27 @@ describe('MembersPage', () => {
     fireEvent.click(screen.getByText('Remove'))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(mockDeleteMember).toHaveBeenCalledWith(3, 1))
+  })
+
+  it('reissues an invite and shows the new temporary password', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockResendInvite.mockResolvedValue({ member, temporaryPassword: 'NewTemp123!' })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Reissue invite'))
+    await waitFor(() => expect(mockResendInvite).toHaveBeenCalledWith(3, 1))
+    expect(screen.getByText('NewTemp123!')).toBeTruthy()
+  })
+
+  it('shows an error notice when reissuing an invite fails', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockResendInvite.mockRejectedValue(new Error('could not reset password'))
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    fireEvent.click(screen.getByText('Reissue invite'))
+    await waitFor(() => expect(screen.getByText('could not reset password')).toBeTruthy())
   })
 
   it('shows an empty state when there are no members', async () => {

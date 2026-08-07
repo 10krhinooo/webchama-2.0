@@ -84,6 +84,12 @@ export async function deleteMember(chamaId: number, id: number): Promise<void> {
   await client.delete(`/chamas/${chamaId}/members/${id}`)
 }
 
+/** Recovery path when the original invite email never arrived or its one-time password was lost. */
+export async function resendInvite(chamaId: number, id: number): Promise<MemberInvitationResult> {
+  const { data } = await client.post<MemberInvitationResult>(`/chamas/${chamaId}/members/${id}/resend-invite`)
+  return data
+}
+
 export async function getCreditScore(chamaId: number, memberId: number): Promise<CreditScore> {
   const { data } = await client.get<CreditScore>(`/chamas/${chamaId}/members/${memberId}/credit-score`)
   return data

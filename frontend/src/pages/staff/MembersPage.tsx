@@ -6,6 +6,7 @@ import {
   updateMember,
   updateMemberStatus,
   deleteMember,
+  resendInvite,
   type Member,
   type MemberRoleType,
   type MemberStatus,
@@ -64,6 +65,8 @@ export default function MembersPage() {
   const [inviteResult, setInviteResult] = useState<MemberInvitationResult | null>(null)
   const [removing, setRemoving] = useState<Member | null>(null)
   const [removeLoading, setRemoveLoading] = useState(false)
+  const [resendingId, setResendingId] = useState<number | null>(null)
+  const [resendResult, setResendResult] = useState<MemberInvitationResult | null>(null)
   const [regenerating, setRegenerating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -183,6 +186,19 @@ export default function MembersPage() {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
     } finally {
       setRemoveLoading(false)
+    }
+  }
+
+  /** Recovery path when the original invite email never arrived or its one-time password was lost. */
+  const handleResendInvite = async (member: Member) => {
+    setResendingId(member.id)
+    try {
+      const result = await resendInvite(chamaId, member.id)
+      setResendResult(result)
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setResendingId(null)
     }
   }
 
@@ -311,6 +327,10 @@ export default function MembersPage() {
                           <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'EXITED')}
                             className="rounded px-2 py-1.5 text-muted text-xs hover:bg-paper-dim disabled:opacity-40">Mark exited</button>
                         )}
+                        <button disabled={resendingId === m.id} onClick={() => handleResendInvite(m)}
+                          className="rounded px-2 py-1.5 text-primary text-xs hover:bg-primary/10 disabled:opacity-40">
+                          {resendingId === m.id ? 'Reissuing…' : 'Reissue invite'}
+                        </button>
                         <span className="mx-1 h-4 w-px bg-black/10" aria-hidden="true" />
                         <button onClick={() => setRemoving(m)} className="rounded px-2 py-1.5 text-danger text-xs hover:bg-danger/10">Remove</button>
                       </div>
@@ -386,6 +406,26 @@ export default function MembersPage() {
               </div>
             </div>
             <Button onClick={closeInviteResult} className="w-full">Done</Button>
+          </div>
+        </Modal>
+      )}
+
+      {resendResult && (
+        <Modal title="Invite Reissued" onClose={() => setResendResult(null)}>
+          <div className="space-y-4">
+            <p className="text-sm text-ink/80">
+              A new sign-in email was sent to <strong>{resendResult.member.fullName}</strong>.
+              If it does not arrive, you can share this temporary password directly.
+            </p>
+            <div className="bg-paper-dim border border-black/10 rounded-lg px-4 py-3 space-y-1.5 text-sm">
+              <div>
+                <span className="text-muted">Temporary password:</span>{' '}
+                <span className="font-mono bg-white border border-black/10 rounded px-2 py-0.5">
+                  {resendResult.temporaryPassword}
+                </span>
+              </div>
+            </div>
+            <Button onClick={() => setResendResult(null)} className="w-full">Done</Button>
           </div>
         </Modal>
       )}
