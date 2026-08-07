@@ -1,193 +1,64 @@
 # Webchama system audit and fix plan
 
 A combined security, database, integration-reliability, test, and email audit of the platform,
-re-verified against `main` at commit `c1b795e` (after PRs #172 and #174 landed governance,
-welfare fund, and platform-oversight features). Everything below reflects the current code, not
-the state the audit first ran against.
+first run against `main` at commit `c1b795e` (after PRs #172 and #174 landed governance, welfare
+fund, and platform-oversight features), and re-verified against the `feature/audit-plan-remediation`
+branch after commits `3eef4bc`/`c93e9aa`/`c9041c1`/`0b41d05`/`4d87871` closed most of the P0/P1 list,
+then again after a further remediation pass closed every P2 item and most of P3.
+Everything below reflects the current code, not the state the audit first ran against.
 
 ## How to read this
 
 Findings are ranked P0 (fix before shipping) through P3 (advisory). Each carries the current
 `file:line` evidence and a fix direction. A note at the end lists what was fixed since the first
-pass, so nobody re-investigates something already closed.
+pass, so nobody re-investigates something already closed. All P0, P1 (bar one CVE with no
+available fix), and P2 items are now closed; a small tail of P3 remains open.
 
 ## P0: fix before shipping
 
-Every item here either loses chama funds silently, lets someone fabricate a payment, or crashes a
-core admin action. None require an unusual attacker; several trigger from ordinary use.
-
-**1. M-Pesa webhooks trust whoever holds the ID, and the app hands that ID to normal users.**
-`PaymentCallbackResource.mpesaCallback` and `B2cCallbackResource` are `@PermitAll` with no
-signature or shared-secret check on the Daraja side (Flutterwave's path does this correctly, see
-"already fixed" below). The IDs needed to forge a callback are handed to normal users by design:
-`PaymentDto.providerReference` is returned from `PaymentResource.mine()` (a member's own payment
-list) and `LoanDisbursementDto.conversationId` is returned from the disburse endpoint. A member
-can trigger their own STK push, read back the `providerReference`, then POST it straight to
-`/api/payments/mpesa-callback` with `ResultCode: 0` and mark their own contribution paid with no
-money moved. A TREASURER/CHAIRPERSON can do the same for a loan disbursement. Welfare fund
-contributions ride the same `Payment` entity and webhook path (`WelfareContribution` is "backed"
-by a `Payment` row), so this covers welfare payments too, not just regular contributions.
-Files: `PaymentCallbackResource.java:44`, `B2cCallbackResource.java:32-46`,
-`PaymentDto.java`, `PaymentResource.java:39-44`, `LoanDisbursementDto.java`.
-Fix: stop trusting the callback body as ground truth, re-query Safaricom's transaction-status API
-before flipping a payment/disbursement to COMPLETED (the existing reconciliation sweep already
-does this for stale cases, extend the pattern to every callback). Stop returning
-`providerReference`/`conversationId` in client-facing DTOs unless a consumer genuinely needs it.
-
-**2. A working SUPER_ADMIN password is committed to git.**
-`keycloak/realm-chama.json` is tracked, auto-imported by docker-compose, and still contains
-`admin`/`SuperAdmin1234!` in plaintext with the SUPER_ADMIN role, `temporary: false`. This is
-narrower than it was (see fixes below: `sslRequired` is now `external` and the frontend client can
-no longer ROPC its way in), but the password itself is unchanged and still grants full SUPER_ADMIN
-access through the ordinary login form. Anyone with repo access has a working credential.
-File: `keycloak/realm-chama.json`.
-Fix: this file must never be reachable outside an isolated local/dev environment. Add a startup
-guard that refuses to boot with this realm import outside a dev profile, generate demo passwords
-randomly at setup time instead of hardcoding them, rotate the client secret per environment.
-
-**3. A loan payout can leave Safaricom with no record it ever happened.**
-`LoanDisbursementService.initiate()` still calls `b2cClient.requestPayout(...)` before persisting
-the `LoanDisbursement` row, both inside one `@Transactional` method, unchanged since the first
-pass. If the commit fails after Safaricom already accepted the payout, the whole method rolls back
-and the row never exists. The later callback looks up a ConversationID that isn't there, logs
-"ignoring," and money has left the chama's account with nothing in the system pointing at it.
-File: `LoanDisbursementService.java:49-73`.
-Fix: persist the `LoanDisbursement` row (status e.g. `INITIATING`) before calling
-`b2cClient.requestPayout`, then update it with the ConversationID after a successful call.
-
-**4. Nothing stops a loan from being disbursed twice.**
-Unchanged. The new `ApprovalService` maker-checker gate (see fixes below) only applies to loans at
-or above `Chama.approvalThreshold`, and even where it applies, `requireApproved()` only checks
-that an `Approval` row cleared, it does not itself claim or lock anything. `loan.status` still
-stays `APPROVED` until the async callback lands, sometimes minutes later, and the disburse
-endpoint's rate limit still allows 10 requests/minute per IP, not one per loan. A double-click or a
-client retry after a slow response fires a second real M-Pesa payout for the same loan.
-File: `LoanDisbursementService.java:49-73`.
-Fix: atomically claim the loan for disbursement inside the same transaction, e.g. transition
-`loan.status` to a new `DISBURSEMENT_PENDING` value before the external call, and add
-`UNIQUE (loan_id) WHERE status IN ('PENDING','COMPLETED')` on `loan_disbursement` as a DB-level
-backstop.
-
-**5. A contribution payment can be credited twice.**
-Unchanged. `Payment` and `Contribution` still have no `@Version` column, unlike `Loan`,
-`LoanDisbursement`, `Payout`, `Penalty`, and now `Approval`, which all correctly use optimistic
-locking. Two near-simultaneous webhook deliveries for the same payment (Safaricom is documented to
-redeliver) can both read `status = PENDING` before either commits, and both credit the balance.
-Files: `Payment.java`, `Contribution.java`.
-Fix: add `@Version` to both entities.
-
-**6. Deleting a member with any financial history crashes.**
-Unchanged, 4-line method: `MemberService.delete()` only removes the member's role rows before
-deleting the member itself. Any member who has ever made a contribution, taken a loan, received a
-penalty, or appeared in a payout throws an unhandled foreign-key violation.
-File: `MemberService.java:191-195`.
-Fix: either clean up every dependent table before the delete (mirroring `ChamaService.delete`'s
-pattern once fix #7 below closes its own gap), or reconsider whether members with financial
-history should ever be hard-deleted (the existing `MemberStatus.EXITED` soft-delete path is the
-safer default).
+All four P0 items are now fixed, see "Already fixed since the first pass" below for the detail
+on each. None remain open.
 
 ## P1: high, should fix before shipping
 
-**7. Deleting a chama that ever disbursed a loan also crashes.**
-Unchanged. `ChamaService.delete()` cascades ten child tables in order but still never deletes
-`loan_disbursement`, which has a NOT NULL foreign key to `loan` with no cascade.
-File: `ChamaService.java:190-210`.
-Fix: add a `loanDisbursementRepository.delete("loan.chama.id", id)` call before the loan delete.
+All original P1 items are now fixed except #12 (frontend CVE), which remains open below with no
+available fix. See "Already fixed since the first pass" for #7, #8, #9, #10, and #11.
 
-**8. No uniqueness on phone or national ID within a chama.**
-Unchanged. Only `(chama_id, keycloak_user_id)` and `(member_id, role)` are unique. Loan
-disbursement targets `member.phone` directly, so two members with the same phone number is a real
-duplicate-identity and misdirected-payout risk.
-File: `V3__create_member_and_member_role_tables.sql`.
-Fix: `UNIQUE (chama_id, phone)` and a partial `UNIQUE (chama_id, national_id) WHERE national_id IS
-NOT NULL`.
+**12. One open CVE on a frontend dependency, no fix currently published.**
+`react-router` still carries GHSA-qwww-vcr4-c8h2 (RSC Mode CSRF Bypass, high), and there is no
+version that fixes it yet: the affected range is `>=7.12.0 <8.3.0`, but react-router's actual npm
+registry only goes up to `7.18.2` (confirmed via `npm view react-router-dom versions`), no `8.x`
+has been published. `7.18.2`, the latest published version, was already installed and is kept
+(re-confirmed after this pass tried and reverted a downgrade to `7.11.0`, npm's own suggested
+"fix", below). The `postcss` CVE (GHSA-fxqj-rqcc-2cmp) that was open alongside it is fixed,
+`postcss` resolves to `8.5.26` throughout the tree, above the patched `8.4.31` floor.
 
-**9. Maker-checker has a self-approval gap.**
-New finding, found while re-verifying the fix below: `ApprovalService.approve()` correctly
-prevents the same person from providing both signatures (`firstApprover.id.equals(signer.id)`
-throws), but nothing stops the person who *requested* the approval (the maker, via
-`ApprovalService.request()`) from then also being the *first* checker. A single TREASURER can
-request a disbursement and immediately supply the first sign-off themselves, leaving only one
-other person's agreement standing between them and a large payout, rather than the two
-independent reviewers "dual sign-off" implies.
-File: `ApprovalService.java:106-131` (`approve()`), `77-101` (`request()`).
-Fix: reject `approve()` when `signerMemberId` equals the approval's `requestedBy`, not just when
-it equals the first approver.
-
-**10. No path from a green build to a running production instance.**
-Unchanged. CI (`.github/workflows/ci.yml`) tests and builds both apps but there is still no
-Dockerfile for the app itself and no deploy stage.
-
-**11. An invite email failure leaves a member with zero recovery path.**
-Unchanged. `keycloak/realm-chama.json` still has `resetPasswordAllowed: true` with no
-`smtpServer` configured, so Keycloak's native forgot-password flow can't deliver anything. No
-resend-invite or admin password-reset REST endpoint exists.
-
-**12. Two open CVEs on frontend dependencies, confirmed with a fresh audit.**
-`react-router` still carries GHSA-qwww-vcr4-c8h2 (RSC Mode CSRF Bypass, high), version
-`^7.18.1` falls in the affected `7.12.0-8.2.0` range. Also newly found this pass: `postcss`
-carries GHSA-fxqj-rqcc-2cmp (moderate, arbitrary `.map` file read), fixable with a plain
-`npm audit fix`, no breaking change required. The react-router fix is a breaking-change bump
-(`npm audit fix --force`), likely low real-world exploitability here since this is a Vite SPA
-rather than RSC mode, but it's unresolved and shouldn't be assumed safe without confirming.
+Do not "fix" this by downgrading react-router: `npm audit fix --force` suggests `7.11.0`, but that
+version sits inside a dozen other high-severity advisories that `7.18.2` already has patched
+(unauthenticated DoS via inefficient route matching GHSA-chx6-hx7r-mcp5, RCE via vendored
+turbo-stream deserialization GHSA-49rj-9fvp-4h2h, several open-redirect/XSS advisories). `7.18.2`
+is the most-patched version currently available; the one open CVE is accepted as residual risk,
+likely low real-world exploitability since this is a classic `BrowserRouter`/`Routes`/`Route` Vite
+SPA (confirmed via a repo-wide grep, no `useLoaderData`/`useActionData`/`createBrowserRouter`
+usage), not RSC mode. Re-check `npm view react-router-dom versions` periodically for an `8.x`
+release that actually fixes this.
 
 ## P2: medium
 
-**13. Backend holds master-realm Keycloak admin credentials.**
-Unchanged. `KeycloakAdminService` still authenticates to the Admin API via `grant_type=password`
-with `keycloak.admin.username`/`password`, a master-realm admin pair, rather than a service
-account scoped to just the `chama` realm.
-
-**14. Member PII stored in plaintext.**
-Unchanged. `Member.nationalId` is a plain `@Column`, no field-level encryption, same for `phone`
-and `Payment.mpesaReceiptNumber` elsewhere in the schema.
-
-**15. No CHECK constraints on any money column.** Every amount column across the schema still
-allows negative values at the DB layer; `@Positive` on create DTOs is the only defense.
-
-**16. The polymorphic payment ledger is still half-built.** `payment_purpose` still carries
-`LOAN_REPAYMENT`/`PENALTY` enum values with no code path that ever creates a `Payment` row for
-either; loan repayments and penalty settlements still get no idempotency key or provider-reference
-audit trail the way contributions and welfare payments do.
-
-**17. Reducing-balance loan installments still computed in floating point.**
-`LoanService`'s amortization formula still converts principal/rate to `double` for the `Math.pow`
-calculation before converting back to `BigDecimal`. The final installment absorbs the rounding
-remainder so totals reconcile, but individual installments are inexact along the way.
-
-**18. No retries or circuit breaker on any outbound integration call.** No
-`quarkus-smallrye-fault-tolerance` dependency exists. A slow or degraded Safaricom/Flutterwave/
-Keycloak response can occupy a worker thread for the full timeout on every request, with no
-fast-fail path during a known outage.
-
-**19. Stuck contribution payments have no reconciliation sweep.** Loan disbursements get one,
-contributions don't; `MpesaService.queryStkStatus` exists but is only called from a test.
-
-**20. Scheduled jobs can overlap and corrupt a batch.** Neither `@Scheduled` job sets
-`concurrentExecution = SKIP`; the Keycloak sync's worst-case runtime can exceed its own interval.
+All P2 items are now fixed, see "Already fixed since the first pass" below for the detail on each.
+None remain open.
 
 ## P3: low
 
-- `payment.member_id` and `payment.status` have no index, the highest-growth ledger table in the
-  app, latent until finding #19's reconciliation sweep ships.
-- No app-level or DB guard against a second PENDING payment on the same contribution from a
-  double-tap.
-- Two entities (`Chama`, `Member`) use a Java field initializer for their creation timestamp
-  instead of `@CreationTimestamp`, inconsistent with every other entity.
-- A few nullable FK columns (loan approver, penalty decider, meeting attendee) have no index.
-- No plain-text part on the invite email, HTML-only send.
-- No React error boundary, an unhandled render error produces a blank white screen.
-- No error-monitoring/APM tool in either frontend or backend.
-- No OG meta tags on the public marketing homepage.
-- Frontend coverage sits just under the 90 percent gate (89.2/89.6 percent on functions/branches),
-  clustered in the marketing homepage's scroll-animation branches and a handful of staff pages.
+- No error-monitoring/APM tool in either frontend or backend. Not attempted in this pass, picking
+  and wiring up a provider (Sentry or similar) is a bigger infrastructure decision than the rest of
+  this list.
 
 ## Already fixed since the first pass
 
 Confirmed directly against current code, no further action needed:
 
-- **Maker-checker on loan disbursement** now exists via `ApprovalService`/`Chama.approvalThreshold`
-  (see P1 #9 above for the one gap that remains in it).
+- **Maker-checker on loan disbursement** now exists via `ApprovalService`/`Chama.approvalThreshold`.
 - **SUPER_ADMIN no longer bypasses tenant checks anywhere.** `TenantAccessService` has zero
   SUPER_ADMIN special-casing; platform-level oversight moved to a separate, deliberately
   aggregated `PlatformOverviewResource`/`PlatformStatsService`.
@@ -203,28 +74,143 @@ Confirmed directly against current code, no further action needed:
   didn't originate in the codebase, worth applying the same discipline to any new email template.
 - **Partially fixed: `sslRequired`** moved from `none` to `external` (SSL required for
   non-internal-network traffic), an improvement but not the same as requiring it unconditionally.
-
-## Suggestions
-
-Not defects, opportunities worth scheduling once the fix list above is clear.
-
-- Loan status emails: approved, disbursed, or disbursement failed.
-- Contribution/welfare payment receipt on success.
-- Payout scheduled/disbursed notifications.
-- Penalty issued/waived notifications.
-- Meeting scheduled/minutes published notifications.
+- **(P0-1) M-Pesa callback forgery.** `PaymentService.handleMpesaCallback` now treats the webhook
+  body only as a "check now" trigger and re-queries Daraja's STK Query endpoint
+  (`MpesaService.queryStkStatus`, the same source the reconciliation sweep uses) before marking a
+  payment paid, and `PaymentDto`/`LoanDisbursementDto` no longer expose `providerReference`/
+  `conversationId` to any client. `B2cCallbackResource`/`LoanDisbursementService.applyResultCallback`
+  still trust the B2C ResultURL body's own `resultCode` directly rather than re-querying, unlike
+  the STK path; residual risk is much lower now that `conversationId` is never handed to a client,
+  but is not re-verified server-to-server the way STK and Flutterwave now are, worth closing the
+  same way if B2C ever gets a signature/shared-secret scheme from Safaricom.
+- **(P0-2) Committed SUPER_ADMIN password.** `keycloak/dev-realm-entrypoint.sh` refuses to import
+  `realm-chama.json` at all unless `CHAMA_DEV_REALM_IMPORT=true` is set explicitly, and generates a
+  random SUPER_ADMIN password on every start (printed to the Keycloak container's own logs, never
+  persisted to the image or git) instead of using the committed placeholder.
+- **(P0-3) Loan payout with no record it happened.** `LoanDisbursementService.initiate()` now
+  commits an `INITIATING` `loan_disbursement` row in its own transaction before calling
+  `b2cClient.requestPayout`, so a crash after Safaricom accepts the payout still leaves a row
+  behind for the reconciliation sweep to find.
+- **(P0-4) Double loan disbursement.** `LoanDisbursementService.claim()` atomically transitions the
+  loan off `APPROVED` to a new `DISBURSEMENT_PENDING` status inside the same transaction that
+  commits the `INITIATING` row, optimistic-locked so a double-click or client retry fails on commit
+  rather than firing two real payouts.
+- **(P0-5) Double-credited contribution payment.** `Payment` and `Contribution` both now carry
+  `@Version`.
+- **(P0-6) Deleting a member with financial history crashes.** `MemberService.delete()` now checks
+  contribution/loan/payment/penalty history first and rejects the delete with a message pointing
+  at the `MemberStatus.EXITED` soft-delete path instead of throwing an unhandled FK violation.
+- **(P1-7) Deleting a chama with a loan disbursement crashes.** `ChamaService.delete()` now deletes
+  `loan_disbursement` rows (`loan.chama.id = ?1`) before deleting `loan`.
+- **(P1-8) No phone/national-ID uniqueness within a chama.** `idx_member_chama_phone` (unique) and
+  a partial `idx_member_chama_national_id` (unique where not null) now exist.
+- **(P1-9) Maker-checker self-approval gap.** A maker can no longer supply the first sign-off on
+  their own request; `ApprovalService` now rejects that in addition to the existing "same person
+  twice" check.
+- **(P1-10) No path from a green build to a running instance.** A root `Dockerfile` (backend) and
+  `frontend/Dockerfile` (nginx-served SPA) now exist, CI builds both from a fresh checkout, and
+  `DEPLOYMENT.md` documents the runbook end to end (required infra, env vars, a minimal
+  docker-run example).
+- **(P1-11) Invite email failure, zero recovery path.** Chairpersons can now trigger
+  `POST /api/chamas/{chamaId}/members/{id}/resend-invite` from the members page, which reissues a
+  temporary password and re-sends the credential email through this app's own mailer, independent
+  of whether Keycloak's realm has SMTP configured for its native forgot-password flow.
+- **(P1-12, partial) postcss CVE.** GHSA-fxqj-rqcc-2cmp is resolved, `postcss` sits at `8.5.26`
+  throughout `frontend/`, above the patched floor. The `react-router` CVE in the same finding is
+  still open with no available fix, see P1 #12 above.
+- **(P2-13) Master-realm Keycloak admin credentials.** `KeycloakAdminService` now authenticates via
+  `grant_type=client_credentials` against the `chama` realm's own token endpoint, as the
+  `webchama-backend` confidential client's service account (`serviceAccountsEnabled: true`,
+  granted only `manage-users`/`manage-events`/`view-events` on that realm's `realm-management`
+  client), never a master-realm admin/password grant. A compromised token can now only affect the
+  `chama` realm.
+- **(P2-14) Member PII stored in plaintext.** `Member.phone`/`nationalId` and
+  `Payment.mpesaReceiptNumber` are now encrypted at rest via
+  `DeterministicEncryptedStringConverter` (AES-GCM, nonce derived from HMAC-SHA256(plaintext) so
+  encryption stays deterministic), keeping `idx_member_chama_phone`/`idx_member_chama_national_id`
+  functional since the same plaintext always produces the same ciphertext. Falls back to returning
+  a stored value verbatim if it isn't valid ciphertext, so pre-existing plaintext rows keep working
+  and are transparently re-encrypted on next save, no separate backfill migration needed.
+- **(P2-15) No CHECK constraints on any money column.** Every money/rate column across the schema
+  (contribution, loan, loan_repayment, approval, payout, penalty, welfare_contribution,
+  welfare_withdrawal, welfare_fund, chama, generated_document, payment, loan_disbursement) now has
+  a `CHECK (... >= 0)` constraint.
+- **(P2-16) The polymorphic payment ledger was half-built.** `Payment` now has `loanRepayment`/
+  `penalty` FK columns; `LoanService.recordRepayment` and a new `PenaltyService.settle` (backing a
+  new `PUT /api/chamas/{chamaId}/penalties/{id}/settle` endpoint, with a new `PenaltyStatus.PAID`)
+  both create a real `Payment` row (purpose `LOAN_REPAYMENT`/`PENALTY`) with a provider-reference
+  audit trail, the same as contribution and welfare payments. `PaymentService.markSuccess` also
+  gained matching branches, ready for either purpose to go through an online channel later.
+- **(P2-17) Reducing-balance loan installments computed in floating point.**
+  `LoanService.reducingBalanceInstallment` now stays entirely in `BigDecimal` (`(1+r)^n` via
+  `BigDecimal.pow(int)`, an exact integer power), matching the discipline `flatInstallment` already
+  used, no more `double`/`Math.pow` round-trip.
+- **(P2-18) No retries or circuit breaker on any outbound integration call.**
+  `quarkus-smallrye-fault-tolerance` is now a dependency; `MpesaService`, `FlutterwaveService`,
+  `DarajaB2cClient`, and `KeycloakAdminService` all carry `@Timeout`/`@CircuitBreaker` so a
+  degraded provider fails fast instead of occupying a worker thread for the full manual timeout.
+  `@Retry` is added only to idempotent reads/re-triggers (`queryStkStatus`,
+  `queryTransactionStatus`, `findUserByEmail`, `getUserEmail`, `resetPassword`,
+  `ensureEventsEnabled`, `fetchLoginEvents`, `fetchAdminEvents`), never to a non-idempotent write
+  (`stkPush`, `requestPayout`, `initializePayment`, `createUser`) where a retry after an ambiguous
+  failure could double-fire a real payment/payout or duplicate an account. `getUserEmail`,
+  `createUser`, and `resetPassword` also mark their circuit breaker with `skipOn =
+  RuntimeException.class`, since a plain "no such user" 404 for one stale/deleted account is a
+  business condition, not an infrastructure failure, and must not trip the breaker for every other
+  member's unrelated lookup.
+- **(P2-19) Scheduled jobs could overlap.** All five `@Scheduled` methods
+  (`PaymentService.reconcileStalePendingMpesaPayments`,
+  `LoanDisbursementService.reconcileStalePending`, `ContributionAutoPushService.fireDueAutoPushes`,
+  `KeycloakSecurityEventSyncService.sync`, `RateLimitFilter.cleanup`) now set
+  `concurrentExecution = Scheduled.ConcurrentExecution.SKIP`.
+- **(P3) Missing indexes.** `idx_payment_member_id`/`idx_payment_status`, plus indexes on
+  `loan.approved_by_member_id`, `penalty.decided_by_member_id`, `approval`'s
+  requester/first-approver/second-approver columns, and `meeting_attendance.member_id`, all added.
+- **(P3) No guard against a second PENDING payment on the same contribution.**
+  `initiateCardPayment` now has the same app-level check `initiateMpesaPayment` already had, and
+  both are backed by a DB-level partial unique index
+  (`idx_payment_one_pending_per_contribution`, `WHERE status = 'PENDING'`) closing the race a
+  plain read-then-write check can't, with a friendly `BadRequestException` on conflict.
+- **`Chama.createdAt`** now uses `@CreationTimestamp` instead of a Java field initializer, matching
+  every other entity's audit-timestamp convention. `Member.joinDate` deliberately was not changed
+  the same way: unlike `Chama.createdAt` it's a business field `PayoutService` sorts members by for
+  seniority-based payout rotation, and test fixtures legitimately backdate it, which
+  `@CreationTimestamp` would silently overwrite.
+- **(P3) No plain-text part on the invite email.** `MemberInvitationEmailService` now sends both a
+  `text/plain` and the existing HTML part via `Mail.withText(...).setHtml(...)`.
+- **(P3) No React error boundary.** `ErrorBoundary` now wraps `<App />` in `main.tsx`, showing a
+  recoverable message instead of an unhandled blank white screen.
+- **(P3) No OG meta tags on the public marketing homepage.** `frontend/index.html` now has
+  `og:type`/`og:title`/`og:description`, a `meta name="description"`, and Twitter card tags.
+  `og:image`/`og:url` were deliberately left out: there's no real social-preview graphic asset to
+  point `og:image` at yet, and `og:url` would need a real production domain baked into a static,
+  single-`index.html` Vite SPA.
+- **(P3) Frontend coverage gap.** Now clears the 90 percent gate on all four metrics (was 89.2/89.6
+  percent on functions/branches): added tests for `ErrorBoundary`'s reload action and
+  `HomePage`'s role-grid `IntersectionObserver` callback, the two most function-coverage-starved
+  spots, plus normal coverage from the new backend-adjacent frontend types
+  (`Payment.loanRepaymentId`/`penaltyId`) and the encryption/payment-ledger work above.
+- **All five "Suggestions" from the first pass are implemented.** Loan status
+  (`LoanStatusEmailService`: approved, disbursed, disbursement failed), contribution/welfare
+  payment receipts (`PaymentReceiptEmailService`), payout status (`PayoutStatusEmailService`),
+  penalty status (`PenaltyStatusEmailService`), and meeting notifications
+  (`MeetingNotificationEmailService`) all now exist, alongside an `ApprovalNotificationEmailService`
+  and `AutoPushFailedEmailService` that weren't originally suggested but close the same gap for
+  dual sign-off requests and failed auto-STK-push attempts.
 
 ## Scope and method
 
 Covered: STRIDE threat modeling with DREAD scoring across every trust boundary, a repo-wide secret
 scan verified by hand, all Flyway migrations plus every entity and repository touching money, live
-test runs (139 backend / 235 frontend, both green) rather than static review only, external
-integration reliability for Daraja/Flutterwave/Keycloak/Gmail SMTP, and a full re-verification
-pass against `main` after PRs #172/#174 landed governance, welfare-fund, and platform-oversight
-features, confirming which prior findings are fixed versus still open, plus fresh coverage of the
-new `ApprovalService`, `WelfareContributionService`, and Keycloak realm/theme changes.
+test runs (332 backend / 426 frontend, both green, `./mvnw verify` and `npm run test:coverage`
+both passing their 90 percent gates) rather than static review only, external integration
+reliability for Daraja/Flutterwave/Keycloak/Gmail SMTP, a re-verification pass against `main` after
+PRs #172/#174 landed governance, welfare-fund, and platform-oversight features, a second
+re-verification pass against `feature/audit-plan-remediation` after the P0/P1 remediation commits
+landed, and a third pass closing every remaining P2 item and most of P3, reading every changed file
+directly rather than trusting commit messages, and confirming the Keycloak service-account switch
+and the react-router version decision against the real running Keycloak container and the real npm
+registry rather than assuming either from the advisory text alone.
 
-Not independently re-verified in this pass: every P2/P3 item below the fold (carried forward from
-the first audit on the assumption the governance/welfare-focused PRs didn't touch that code, but
-not re-checked line by line), DNS-level SPF/DKIM/DMARC for any production sending domain,
-penetration testing against a running instance, accessibility audit, load testing.
+Not independently re-verified in this pass: DNS-level SPF/DKIM/DMARC for any production sending
+domain, penetration testing against a running instance, accessibility audit, load testing.
