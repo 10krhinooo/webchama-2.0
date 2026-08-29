@@ -7,7 +7,7 @@
 # --build-arg; everything else the app needs is resolved at request time through the reverse
 # proxy, not baked in.
 
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /workspace
 
 COPY package.json package-lock.json ./
