@@ -1,0 +1,13 @@
+{
+  "name": "Daraja OAuth token",
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth/v1/generate",
+    "queryParameters": { "grant_type": { "equalTo": "client_credentials" } }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": { "access_token": "e2e-access-token", "expires_in": "3599" }
+  }
+}

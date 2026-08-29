@@ -113,6 +113,37 @@ tests locally would wipe out whatever you were looking at in the dev database.
 cd frontend && npm run test:coverage
 ```
 
+### End-to-end environment
+
+`docker-compose.e2e.yml` stands up the whole product the way it is actually deployed: Postgres,
+Keycloak, the Quarkus backend, and the SPA served by nginx rather than the Vite dev server, so the
+`/api` reverse proxy and the OIDC redirect are exercised for real. A WireMock service stands in for
+Safaricom Daraja and Flutterwave, so no test ever reaches a payment provider.
+
+```bash
+docker compose -f docker-compose.e2e.yml up -d --build
+```
+
+| Service | URL |
+|---|---|
+| SPA | http://localhost:5174 |
+| Backend | http://localhost:8081 |
+| Keycloak | http://localhost:8181 |
+| Payment provider stub | http://localhost:8090 |
+| Postgres | localhost:5435, database `chama_e2e` |
+
+Every port differs from the dev stack and the volumes are namespaced by the `webchama-e2e` project
+name, so this runs alongside `docker compose up -d` and `npm run dev` without colliding. Port 5174 is
+whitelisted next to the dev server's 5173 on the `webchama-frontend` client in
+`keycloak/realm-chama.json`; the OIDC redirect is rejected on any port that is not listed there.
+
+`chama_e2e` is created by `postgres-init/02-create-e2e-db.sql` on first volume init. On a volume that
+predates it:
+
+```bash
+docker exec webchama-e2e-postgres psql -U chama -d chama -c "CREATE DATABASE chama_e2e OWNER chama;"
+```
+
 ## Contribution workflow
 
 This repository never receives commits directly on `main`. Every change lands on its own feature branch

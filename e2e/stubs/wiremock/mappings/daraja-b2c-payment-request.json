@@ -1,0 +1,15 @@
+{
+  "name": "Daraja B2C payment request",
+  "request": { "method": "POST", "urlPath": "/mpesa/b2c/v1/paymentrequest" },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "ConversationID": "AG_E2E_{{randomValue type='UUID'}}",
+      "OriginatorConversationID": "OC_E2E_{{randomValue type='UUID'}}",
+      "ResponseCode": "0",
+      "ResponseDescription": "Accept the service request successfully."
+    },
+    "transformers": ["response-template"]
+  }
+}

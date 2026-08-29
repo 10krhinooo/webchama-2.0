@@ -54,10 +54,13 @@
       "redirectUris": [
         "http://localhost:5173/*",
         "http://localhost:5173",
+        "http://localhost:5174/*",
+        "http://localhost:5174",
         "https://YOUR_PROD_DOMAIN/*"
       ],
       "webOrigins": [
         "http://localhost:5173",
+        "http://localhost:5174",
         "https://YOUR_PROD_DOMAIN"
       ],
       "defaultClientScopes": ["web-origins", "profile", "roles", "email"]

@@ -1,0 +1,16 @@
+{
+  "name": "Flutterwave Standard checkout init",
+  "request": { "method": "POST", "urlPath": "/v3/payments" },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "status": "success",
+      "message": "Hosted Link",
+      "data": {
+        "link": "http://localhost:5174/contribution-payment-result?tx_ref={{jsonPath request.body '$.tx_ref'}}&transaction_id=9900001&status=successful"
+      }
+    },
+    "transformers": ["response-template"]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "Flutterwave verify by transaction id",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/v3/transactions/[0-9]+/verify"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "status": "success",
+      "message": "Transaction fetched successfully",
+      "data": {
+        "id": 9900001,
+        "tx_ref": "e2e-card-tx",
+        "status": "successful",
+        "currency": "KES",
+        "amount": 5000
+      }
+    }
+  }
+}
