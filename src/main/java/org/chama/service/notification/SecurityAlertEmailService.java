@@ -39,6 +39,12 @@ public class SecurityAlertEmailService {
     // built-in String converter treats an empty-string default as absent and rejects it at
     // startup ("considered to be null"), so Optional is the only idiomatic way to express a
     // MicroProfile Config property that is allowed to be genuinely unset.
+    //
+    // Static analysis flags Optional as a field type by default. That guidance is about domain
+    // objects and does not apply to a MicroProfile Config injection point, where the type is what
+    // communicates "may be genuinely unset" to the config layer. Replacing it with a String would
+    // fail startup, so this is suppressed rather than fixed.
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     @ConfigProperty(name = "app.security.alert-emails")
     Optional<String> alertEmails;
 
