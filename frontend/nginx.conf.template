@@ -4,6 +4,28 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Server-sent event streams must bypass nginx's response buffering. With the default
+    # proxy_buffering on, nginx holds each event in its buffer waiting for the response to
+    # complete, and an SSE response never completes, so nothing reaches the browser until the
+    # connection drops. useActivityFeed falls back to 10-second polling when the stream errors,
+    # which masks this as "the live feed is just slow" rather than "the live feed never works".
+    # A regex location is matched ahead of the /api/ prefix location below, so this block wins
+    # for stream paths only. proxy_pass carries no URI part here, which keeps the original
+    # request URI intact.
+    location ~ ^/api/.*/(activity-log|notifications)/stream$ {
+        proxy_pass ${BACKEND_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+        chunked_transfer_encoding off;
+    }
+
     # frontend/src/api/client.ts always calls a same-origin relative /api path; this is what
     # makes that resolve to the actual backend service in a deployed environment.
     location /api/ {
