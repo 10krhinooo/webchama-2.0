@@ -67,7 +67,7 @@ export default function ContributionPaymentResultPage() {
           <p className="text-ink/70">{error}</p>
         </>
       )}
-      <Link to={contributionsLink} className="font-medium text-primary underline hover:text-primary-dark">
+      <Link to={contributionsLink} className="font-medium text-brand underline hover:text-primary-dark">
         Back to Contributions
       </Link>
     </div>

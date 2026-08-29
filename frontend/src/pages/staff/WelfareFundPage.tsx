@@ -166,9 +166,9 @@ export default function WelfareFundPage() {
       ) : (
         <>
           {isManager && fund && (
-            <div className="bg-white rounded-2xl shadow-card p-6">
+            <div className="bg-surface rounded-2xl shadow-card p-6">
               <p className="text-sm text-muted">Fund balance</p>
-              <p className="font-mono text-3xl font-bold text-primary">{fund.balance.toLocaleString()}</p>
+              <p className="font-mono text-3xl font-bold text-brand">{fund.balance.toLocaleString()}</p>
             </div>
           )}
 

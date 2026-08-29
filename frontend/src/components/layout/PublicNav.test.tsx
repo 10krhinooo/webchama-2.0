@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PublicNav from './PublicNav'
+import ThemeProvider from '../../theme/ThemeProvider'
 
 const register = vi.fn()
 
@@ -11,9 +12,11 @@ vi.mock('@react-keycloak/web', () => ({
 
 function renderNav() {
   return render(
-    <MemoryRouter>
-      <PublicNav />
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter>
+        <PublicNav />
+      </MemoryRouter>
+    </ThemeProvider>,
   )
 }
 

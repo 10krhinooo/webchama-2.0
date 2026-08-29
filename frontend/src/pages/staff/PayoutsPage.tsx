@@ -256,7 +256,7 @@ export default function PayoutsPage() {
                     <TableCell><Badge label={payout.status} variant={payoutStatusVariant(payout.status)} /></TableCell>
                     <TableCell className="text-right">
                       {canManage && payout.status === 'SCHEDULED' && (
-                        <button onClick={() => setDisbursingPayout(payout)} className="text-primary text-xs hover:underline">
+                        <button onClick={() => setDisbursingPayout(payout)} className="text-brand text-xs hover:underline">
                           Disburse
                         </button>
                       )}
@@ -268,7 +268,7 @@ export default function PayoutsPage() {
           </Reveal>
 
           {canManage && chama && (
-            <section className="space-y-3 rounded-xl border border-black/10 bg-white p-4">
+            <section className="space-y-3 rounded-xl border border-border bg-surface p-4">
               <h2 className="font-heading text-lg font-semibold text-ink">Auto-push settings</h2>
               <p className="text-xs text-muted">
                 Controls the automatic M-Pesa prompt sent to members who have opted in to
@@ -337,7 +337,7 @@ export default function PayoutsPage() {
             {scheduleForm.rotationOrderType === 'AGREED' && (
               <div>
                 <p className="mb-1 text-sm font-medium text-ink/80">Order (top goes first)</p>
-                <ul className="divide-y divide-black/5 rounded-lg border border-black/10">
+                <ul className="divide-y divide-border rounded-lg border border-border">
                   {agreedOrder.map((m, i) => (
                     <li key={m.id} className="flex items-center justify-between px-3 py-2 text-sm">
                       <span>{i + 1}. {m.fullName}</span>

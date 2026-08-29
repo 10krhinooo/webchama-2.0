@@ -177,7 +177,7 @@ export default function ChamasPage() {
                   <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-3">
-                      <button onClick={() => openEdit(c)} className="text-primary text-xs hover:underline">Edit</button>
+                      <button onClick={() => openEdit(c)} className="text-brand text-xs hover:underline">Edit</button>
                       <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
                     </div>
                   </TableCell>

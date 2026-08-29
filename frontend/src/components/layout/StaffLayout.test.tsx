@@ -18,21 +18,24 @@ vi.mock('../../hooks/useMyMembership', () => ({
 import { useKeycloak } from '@react-keycloak/web'
 import { getChama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import ThemeProvider from '../../theme/ThemeProvider'
 const mockUseKeycloak = useKeycloak as ReturnType<typeof vi.fn>
 const mockGetChama = getChama as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route element={<StaffLayout />}>
-          <Route path="/chamas" element={<div>Chamas Page</div>} />
-          <Route path="/chamas/:chamaId/members" element={<div>Members Page</div>} />
-          <Route path="/chamas/:chamaId/contributions" element={<div>Contributions Page</div>} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<StaffLayout />}>
+            <Route path="/chamas" element={<div>Chamas Page</div>} />
+            <Route path="/chamas/:chamaId/members" element={<div>Members Page</div>} />
+            <Route path="/chamas/:chamaId/contributions" element={<div>Contributions Page</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>,
   )
 }
 

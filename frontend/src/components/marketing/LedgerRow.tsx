@@ -10,7 +10,7 @@ interface LedgerRowProps {
  */
 export default function LedgerRow({ title, description, isLast }: LedgerRowProps) {
   return (
-    <div className={`flex gap-4 py-6 sm:gap-6 ${isLast ? "" : "border-b border-ink/10"}`}>
+    <div className={`flex gap-4 py-6 sm:gap-6 ${isLast ? "" : "border-b border-border"}`}>
       <span
         aria-hidden="true"
         className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-success text-success"

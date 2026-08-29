@@ -7,18 +7,18 @@ import { cn } from '@/lib/utils'
 
 export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="overflow-x-auto rounded-2xl bg-white shadow-card">
+    <div className="overflow-x-auto rounded-2xl bg-surface shadow-card">
       <table className={cn('w-full text-sm', className)} {...props} />
     </div>
   )
 }
 
 export function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn('border-b border-black/10 bg-paper-dim', className)} {...props} />
+  return <thead className={cn('border-b border-border bg-paper-dim', className)} {...props} />
 }
 
 export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={cn('divide-y divide-black/5', className)} {...props} />
+  return <tbody className={cn('divide-y divide-border', className)} {...props} />
 }
 
 export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {

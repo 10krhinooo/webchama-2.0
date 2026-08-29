@@ -58,7 +58,7 @@ function exportOverviewCsv(overview: PlatformOverview) {
 
 function Tile({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-card">
+    <div className="rounded-2xl bg-surface p-6 shadow-card">
       <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">{label}</p>
       <p className="mt-2 font-mono text-3xl font-bold text-ink">{value}</p>
       {sublabel && <p className="mt-1 text-xs text-muted">{sublabel}</p>}
@@ -68,7 +68,7 @@ function Tile({ label, value, sublabel }: { label: string; value: string; sublab
 
 function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-card">
+    <div className="rounded-2xl bg-surface p-6 shadow-card">
       <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">{title}</p>
       <div className="mt-4 h-64">{children}</div>
     </div>
@@ -125,7 +125,7 @@ export default function AdminOverviewPage() {
           <button
             type="button"
             onClick={() => exportOverviewCsv(overview)}
-            className="rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary-light"
+            className="rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-brand transition hover:bg-primary-light"
           >
             Export CSV
           </button>

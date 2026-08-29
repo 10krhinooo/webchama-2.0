@@ -21,8 +21,8 @@ export function TablePageSkeleton({
           <SkeletonBlock className="h-9 w-32 rounded-lg" />
         </div>
       )}
-      <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-        <div className="flex items-center gap-6 px-4 py-3 bg-paper-dim border-b border-black/10">
+      <div className="bg-surface rounded-2xl shadow-card overflow-hidden">
+        <div className="flex items-center gap-6 px-4 py-3 bg-paper-dim border-b border-border">
           <SkeletonLine className="h-3.5 w-24" />
           <SkeletonLine className="h-3.5 w-32" />
           <SkeletonLine className="h-3.5 w-20" />

@@ -3,13 +3,14 @@ import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
 import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
+import ThemeToggle from '../ui/ThemeToggle'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { roleBadgeText } from '../../utils/roleBadges'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `sidebar-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-    isActive ? 'bg-primary text-white' : 'text-paper/70 hover:bg-white/10 hover:text-paper'
+    isActive ? 'bg-primary text-white' : 'text-paper/70 hover:bg-surface/10 hover:text-paper'
   }`
 
 /** Explicit per-item stagger rather than CSS nth-child, since a heading (`This chama`) sits between
@@ -87,7 +88,7 @@ export default function StaffLayout() {
           <button
             type="button"
             onClick={() => setNavOpen(false)}
-            className="rounded-lg p-1 text-paper/70 hover:bg-white/10 hover:text-paper lg:hidden"
+            className="rounded-lg p-1 text-paper/70 hover:bg-surface/10 hover:text-paper lg:hidden"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -120,7 +121,7 @@ export default function StaffLayout() {
               <div className="px-3 pb-1 pt-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-paper/40">This chama</p>
                 {!roleLoading && (
-                  <span className="mt-1 inline-block rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper/70">
+                  <span className="mt-1 inline-block rounded-full bg-surface/10 px-2 py-0.5 text-[11px] font-medium text-paper/70">
                     {roleBadgeText(isSuperAdmin, roles)}
                   </span>
                 )}
@@ -171,7 +172,7 @@ export default function StaffLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-ink/10 bg-white px-4 py-3 sm:px-6">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -200,27 +201,31 @@ export default function StaffLayout() {
             </nav>
           </div>
 
-          <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-paper-dim [&::-webkit-details-marker]:hidden">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                {initials || '?'}
-              </span>
-              <span className="hidden text-sm font-medium text-ink sm:block">{displayName}</span>
-              <ChevronDown className="h-4 w-4 text-muted" />
-            </summary>
-            <div className="absolute right-0 z-10 mt-2 w-56 rounded-xl border border-black/10 bg-white p-1 shadow-card">
-              {tokenParsed?.email && (
-                <p className="truncate px-3 py-2 text-xs text-muted">{tokenParsed.email}</p>
-              )}
-              <button
-                onClick={() => keycloak.logout()}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-paper-dim"
-              >
-                <LogOut className="h-4 w-4" />
-                Log out
-              </button>
-            </div>
-          </details>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-paper-dim [&::-webkit-details-marker]:hidden">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-brand">
+                  {initials || '?'}
+                </span>
+                <span className="hidden text-sm font-medium text-ink sm:block">{displayName}</span>
+                <ChevronDown className="h-4 w-4 text-muted" />
+              </summary>
+              <div className="absolute right-0 z-10 mt-2 w-56 rounded-xl border border-border bg-surface p-1 shadow-card">
+                {tokenParsed?.email && (
+                  <p className="truncate px-3 py-2 text-xs text-muted">{tokenParsed.email}</p>
+                )}
+                <button
+                  onClick={() => keycloak.logout()}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-paper-dim"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Log out
+                </button>
+              </div>
+            </details>
+          </div>
         </header>
 
         <main className="flex-1 overflow-x-auto p-6 lg:p-8">

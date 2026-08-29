@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import HomePage from './HomePage'
+import ThemeProvider from '../../theme/ThemeProvider'
 
 vi.mock('@react-keycloak/web', () => ({
   useKeycloak: () => ({ keycloak: { register: vi.fn() } }),
@@ -21,9 +22,11 @@ class CapturingIntersectionObserver {
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <HomePage />
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    </ThemeProvider>,
   )
 }
 

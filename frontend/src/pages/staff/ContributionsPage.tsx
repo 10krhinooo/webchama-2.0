@@ -343,7 +343,7 @@ export default function ContributionsPage() {
                         {canManage ? (
                           <>
                             {c.status !== 'PAID' && (
-                              <button onClick={() => openPayment(c)} className="text-primary text-xs hover:underline">Record Payment</button>
+                              <button onClick={() => openPayment(c)} className="text-brand text-xs hover:underline">Record Payment</button>
                             )}
                             <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
                           </>
@@ -353,8 +353,8 @@ export default function ContributionsPage() {
                               <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
                             ) : (
                               <>
-                                <button onClick={() => openMpesaConfirm(c)} className="text-primary text-xs hover:underline">Pay via M-Pesa</button>
-                                <button onClick={() => openCardPayment(c)} className="text-primary text-xs hover:underline">Pay by Card</button>
+                                <button onClick={() => openMpesaConfirm(c)} className="text-brand text-xs hover:underline">Pay via M-Pesa</button>
+                                <button onClick={() => openCardPayment(c)} className="text-brand text-xs hover:underline">Pay by Card</button>
                               </>
                             )
                           )
@@ -446,7 +446,7 @@ export default function ContributionsPage() {
             <p className="text-sm text-ink/80">Send an M-Pesa prompt to your registered phone for:</p>
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">
               <p className="text-xs text-muted">{mpesaConfirm.period}</p>
-              <p className="font-mono text-2xl font-bold text-primary">
+              <p className="font-mono text-2xl font-bold text-brand">
                 KES {(mpesaConfirm.amountDue - mpesaConfirm.amountPaid).toLocaleString()}
               </p>
               {member?.phone && <p className="text-xs text-muted">To {member.phone}</p>}
@@ -478,7 +478,7 @@ export default function ContributionsPage() {
             <p className="text-sm text-ink/80">You will be taken to Flutterwave's secure checkout to pay:</p>
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">
               <p className="text-xs text-muted">{cardPayment.period}</p>
-              <p className="font-mono text-2xl font-bold text-primary">
+              <p className="font-mono text-2xl font-bold text-brand">
                 KES {(cardPayment.amountDue - cardPayment.amountPaid).toLocaleString()}
               </p>
             </div>

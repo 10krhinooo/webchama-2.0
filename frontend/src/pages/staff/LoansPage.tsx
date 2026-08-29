@@ -244,7 +244,7 @@ export default function LoansPage() {
                         <button
                           onClick={() => handleApprove(loan)}
                           disabled={approvingId === loan.id}
-                          className="text-primary text-xs hover:underline disabled:opacity-50"
+                          className="text-brand text-xs hover:underline disabled:opacity-50"
                         >
                           {approvingId === loan.id ? 'Approving…' : 'Approve'}
                         </button>
@@ -258,7 +258,7 @@ export default function LoansPage() {
                           Reject
                         </button>
                       )}
-                      <button onClick={() => openSchedule(loan)} className="text-primary text-xs hover:underline">View Schedule</button>
+                      <button onClick={() => openSchedule(loan)} className="text-brand text-xs hover:underline">View Schedule</button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -333,7 +333,7 @@ export default function LoansPage() {
                   {canManage && <th />}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5">
+              <tbody className="divide-y divide-border">
                 {repayments.map((r) => (
                   <tr key={r.id}>
                     <td className="py-2">{r.installmentNumber}</td>
@@ -344,7 +344,7 @@ export default function LoansPage() {
                     {canManage && (
                       <td className="py-2 text-right">
                         {r.status !== 'PAID' && (
-                          <button onClick={() => openPayment(r)} className="text-primary text-xs hover:underline">Record Payment</button>
+                          <button onClick={() => openPayment(r)} className="text-brand text-xs hover:underline">Record Payment</button>
                         )}
                       </td>
                     )}
