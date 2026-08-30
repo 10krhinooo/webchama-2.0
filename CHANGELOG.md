@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
   SPA, payment provider stub) for the end-to-end suite, on its own port block so it runs
   alongside the dev stack
 - chama_e2e database, created by postgres-init/02-create-e2e-db.sql on first volume init
+- an end-to-end suite driving the deployed stack through a browser, including a real Keycloak
+  login, tenant isolation checks, and the M-Pesa contribution path end to end
 
 ### Fixed
 - frontend: stream server-sent events through nginx unbuffered, so the live activity feed
