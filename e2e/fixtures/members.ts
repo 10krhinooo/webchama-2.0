@@ -44,4 +44,26 @@ export const FIXTURE_MEMBERS: FixtureMember[] = [
   { id: 5, chamaId: 6, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 240, roles: ['CHAIRPERSON', 'MEMBER'] },
   { id: 6, chamaId: 6, keycloakUserId: TREASURER, fullName: 'Brian Treasurer', phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 240, roles: ['TREASURER', 'MEMBER'] },
   { id: 7, chamaId: 6, keycloakUserId: MEMBER, fullName: 'Daniel Member', phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 240, roles: ['MEMBER'] },
+
+  // Chama 3, owned by the members spec, which invites, suspends and exits people here.
+  { id: 8,  chamaId: 3, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 180, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 9,  chamaId: 3, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 175, roles: ['TREASURER', 'MEMBER'] },
+  { id: 10, chamaId: 3, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 170, roles: ['MEMBER'] },
+
+  // Chama 4, owned by the loan specs.
+  //
+  // Carol holds TREASURER here and SECRETARY in chama 1, which is the point: a chama role comes
+  // from member_role for the chama in the path and never from the token, so the same person is
+  // legitimately different things in different chamas. It also gives this chama the three distinct
+  // signatories a dual sign-off needs, since the maker may not sign and only a chairperson or a
+  // treasurer may.
+  { id: 11, chamaId: 4, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 260, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 12, chamaId: 4, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 255, roles: ['TREASURER', 'MEMBER'] },
+  { id: 13, chamaId: 4, keycloakUserId: SECRETARY,   fullName: 'Carol Secretary',   phone: '+254700000003', nationalId: null, nextOfKin: 'Next Of Kin C', joinedDaysAgo: 250, roles: ['TREASURER', 'MEMBER'] },
+  { id: 14, chamaId: 4, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 245, roles: ['MEMBER'] },
+
+  // Chama 5, owned by the penalties spec.
+  { id: 15, chamaId: 5, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 200, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 16, chamaId: 5, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 195, roles: ['TREASURER', 'MEMBER'] },
+  { id: 17, chamaId: 5, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 190, roles: ['MEMBER'] },
 ]

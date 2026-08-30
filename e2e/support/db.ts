@@ -117,5 +117,11 @@ export const FIXTURE = {
     treasurer: 2,
     secretary: 3,
     member: 4,
+    // Chama 3, the members spec. Daniel carries a settled contribution, so he cannot be deleted.
+    tumainiWithHistory: 10,
+    // Chama 4, the loan specs.
+    nuruBorrower: 14,
+    // Chama 5, the penalties spec.
+    barakaMember: 17,
   },
 } as const

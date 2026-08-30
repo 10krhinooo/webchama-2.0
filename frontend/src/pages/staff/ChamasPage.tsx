@@ -128,12 +128,14 @@ export default function ChamasPage() {
     try {
       await deleteChama(deleting.id)
       setNotice({ variant: 'success', message: `${deleting.name} deleted.` })
-      setDeleting(null)
       refresh()
     } catch (err) {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
     } finally {
       setDeleteLoading(false)
+      // Dismissed either way, so a refusal is readable. The banner sits behind the overlay in the
+      // subtree the dialog marks aria-hidden while it is open.
+      setDeleting(null)
     }
   }
 

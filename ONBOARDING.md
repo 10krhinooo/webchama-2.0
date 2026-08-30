@@ -212,6 +212,18 @@ passes when you run the class alone and fails in the full suite, on rows some ot
 behind that still reference `member` or `chama`. Older classes still carry their own copy of the
 list; new ones should not.
 
+**Refuse an action in a way the user can read.** Throw a `WebApplicationException` subclass with
+the sentence you want them to see: `throw new BadRequestException("This member has history and
+can't be deleted. Set their status to EXITED instead.")`. `WebApplicationExceptionMapper` puts that
+message in the response body, `extractErrorMessage` in `api/client.ts` reads it, and it lands in the
+page's alert. Write it as an instruction rather than a diagnosis, because a refusal is part of the
+product and someone has to decide what to do next.
+
+Anything 500 is replaced with a fixed line and logged instead, so an internal detail is never
+echoed back. If a confirm dialog fronts the action, dismiss it in `finally` rather than only on
+success: while a dialog is open the rest of the page is `aria-hidden`, and an alert rendered behind
+it is invisible to a reader and to a test.
+
 **Gate a new action behind dual sign-off.** Follow `WelfareFundService`: split the action into a
 `request` that records the intent without moving anything and a `markDisbursed` that releases it,
 add the target to `ApprovalTargetType` in its own Flyway migration (Postgres refuses to use an enum
