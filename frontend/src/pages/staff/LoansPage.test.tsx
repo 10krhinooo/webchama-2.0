@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import LoansPage from './LoansPage'
 import { selectOption } from '../../test-utils/selectOption'
@@ -12,19 +12,27 @@ vi.mock('../../api/loans', () => ({
   rejectLoan: vi.fn(),
   getLoanRepayments: vi.fn(),
   recordLoanRepayment: vi.fn(),
+  disburseLoan: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
   getCreditScore: vi.fn(),
 }))
+vi.mock('../../api/chamas', () => ({
+  getChama: vi.fn(),
+}))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
 
-import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment } from '../../api/loans'
+import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment, disburseLoan } from '../../api/loans'
+import type { Loan } from '../../api/loans'
 import { getMembers, getCreditScore } from '../../api/members'
+import { getChama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
+const mockDisburseLoan = disburseLoan as ReturnType<typeof vi.fn>
+const mockGetChama = getChama as ReturnType<typeof vi.fn>
 const mockGetLoans = getLoans as ReturnType<typeof vi.fn>
 const mockGetMyLoans = getMyLoans as ReturnType<typeof vi.fn>
 const mockCreateLoan = createLoan as ReturnType<typeof vi.fn>
@@ -63,6 +71,22 @@ const repayment = {
   status: 'PENDING' as const,
 }
 
+/**
+ * Builds a loan from the shared fixture, for tests that vary one field.
+ *
+ * Typed against Loan rather than `typeof loan`, because the fixture pins its status with
+ * `as const` and would otherwise reject every other status.
+ */
+function aLoan(overrides: Partial<Loan> = {}): Loan {
+  return { ...loan, ...overrides }
+}
+
+const asManager = () =>
+  mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+
+const asMember = () =>
+  mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, member: { id: 5 }, loading: false })
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/chamas/3/loans']}>
@@ -78,6 +102,7 @@ describe('LoansPage', () => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
     mockGetCreditScore.mockResolvedValue({ memberId: 5, score: 82 })
+    mockGetChama.mockResolvedValue({ id: 3, name: 'Umoja', approvalThreshold: 50000 })
   })
 
   it('lists all loans for a treasurer/chairperson', async () => {
@@ -260,5 +285,118 @@ describe('LoansPage', () => {
     fireEvent.click(screen.getByText('View Schedule'))
     await waitFor(() => expect(mockGetLoanRepayments).toHaveBeenCalledWith(3, 1))
     expect(screen.queryByText('Record Payment')).toBeNull()
+  })
+
+  it('offers disbursement only on an approved loan', async () => {
+    asManager()
+    mockGetLoans.mockResolvedValue([
+      aLoan({ id: 1, status: 'REQUESTED' }),
+      aLoan({ id: 2, status: 'APPROVED' }),
+      aLoan({ id: 3, status: 'DISBURSED' }),
+    ])
+    renderPage()
+
+    await screen.findByText('APPROVED')
+    expect(screen.getAllByRole('button', { name: 'Disburse' })).toHaveLength(1)
+  })
+
+  it('hides disbursement from a plain member', async () => {
+    asMember()
+    mockGetMyLoans.mockResolvedValue([aLoan({ status: 'APPROVED' })])
+    renderPage()
+
+    await screen.findByText('APPROVED')
+    expect(screen.queryByRole('button', { name: 'Disburse' })).toBeNull()
+  })
+
+  it('disburses an approved loan after confirmation', async () => {
+    asManager()
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'APPROVED', principal: 10000 })])
+    mockDisburseLoan.mockResolvedValue({ id: 1, loanId: 2, status: 'COMPLETED' })
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disburse' }))
+
+    await waitFor(() => expect(mockDisburseLoan).toHaveBeenCalledWith(3, 2))
+  })
+
+  it('warns that a large payout needs a second sign-off before it is attempted', async () => {
+    asManager()
+    // Above the chama's 50000 threshold.
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'APPROVED', principal: 90000 })])
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent(/second sign-off/i)
+  })
+
+  it('does not warn about sign-off for an amount under the threshold', async () => {
+    asManager()
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'APPROVED', principal: 1000 })])
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).not.toHaveTextContent(/second sign-off/i)
+    expect(dialog).toHaveTextContent(/moves real money/i)
+  })
+
+  it('still allows disbursement when the threshold could not be read', async () => {
+    asManager()
+    mockGetChama.mockRejectedValue(new Error('nope'))
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'APPROVED', principal: 90000 })])
+    mockDisburseLoan.mockResolvedValue({ id: 1, loanId: 2, status: 'PENDING' })
+    renderPage()
+
+    // The backend enforces the rule regardless, so a failed threshold lookup must not block the
+    // list or the action.
+    fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disburse' }))
+    await waitFor(() => expect(mockDisburseLoan).toHaveBeenCalledWith(3, 2))
+  })
+
+  it('says the payout is still settling when the provider has not confirmed', async () => {
+    asManager()
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'APPROVED' })])
+    mockDisburseLoan.mockResolvedValue({ id: 1, loanId: 2, status: 'PENDING' })
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disburse' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/will settle once the provider confirms/i)
+  })
+
+  it('reports a rejected disbursement', async () => {
+    asManager()
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'APPROVED' })])
+    mockDisburseLoan.mockRejectedValue(new Error('Dual sign-off approval has not cleared yet'))
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disburse' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/has not cleared yet/i)
+  })
+
+  it('shows a payout already in flight rather than offering to send another', async () => {
+    asManager()
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'DISBURSEMENT_PENDING' })])
+    renderPage()
+
+    expect(await screen.findByText(/payout in flight/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Disburse' })).toBeNull()
+  })
+
+  it('closes the confirmation without disbursing', async () => {
+    asManager()
+    mockGetLoans.mockResolvedValue([aLoan({ id: 2, status: 'APPROVED' })])
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(mockDisburseLoan).not.toHaveBeenCalled()
   })
 })

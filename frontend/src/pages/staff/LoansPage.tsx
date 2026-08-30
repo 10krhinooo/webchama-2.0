@@ -8,11 +8,14 @@ import {
   rejectLoan,
   getLoanRepayments,
   recordLoanRepayment,
+  disburseLoan,
   type Loan,
   type LoanRepayment,
   type InterestMethod,
 } from '../../api/loans'
 import { getMembers, getCreditScore, type Member } from '../../api/members'
+import { getChama, type Chama } from '../../api/chamas'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
@@ -37,6 +40,7 @@ function loanStatusVariant(status: Loan['status']) {
   if (status === 'CLOSED') return 'success' as const
   if (status === 'DEFAULTED' || status === 'REJECTED') return 'danger' as const
   if (status === 'REPAYING') return 'warning' as const
+  if (status === 'DISBURSEMENT_PENDING') return 'warning' as const
   if (status === 'APPROVED' || status === 'DISBURSED') return 'primary' as const
   return 'muted' as const
 }
@@ -47,6 +51,8 @@ function repaymentStatusVariant(status: LoanRepayment['status']) {
   if (status === 'OVERDUE') return 'danger' as const
   return 'muted' as const
 }
+
+const formatMoney = (amount: number) => `KES ${amount.toLocaleString()}`
 
 function creditScoreVariant(score: number) {
   if (score >= 70) return 'success' as const
@@ -63,6 +69,9 @@ export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [creditScores, setCreditScores] = useState<Record<number, number>>({})
+  const [chama, setChama] = useState<Chama | null>(null)
+  const [disbursing, setDisbursing] = useState<Loan | null>(null)
+  const [disbursingId, setDisbursingId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
@@ -92,6 +101,15 @@ export default function LoansPage() {
         if (canManage) loadCreditScores(l)
       })
       .finally(() => setLoading(false))
+
+    // Fetched separately rather than alongside the loans. The threshold only changes the wording
+    // of a confirmation, so a failure to read it must not take the loans list down with it; the
+    // backend enforces the rule regardless of what the UI managed to load.
+    if (canManage) {
+      getChama(chamaId)
+        .then(setChama)
+        .catch(() => setChama(null))
+    }
   }
 
   // A data-backed signal for the chairperson/treasurer reviewing a loan request, not a hard gate
@@ -159,6 +177,37 @@ export default function LoansPage() {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
     } finally {
       setApprovingId(null)
+    }
+  }
+
+  /**
+   * Whether this amount needs a second signature before it can be paid out.
+   *
+   * Checked here so the confirmation says what will happen, rather than letting the treasurer
+   * press Disburse and discover the requirement from a rejection.
+   */
+  const needsDualSignOff = (loan: Loan) =>
+    chama?.approvalThreshold != null && loan.principal > chama.approvalThreshold
+
+  const handleDisburse = async () => {
+    if (!disbursing) return
+    const loan = disbursing
+    setDisbursing(null)
+    setDisbursingId(loan.id)
+    try {
+      const disbursement = await disburseLoan(chamaId, loan.id)
+      setNotice({
+        variant: 'success',
+        message:
+          disbursement.status === 'COMPLETED'
+            ? `Loan for ${loan.memberName} disbursed.`
+            : `Payout to ${loan.memberName} sent. It will settle once the provider confirms.`,
+      })
+      refresh()
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setDisbursingId(null)
     }
   }
 
@@ -259,6 +308,20 @@ export default function LoansPage() {
                           Reject
                         </button>
                       )}
+                      {canManage && loan.status === 'APPROVED' && (
+                        <button
+                          onClick={() => setDisbursing(loan)}
+                          disabled={disbursingId === loan.id}
+                          className="text-success text-xs hover:underline disabled:opacity-50"
+                        >
+                          {disbursingId === loan.id ? 'Disbursing…' : 'Disburse'}
+                        </button>
+                      )}
+                      {loan.status === 'DISBURSEMENT_PENDING' && (
+                        <span className="text-xs text-muted" title="Waiting for the provider to confirm">
+                          Payout in flight
+                        </span>
+                      )}
                       <button onClick={() => openSchedule(loan)} className="text-brand text-xs hover:underline">View Schedule</button>
                     </div>
                   </TableCell>
@@ -313,6 +376,21 @@ export default function LoansPage() {
             </LoadingButton>
           </form>
         </Modal>
+      )}
+
+      {disbursing && (
+        <ConfirmDialog
+          title="Disburse this loan"
+          message={
+            needsDualSignOff(disbursing)
+              ? `${formatMoney(disbursing.principal)} is above this chama's approval threshold, so it needs a second sign-off before it can be paid out. If that has not cleared on the Approvals page, this will be rejected.`
+              : `Send ${formatMoney(disbursing.principal)} to ${disbursing.memberName} by M-Pesa. This moves real money and cannot be undone from here.`
+          }
+          confirmLabel="Disburse"
+          variant="primary"
+          onConfirm={handleDisburse}
+          onCancel={() => setDisbursing(null)}
+        />
       )}
 
       {scheduleLoan && (
