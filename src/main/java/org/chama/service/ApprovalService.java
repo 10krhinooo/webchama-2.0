@@ -9,6 +9,7 @@ import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.ApprovalStatus;
 import org.chama.domain.enums.ApprovalTargetType;
 import org.chama.domain.enums.MemberRoleType;
+import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.model.Approval;
 import org.chama.domain.model.Chama;
 import org.chama.domain.model.Member;
@@ -37,6 +38,9 @@ public class ApprovalService {
 
     @Inject
     ApprovalRepository approvalRepository;
+
+    @Inject
+    NotificationService notificationService;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -119,8 +123,16 @@ public class ApprovalService {
             .filter(m -> !m.id.equals(requestedBy.id))
             .map(m -> new ApprovalNotificationEmailService.Recipient(m.keycloakUserId, m.fullName))
             .toList();
-        approvalNotificationEmailService.sendRequested(eligibleSigners, requestedBy.fullName, chama.name,
-            chama.currency, amount, beneficiary.fullName, reason);
+        eligibleSigners.forEach(signer -> notificationService.record(signer.keycloakUserId(), chamaId,
+            NotificationEventFamily.APPROVAL,
+            "Sign-off needed",
+            "%s requested %s %s for %s.".formatted(requestedBy.fullName, chama.currency, amount, beneficiary.fullName),
+            "/chamas/" + chamaId + "/approvals"));
+        approvalNotificationEmailService.sendRequested(
+            eligibleSigners.stream()
+                .filter(r -> notificationService.emailEnabled(r.keycloakUserId(), NotificationEventFamily.APPROVAL))
+                .toList(),
+            requestedBy.fullName, chama.name, chama.currency, amount, beneficiary.fullName, reason);
         return approval;
     }
 
@@ -161,8 +173,16 @@ public class ApprovalService {
             "Dual sign-off cleared for " + approval.chama.currency + " " + approval.amount
                 + " (" + approval.member.fullName + ") by " + approval.firstApprover.fullName
                 + " and " + signer.fullName);
-        approvalNotificationEmailService.sendCleared(approval.requestedBy.keycloakUserId, approval.requestedBy.fullName,
-            approval.chama.name, approval.chama.currency, approval.amount, approval.member.fullName);
+        notificationService.record(approval.requestedBy.keycloakUserId, approval.chama.id,
+            NotificationEventFamily.APPROVAL,
+            "Sign-off cleared",
+            "Your request for %s %s to %s has both signatures.".formatted(
+                approval.chama.currency, approval.amount, approval.member.fullName),
+            "/chamas/" + approval.chama.id + "/approvals");
+        if (notificationService.emailEnabled(approval.requestedBy.keycloakUserId, NotificationEventFamily.APPROVAL)) {
+            approvalNotificationEmailService.sendCleared(approval.requestedBy.keycloakUserId, approval.requestedBy.fullName,
+                approval.chama.name, approval.chama.currency, approval.amount, approval.member.fullName);
+        }
         return approval;
     }
 

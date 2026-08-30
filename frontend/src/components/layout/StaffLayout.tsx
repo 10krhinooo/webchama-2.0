@@ -4,6 +4,7 @@ import { useKeycloak } from '@react-keycloak/web'
 import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import ThemeToggle from '../ui/ThemeToggle'
+import NotificationBell from './NotificationBell'
 import { getChama, type Chama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { roleBadgeText } from '../../utils/roleBadges'
@@ -206,6 +207,7 @@ export default function StaffLayout() {
           </div>
 
           <div className="flex items-center gap-1">
+            <NotificationBell />
             <ThemeToggle />
 
             <details className="group relative">
