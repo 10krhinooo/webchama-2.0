@@ -82,9 +82,13 @@ function Headline({ text, className }: { text: string; className?: string }) {
   }, [])
 
   return (
-    <h1 ref={ref} className={`headline-reveal ${lit ? "is-lit" : ""} ${className ?? ""}`} data-depth="4">
-      {text}
-    </h1>
+    // The observer watches the wrapper, not the heading. IntersectionObserver measures the target
+    // after its clip is applied, and `.headline-reveal` starts at `clip-path: inset(0 100% 0 0)`,
+    // which is zero area. Observing the heading itself therefore reports ratio 0 forever: the
+    // element stays hidden because it is hidden, and the wipe never plays at all.
+    <div ref={ref} data-depth="4">
+      <h1 className={`headline-reveal ${lit ? "is-lit" : ""} ${className ?? ""}`}>{text}</h1>
+    </div>
   )
 }
 
@@ -146,12 +150,17 @@ function HomePage() {
           <div className="layer depth-0 weave-drift" aria-hidden="true">
             <WovenBackdrop className="h-full w-full" />
           </div>
-          <div ref={glowRef} className="layer depth-1" aria-hidden="true">
+          {/*
+            Light only. These two blurred bubbles were tuned against cream paper; over a dark
+            surface the saffron one reads as a yellow smear rather than as light. Dark mode gets
+            the plain ground, which is what the palette is already doing well there.
+          */}
+          <div ref={glowRef} className="layer depth-1 dark:hidden" aria-hidden="true">
             <div className="absolute -top-24 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-accent/20 blur-3xl" />
             <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
           </div>
 
-          <div className="relative mx-auto grid max-w-6xl gap-12 px-6 py-20 sm:py-28 lg:grid-cols-2 lg:items-center">
+          <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 sm:py-28 lg:grid-cols-2 lg:items-center lg:gap-20 lg:px-10">
             <div data-depth="4">
               <Reveal eager>
                 <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
@@ -187,13 +196,13 @@ function HomePage() {
 
         {/* Ledger strip */}
         <section id="how-it-works" className="border-y border-border bg-paper-dim">
-          <div className="mx-auto max-w-3xl px-6 py-16">
+          <div className="mx-auto max-w-6xl px-6 py-16 lg:px-10">
             <Reveal>
               <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
                 What&rsquo;s in the book
               </p>
             </Reveal>
-            <div className="mt-6">
+            <div className="mt-6 grid gap-x-12 lg:grid-cols-2">
               {LEDGER_ENTRIES.map((entry, i) => (
                 <Reveal key={entry.title} delayMs={i * 90}>
                   <LedgerRow
@@ -209,7 +218,7 @@ function HomePage() {
 
         {/* Trust / maker-checker */}
         <section id="trust" className="bg-success text-on-dark">
-          <div className="mx-auto max-w-3xl px-6 py-20 text-center">
+          <div className="mx-auto max-w-4xl px-6 py-20 text-center lg:px-10">
             <Reveal>
               <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-on-dark/70">
                 Why trust matters most
@@ -230,7 +239,7 @@ function HomePage() {
         </section>
 
         {/* Roles — cascading card stack, staggered via CSS nth-child delay once the grid scrolls into view */}
-        <section id="roles" className="mx-auto max-w-6xl px-6 py-20">
+        <section id="roles" className="mx-auto max-w-7xl px-6 py-20 lg:px-10">
           <Reveal variant="fade">
             <p className="text-center font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
               Everyone has a seat
@@ -252,7 +261,7 @@ function HomePage() {
         </section>
 
         {/* Testimonial */}
-        <section className="bg-paper-dim px-6 py-20">
+        <section className="bg-paper-dim px-6 py-20 lg:px-10">
           <Reveal variant="scale">
             <WhatsAppQuote
               quote="We used to get confused about who had paid what. Sasa, everyone can see it on their phone before the meeting even starts."
@@ -267,7 +276,7 @@ function HomePage() {
           <div className="layer depth-0 weave-drift" aria-hidden="true">
             <WovenBackdrop className="h-full w-full" tone="night" />
           </div>
-          <Reveal className="relative mx-auto max-w-2xl px-6 py-20 text-center">
+          <Reveal className="relative mx-auto max-w-3xl px-6 py-20 text-center lg:px-10">
             <h2 className="text-3xl font-bold sm:text-4xl">Bring your chama&rsquo;s ledger online.</h2>
             <p className="mt-4 text-on-dark/80">
               Free for chamas under 20 members. Set up your rotation, invite your members, and
