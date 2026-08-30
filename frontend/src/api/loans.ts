@@ -1,7 +1,20 @@
 import { client } from './client'
 
 export type InterestMethod = 'FLAT' | 'REDUCING_BALANCE'
-export type LoanStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'DISBURSED' | 'REPAYING' | 'CLOSED' | 'DEFAULTED'
+/**
+ * DISBURSEMENT_PENDING is the claim the backend takes before calling the payment provider, so a
+ * crash after the provider accepts cannot lose the payout and a second click cannot fire two.
+ * The type omitted it while nothing in the UI could reach that state.
+ */
+export type LoanStatus =
+  | 'REQUESTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'DISBURSEMENT_PENDING'
+  | 'DISBURSED'
+  | 'REPAYING'
+  | 'CLOSED'
+  | 'DEFAULTED'
 export type LoanRepaymentStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE'
 
 export interface Loan {
@@ -79,5 +92,39 @@ export async function recordLoanRepayment(
     `/chamas/${chamaId}/loans/${loanId}/repayments/${repaymentId}/payment`,
     { amount },
   )
+  return data
+}
+
+export type LoanDisbursementStatus = 'INITIATING' | 'PENDING' | 'COMPLETED' | 'FAILED'
+
+/**
+ * A payout attempt against a loan.
+ *
+ * Deliberately carries no provider identifiers: the conversation id that would let a caller forge
+ * a callback is never sent to a client.
+ */
+export interface LoanDisbursement {
+  id: number
+  loanId: number
+  targetPhone: string
+  amount: number
+  status: LoanDisbursementStatus
+  resultCode: string | null
+  resultDescription: string | null
+  transactionId: string | null
+  requestedAt: string
+  disbursedAt: string | null
+}
+
+/**
+ * Sends an approved loan to the member by M-Pesa.
+ *
+ * Above the chama's approval threshold this is rejected unless a dual sign-off has already
+ * cleared. The row is claimed and committed before the provider is called, so the request is
+ * safe to lose but not safe to repeat: a second call while one is in flight is refused rather
+ * than paying twice.
+ */
+export async function disburseLoan(chamaId: number, loanId: number): Promise<LoanDisbursement> {
+  const { data } = await client.put<LoanDisbursement>(`/chamas/${chamaId}/loans/${loanId}/disburse`, {})
   return data
 }

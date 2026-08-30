@@ -9,7 +9,7 @@ vi.mock('./client', () => ({
 }))
 
 import { client } from './client'
-import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment, type CreateLoanRequest } from './loans'
+import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment, type CreateLoanRequest, disburseLoan} from './loans'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
 const mockPost = client.post as ReturnType<typeof vi.fn>
@@ -75,5 +75,12 @@ describe('loans api', () => {
     const result = await recordLoanRepayment(3, 9, 1, 500)
     expect(mockPut).toHaveBeenCalledWith('/chamas/3/loans/9/repayments/1/payment', { amount: 500 })
     expect(result).toEqual({ id: 1, amountPaid: 500 })
+  })
+
+  it('disburses a loan and returns the payout attempt', async () => {
+    const disbursement = { id: 7, loanId: 2, status: 'PENDING' }
+    ;(client.put as ReturnType<typeof vi.fn>).mockResolvedValue({ data: disbursement })
+    await expect(disburseLoan(3, 2)).resolves.toEqual(disbursement)
+    expect(client.put).toHaveBeenCalledWith('/chamas/3/loans/2/disburse', {})
   })
 })

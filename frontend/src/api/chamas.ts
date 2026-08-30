@@ -14,6 +14,8 @@ export interface Chama {
   contributionFrequency: ContributionFrequency
   contributionAmount: number
   meetingDay: string | null
+  /** Above this amount, moving money needs a second sign-off. Null means no threshold is set. */
+  approvalThreshold: number | null
   savingsTarget: number | null
   status: ChamaStatus
   autoPushEnabled: boolean
