@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel, CalendarDays } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import ThemeToggle from '../ui/ThemeToggle'
 import NotificationBell from './NotificationBell'
@@ -155,18 +155,22 @@ export default function StaffLayout() {
                 <HeartHandshake className="h-4 w-4" />
                 Welfare Fund
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass} style={navDelay(9)}>
+              <NavLink to={`/chamas/${chamaId}/meetings`} className={navLinkClass} style={navDelay(9)}>
+                <CalendarDays className="h-4 w-4" />
+                Meetings
+              </NavLink>
+              <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass} style={navDelay(10)}>
                 <Vote className="h-4 w-4" />
                 Resolutions
               </NavLink>
               {!roleLoading && isManager && (
-                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass} style={navDelay(10)}>
+                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass} style={navDelay(11)}>
                   <FileText className="h-4 w-4" />
                   Documents
                 </NavLink>
               )}
               {!roleLoading && isManager && (
-                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass} style={navDelay(11)}>
+                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass} style={navDelay(12)}>
                   <ShieldCheck className="h-4 w-4" />
                   Approvals
                 </NavLink>
