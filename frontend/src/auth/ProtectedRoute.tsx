@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children, roles }: Props) {
   if (!initialized || !keycloak.authenticated) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper text-muted">
-        <WeaveMark className="h-8 w-8 animate-pulse text-primary" />
+        <WeaveMark className="h-8 w-8 animate-pulse text-brand" />
         <p>Loading…</p>
       </div>
     )
@@ -32,7 +32,7 @@ export default function ProtectedRoute({ children, roles }: Props) {
         <p className="font-semibold text-danger">Access denied: your account doesn&rsquo;t hold the role this page needs.</p>
         <button
           onClick={() => keycloak.logout()}
-          className="font-medium text-primary underline hover:text-primary-dark"
+          className="font-medium text-brand underline hover:text-primary-dark"
         >
           Log out
         </button>

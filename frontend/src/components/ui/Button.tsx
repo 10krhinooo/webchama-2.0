@@ -7,10 +7,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Every variant reads through semantic tokens, so the same class works in both themes.
+        // `bg-primary` is the fill token, which stays dark enough to carry white text in dark mode
+        // rather than inverting; `text-brand` is its text-safe counterpart, which does invert.
         primary: 'bg-primary text-white hover:bg-primary-dark',
-        secondary: 'bg-paper-dim text-ink hover:bg-black/10',
+        secondary: 'bg-paper-dim text-ink hover:bg-border',
         danger: 'bg-danger text-white hover:bg-danger/90',
-        ghost: 'bg-transparent text-primary hover:bg-primary-light',
+        ghost: 'bg-transparent text-brand hover:bg-primary-light',
       },
     },
     defaultVariants: {

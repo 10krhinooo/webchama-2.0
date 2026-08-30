@@ -252,7 +252,7 @@ export default function MembersPage() {
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
       {isChairperson && chama && (
-        <div className="rounded-xl border border-black/10 bg-white p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
           <h2 className="text-sm font-semibold text-ink">Join code</h2>
           <p className="text-xs text-muted">
             Share this code so an already-registered user can join this chama themselves, or email it to them directly.
@@ -315,7 +315,7 @@ export default function MembersPage() {
                   {isChairperson && (
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(m)} className="rounded px-2 py-1.5 text-primary text-xs hover:bg-primary/10">Edit</button>
+                        <button onClick={() => openEdit(m)} className="rounded px-2 py-1.5 text-brand text-xs hover:bg-primary/10">Edit</button>
                         {m.status === 'ACTIVE' ? (
                           <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'SUSPENDED')}
                             className="rounded px-2 py-1.5 text-warning text-xs hover:bg-warning/10 disabled:opacity-40">Suspend</button>
@@ -328,7 +328,7 @@ export default function MembersPage() {
                             className="rounded px-2 py-1.5 text-muted text-xs hover:bg-paper-dim disabled:opacity-40">Mark exited</button>
                         )}
                         <button disabled={resendingId === m.id} onClick={() => handleResendInvite(m)}
-                          className="rounded px-2 py-1.5 text-primary text-xs hover:bg-primary/10 disabled:opacity-40">
+                          className="rounded px-2 py-1.5 text-brand text-xs hover:bg-primary/10 disabled:opacity-40">
                           {resendingId === m.id ? 'Reissuing…' : 'Reissue invite'}
                         </button>
                         <span className="mx-1 h-4 w-px bg-black/10" aria-hidden="true" />
@@ -396,11 +396,11 @@ export default function MembersPage() {
               An email with sign-in instructions was sent to <strong>{inviteResult.member.fullName}</strong>.
               If it does not arrive, you can share this temporary password directly.
             </p>
-            <div className="bg-paper-dim border border-black/10 rounded-lg px-4 py-3 space-y-1.5 text-sm">
+            <div className="bg-paper-dim border border-border rounded-lg px-4 py-3 space-y-1.5 text-sm">
               <div><span className="text-muted">Email:</span> {form.email}</div>
               <div>
                 <span className="text-muted">Temporary password:</span>{' '}
-                <span className="font-mono bg-white border border-black/10 rounded px-2 py-0.5">
+                <span className="font-mono bg-surface border border-border rounded px-2 py-0.5">
                   {inviteResult.temporaryPassword}
                 </span>
               </div>
@@ -417,10 +417,10 @@ export default function MembersPage() {
               A new sign-in email was sent to <strong>{resendResult.member.fullName}</strong>.
               If it does not arrive, you can share this temporary password directly.
             </p>
-            <div className="bg-paper-dim border border-black/10 rounded-lg px-4 py-3 space-y-1.5 text-sm">
+            <div className="bg-paper-dim border border-border rounded-lg px-4 py-3 space-y-1.5 text-sm">
               <div>
                 <span className="text-muted">Temporary password:</span>{' '}
-                <span className="font-mono bg-white border border-black/10 rounded px-2 py-0.5">
+                <span className="font-mono bg-surface border border-border rounded px-2 py-0.5">
                   {resendResult.temporaryPassword}
                 </span>
               </div>

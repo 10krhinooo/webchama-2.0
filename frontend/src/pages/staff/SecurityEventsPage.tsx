@@ -73,7 +73,7 @@ export default function SecurityEventsPage() {
           placeholder="Keycloak user ID"
           className="rounded-lg border border-paper-dim px-3 py-1.5 text-sm text-ink"
         />
-        <button type="submit" className="rounded-lg border border-primary px-4 py-1.5 text-sm font-semibold text-primary hover:bg-primary-light">
+        <button type="submit" className="rounded-lg border border-primary px-4 py-1.5 text-sm font-semibold text-brand hover:bg-primary-light">
           Filter
         </button>
       </form>

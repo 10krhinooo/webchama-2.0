@@ -222,7 +222,7 @@ export default function DocumentGeneratorPage() {
           ))}
         </ol>
 
-        <div className="bg-white rounded-2xl shadow-card p-6 space-y-4">
+        <div className="bg-surface rounded-2xl shadow-card p-6 space-y-4">
           {wizardError && (
             <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{wizardError}</div>
           )}
@@ -302,8 +302,8 @@ export default function DocumentGeneratorPage() {
                 </tbody>
               </table>
               <Button variant="ghost" onClick={addLineItem}>+ Add line item</Button>
-              <div className="flex justify-end border-t border-black/10 pt-3">
-                <p className="font-mono text-lg font-bold text-primary">Total {grandTotal.toLocaleString()}</p>
+              <div className="flex justify-end border-t border-border pt-3">
+                <p className="font-mono text-lg font-bold text-brand">Total {grandTotal.toLocaleString()}</p>
               </div>
             </div>
           )}
@@ -324,7 +324,7 @@ export default function DocumentGeneratorPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs text-muted">{generated.documentNumber}</p>
-                  <p className="font-mono text-2xl font-bold text-primary">KES {generated.totalAmount.toLocaleString()}</p>
+                  <p className="font-mono text-2xl font-bold text-brand">KES {generated.totalAmount.toLocaleString()}</p>
                 </div>
                 <div className="flex gap-2">
                   <LoadingButton onClick={handleSendEmail} loading={sendingEmail} loadingText="Sending…">
@@ -342,7 +342,7 @@ export default function DocumentGeneratorPage() {
                 <iframe
                   title="Document preview"
                   src={`data:application/pdf;base64,${generated.pdfBase64}`}
-                  className="h-[500px] w-full rounded-xl border border-black/10"
+                  className="h-[500px] w-full rounded-xl border border-border"
                 />
               )}
               <Button variant="secondary" onClick={finishWizard}>Done</Button>
@@ -376,7 +376,7 @@ export default function DocumentGeneratorPage() {
         <Button onClick={openWizard}>+ New Document</Button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-card p-6 space-y-4">
+      <div className="bg-surface rounded-2xl shadow-card p-6 space-y-4">
         <div>
           <h2 className="font-heading text-lg font-bold text-ink">AGM / Auditor Export</h2>
           <p className="text-sm text-muted">
@@ -399,11 +399,11 @@ export default function DocumentGeneratorPage() {
           </LoadingButton>
         </div>
         {agmResult && (
-          <div className="space-y-3 border-t border-black/10 pt-4">
+          <div className="space-y-3 border-t border-border pt-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-xs text-muted">{agmResult.documentNumber}</p>
-                <p className="font-mono text-xl font-bold text-primary">
+                <p className="font-mono text-xl font-bold text-brand">
                   Closing balance: KES {agmResult.totalAmount.toLocaleString()}
                 </p>
               </div>
@@ -413,7 +413,7 @@ export default function DocumentGeneratorPage() {
               <iframe
                 title="AGM statement preview"
                 src={`data:application/pdf;base64,${agmResult.pdfBase64}`}
-                className="h-[500px] w-full rounded-xl border border-black/10"
+                className="h-[500px] w-full rounded-xl border border-border"
               />
             )}
           </div>

@@ -183,7 +183,7 @@ export default function ResolutionsPage() {
                           <button
                             onClick={() => handleClose(resolution)}
                             disabled={closingId === resolution.id}
-                            className="text-primary text-xs hover:underline disabled:opacity-50"
+                            className="text-brand text-xs hover:underline disabled:opacity-50"
                           >
                             {closingId === resolution.id ? 'Closing…' : 'Close'}
                           </button>

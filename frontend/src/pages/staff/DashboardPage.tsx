@@ -256,10 +256,10 @@ export default function DashboardPage() {
       <TransientAlert variant="error" message={error} onDismiss={() => setError(null)} />
 
       {(savingsProgress?.target != null || isChairperson) && (
-        <div className="rounded-2xl bg-white p-8 shadow-card">
+        <div className="rounded-2xl bg-surface p-8 shadow-card">
           {isChairperson && (
             <div className="mb-4 flex justify-end">
-              <button onClick={openGoalEditor} className="text-primary text-xs hover:underline">
+              <button onClick={openGoalEditor} className="text-brand text-xs hover:underline">
                 Edit savings goal
               </button>
             </div>
@@ -276,7 +276,7 @@ export default function DashboardPage() {
       )}
 
       <Reveal eager delayMs={80} className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl bg-white p-8 shadow-card">
+        <div className="rounded-2xl bg-surface p-8 shadow-card">
           <ContributionPot
             percent={percent}
             label={isManager ? 'Chama collected' : 'You have paid'}
@@ -285,11 +285,11 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-white p-6 shadow-card">
+          <div className="rounded-2xl bg-surface p-6 shadow-card">
             <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">Members</p>
             <p className="mt-2 font-mono text-3xl font-bold text-ink">{memberCount}</p>
           </div>
-          <div className="rounded-2xl bg-white p-6 shadow-card">
+          <div className="rounded-2xl bg-surface p-6 shadow-card">
             <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
               Contributions paid in full
             </p>
@@ -298,7 +298,7 @@ export default function DashboardPage() {
               <span className="ml-1 text-base font-normal text-muted">/ {contributions.length}</span>
             </p>
           </div>
-          <div className="rounded-2xl bg-white p-6 shadow-card">
+          <div className="rounded-2xl bg-surface p-6 shadow-card">
             <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
               {isManager ? 'Outstanding loans' : 'My loan balance'}
             </p>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-xs text-muted">{activeLoanCount} active loan{activeLoanCount === 1 ? '' : 's'}</p>
             )}
           </div>
-          <div className="rounded-2xl bg-white p-6 shadow-card">
+          <div className="rounded-2xl bg-surface p-6 shadow-card">
             <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
               {isManager ? 'Next payout' : 'My payout position'}
             </p>
@@ -325,13 +325,13 @@ export default function DashboardPage() {
             )}
           </div>
           {isManager && welfareFund && (
-            <div className="rounded-2xl bg-white p-6 shadow-card">
+            <div className="rounded-2xl bg-surface p-6 shadow-card">
               <div className="flex items-start justify-between">
                 <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
                   Welfare fund
                 </p>
                 {isChairperson && (
-                  <button onClick={openWelfareGoalEditor} className="text-primary text-xs hover:underline">
+                  <button onClick={openWelfareGoalEditor} className="text-brand text-xs hover:underline">
                     Edit goal
                   </button>
                 )}
@@ -349,13 +349,13 @@ export default function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {isChairperson && (
             <>
-              <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="rounded-2xl bg-surface p-6 shadow-card">
                 <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
                   Awaiting your sign-off
                 </p>
                 <p className="mt-2 font-mono text-3xl font-bold text-ink">{pendingApprovals.length}</p>
               </div>
-              <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="rounded-2xl bg-surface p-6 shadow-card">
                 <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
                   Loans awaiting decision
                 </p>
@@ -365,7 +365,7 @@ export default function DashboardPage() {
           )}
           {isTreasurer && (
             <>
-              <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="rounded-2xl bg-surface p-6 shadow-card">
                 <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
                   Overdue contributions
                 </p>
@@ -373,7 +373,7 @@ export default function DashboardPage() {
                   {contributions.filter((c) => c.status === 'OVERDUE').length}
                 </p>
               </div>
-              <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="rounded-2xl bg-surface p-6 shadow-card">
                 <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
                   Your pending requests
                 </p>
@@ -385,7 +385,7 @@ export default function DashboardPage() {
           )}
           {isSecretary && (
             <>
-              <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="rounded-2xl bg-surface p-6 shadow-card">
                 <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">Next meeting</p>
                 {nextMeeting ? (
                   <>
@@ -396,7 +396,7 @@ export default function DashboardPage() {
                   <p className="mt-2 text-sm text-muted">No meeting scheduled yet</p>
                 )}
               </div>
-              <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="rounded-2xl bg-surface p-6 shadow-card">
                 <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
                   Open resolutions
                 </p>
@@ -408,7 +408,7 @@ export default function DashboardPage() {
       )}
 
       <div className={isManager ? 'grid gap-6 lg:grid-cols-2' : ''}>
-        <div className="rounded-2xl bg-white p-6 shadow-card">
+        <div className="rounded-2xl bg-surface p-6 shadow-card">
           <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
             Contributions by status
           </p>
@@ -426,7 +426,7 @@ export default function DashboardPage() {
         </div>
 
         {isManager && (
-          <div className="rounded-2xl bg-white p-6 shadow-card">
+          <div className="rounded-2xl bg-surface p-6 shadow-card">
             <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">Recent activity</p>
             <div className="mt-4 space-y-3">
               {activityLoading && activityEntries.length === 0 && (

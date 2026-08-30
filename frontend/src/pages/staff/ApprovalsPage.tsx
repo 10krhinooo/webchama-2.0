@@ -172,7 +172,7 @@ export default function ApprovalsPage() {
                           onClick={() => handleApprove(approval)}
                           disabled={actingId === approval.id || alreadySignedByMe}
                           title={alreadySignedByMe ? 'A different signatory must provide the second sign-off' : undefined}
-                          className="text-primary text-xs hover:underline disabled:opacity-50"
+                          className="text-brand text-xs hover:underline disabled:opacity-50"
                         >
                           {actingId === approval.id ? 'Signing…' : 'Sign off'}
                         </button>

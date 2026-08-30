@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import WeaveMark from "../marketing/WeaveMark"
 import StartChamaCta from "../marketing/StartChamaCta"
+import ThemeToggle from "../ui/ThemeToggle"
 
 const sectionLinks = [
   { href: "#how-it-works", label: "How it works" },
@@ -30,7 +31,7 @@ export default function PublicNav() {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b border-ink/10 bg-paper/90 backdrop-blur transition-shadow duration-300 ${
+      className={`sticky top-0 z-50 border-b border-border bg-paper/90 backdrop-blur transition-shadow duration-300 ${
         scrolled ? "shadow-card" : "shadow-none"
       }`}
     >
@@ -40,7 +41,7 @@ export default function PublicNav() {
         }`}
       >
         <a href="/" className="flex items-center gap-2 font-heading text-lg font-bold text-ink">
-          <WeaveMark className="h-6 w-6 text-primary" />
+          <WeaveMark className="h-6 w-6 text-brand" />
           Webchama
         </a>
         <div className="hidden items-center gap-8 text-sm font-medium text-ink/70 sm:flex">
@@ -51,26 +52,30 @@ export default function PublicNav() {
           ))}
         </div>
         <div className="hidden items-center gap-4 sm:flex">
+          <ThemeToggle />
           <Link to="/my-chamas" className="text-sm font-semibold text-ink/70 hover:text-ink">
             Sign In
           </Link>
-          <StartChamaCta className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-paper transition hover:bg-primary-dark">
+          <StartChamaCta className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark">
             Start your chama
           </StartChamaCta>
         </div>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((open) => !open)}
-          className="rounded-lg p-1.5 text-ink/70 hover:bg-paper-dim hover:text-ink sm:hidden"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-1 sm:hidden">
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="rounded-lg p-1.5 text-ink/70 hover:bg-paper-dim hover:text-ink"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </nav>
 
       {menuOpen && (
-        <div className="border-t border-ink/10 px-6 py-4 sm:hidden">
+        <div className="border-t border-border px-6 py-4 sm:hidden">
           <div className="flex flex-col gap-4 text-sm font-medium text-ink/70">
             {sectionLinks.map((link) => (
               <a key={link.href} href={link.href} className="hover:text-ink" onClick={() => setMenuOpen(false)}>
@@ -81,7 +86,7 @@ export default function PublicNav() {
               Sign In
             </Link>
             <StartChamaCta
-              className="rounded-full bg-primary px-4 py-2 text-center font-semibold text-paper transition hover:bg-primary-dark"
+              className="rounded-full bg-primary px-4 py-2 text-center font-semibold text-white transition hover:bg-primary-dark"
               onClick={() => setMenuOpen(false)}
             >
               Start your chama

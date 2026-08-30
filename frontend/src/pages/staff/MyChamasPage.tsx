@@ -92,23 +92,23 @@ export default function MyChamasPage() {
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">My Chamas</h1>
         <div className="flex items-center gap-4">
-          <button onClick={openJoinModal} className="text-sm font-semibold text-primary hover:underline">
+          <button onClick={openJoinModal} className="text-sm font-semibold text-brand hover:underline">
             Join a chama
           </button>
-          <Link to="/chamas" className="text-sm font-semibold text-primary hover:underline">
+          <Link to="/chamas" className="text-sm font-semibold text-brand hover:underline">
             Manage chamas
           </Link>
         </div>
       </div>
 
       {chamas.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-card px-4 py-10 text-center text-muted text-sm">
+        <div className="bg-surface rounded-2xl shadow-card px-4 py-10 text-center text-muted text-sm">
           You are not part of any chama yet.{' '}
-          <Link to="/chamas" className="font-semibold text-primary hover:underline">
+          <Link to="/chamas" className="font-semibold text-brand hover:underline">
             Start one
           </Link>{' '}
           or{' '}
-          <button onClick={openJoinModal} className="font-semibold text-primary hover:underline">
+          <button onClick={openJoinModal} className="font-semibold text-brand hover:underline">
             join an existing one
           </button>
           .
@@ -119,7 +119,7 @@ export default function MyChamasPage() {
             <button
               key={c.id}
               onClick={() => navigate(`/chamas/${c.id}/dashboard`)}
-              className="text-left bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-shadow p-5 space-y-3"
+              className="text-left bg-surface rounded-2xl shadow-card hover:shadow-card-hover transition-shadow p-5 space-y-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <h2 className="font-heading font-semibold text-ink">{c.name}</h2>

@@ -154,7 +154,7 @@ function HomePage() {
           <div className="relative mx-auto grid max-w-6xl gap-12 px-6 py-20 sm:py-28 lg:grid-cols-2 lg:items-center">
             <div data-depth="4">
               <Reveal eager>
-                <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
                   Table banking, digitised
                 </p>
               </Reveal>
@@ -186,10 +186,10 @@ function HomePage() {
         </section>
 
         {/* Ledger strip */}
-        <section id="how-it-works" className="border-y border-ink/10 bg-paper-dim">
+        <section id="how-it-works" className="border-y border-border bg-paper-dim">
           <div className="mx-auto max-w-3xl px-6 py-16">
             <Reveal>
-              <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+              <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
                 What&rsquo;s in the book
               </p>
             </Reveal>
@@ -232,7 +232,7 @@ function HomePage() {
         {/* Roles — cascading card stack, staggered via CSS nth-child delay once the grid scrolls into view */}
         <section id="roles" className="mx-auto max-w-6xl px-6 py-20">
           <Reveal variant="fade">
-            <p className="text-center font-heading text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            <p className="text-center font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
               Everyone has a seat
             </p>
             <h2 className="mt-4 text-center text-3xl font-bold text-ink sm:text-4xl">
@@ -274,7 +274,7 @@ function HomePage() {
               take your first mchango by M-Pesa this week.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <StartChamaCta className="rounded-full bg-paper px-6 py-3 text-sm font-semibold text-primary transition hover:bg-paper-dim">
+              <StartChamaCta className="rounded-full bg-paper px-6 py-3 text-sm font-semibold text-brand transition hover:bg-paper-dim">
                 Start your chama
               </StartChamaCta>
               <a

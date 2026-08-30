@@ -2,11 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Semantic color tokens. Every value is a space-separated RGB triple rather than a hex string,
+   which is what lets Tailwind compose them with an alpha channel, so `bg-surface/50` works the
+   same as any built-in color.
+
+   Only these two blocks know a concrete color. Everything else in the app refers to the token, so
+   a theme is a redefinition here rather than a sweep through the components. */
+:root {
+  /* Surfaces, lowest to highest elevation. */
+  --color-paper: 247 249 248;
+  --color-paper-dim: 238 242 241;
+  --color-surface: 255 255 255;
+  --color-surface-sunken: 238 242 241;
+  --color-surface-raised: 255 255 255;
+  --color-surface-inverse: 27 77 69;
+
+  /* Text. */
+  --color-ink: 28 36 34;
+  --color-ink-inverse: 247 249 248;
+  --color-muted: 85 101 95;
+  --color-subtle: 110 128 123;
+  --color-brand: 27 77 69;
+
+  --color-border: 223 230 228;
+  --color-border-strong: 198 209 206;
+
+  /* `primary` is a fill and sits behind white text. `brand` above is the same hue as a text
+     color. They are equal in this theme and deliberately diverge in the dark one. */
+  --color-primary: 27 77 69;
+  --color-primary-light: 220 234 230;
+  --color-primary-dark: 18 48 43;
+
+  --color-accent: 224 162 51;
+  --color-accent-light: 251 235 203;
+  --color-accent-dark: 184 125 29;
+
+  --color-success: 63 122 59;
+  --color-warning: 184 134 11;
+  --color-danger: 184 75 46;
+  --color-info: 46 100 90;
+
+  --shadow-card: 0 1px 3px 0 rgb(18 48 43 / 0.10), 0 1px 2px -1px rgb(18 48 43 / 0.10);
+  --shadow-card-hover: 0 4px 12px -2px rgb(18 48 43 / 0.16);
+  --shadow-raised: 0 8px 24px -6px rgb(18 48 43 / 0.18);
+  --shadow-overlay: 0 24px 48px -12px rgb(18 48 43 / 0.28);
+
+  color-scheme: light;
+}
+
+.dark {
+  --color-paper: 11 33 29;
+  --color-paper-dim: 8 25 22;
+  --color-surface: 18 48 43;
+  --color-surface-sunken: 8 25 22;
+  --color-surface-raised: 22 59 53;
+  --color-surface-inverse: 8 25 22;
+
+  --color-ink: 234 242 239;
+  --color-ink-inverse: 11 33 29;
+  --color-muted: 159 179 172;
+  --color-subtle: 126 148 140;
+  /* Light enough to read against a dark surface, which is the whole reason this is a separate
+     token from `primary`. */
+  --color-brand: 141 187 176;
+
+  --color-border: 31 67 60;
+  --color-border-strong: 44 87 78;
+
+  /* Lifted just enough to separate from the page behind it while staying dark enough to carry
+     white text at an accessible contrast ratio. */
+  --color-primary: 46 100 90;
+  /* `light` and `dark` are used as a subtle tint and a hover step. Both invert here: the tint
+     goes darker than the surface, and the hover lifts instead of deepening. */
+  --color-primary-light: 22 59 53;
+  --color-primary-dark: 63 125 110;
+
+  --color-accent: 232 174 69;
+  --color-accent-light: 61 40 10;
+  --color-accent-dark: 239 192 102;
+
+  --color-success: 111 181 106;
+  --color-warning: 224 162 51;
+  --color-danger: 229 129 99;
+  --color-info: 141 187 176;
+
+  /* A dark surface cannot express elevation with a black shadow, so these lean on opacity and
+     spread far more heavily than their light counterparts. */
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-card-hover: 0 6px 16px -4px rgb(0 0 0 / 0.6);
+  --shadow-raised: 0 10px 28px -8px rgb(0 0 0 / 0.65);
+  --shadow-overlay: 0 28px 56px -16px rgb(0 0 0 / 0.75);
+
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   font-family: "Public Sans", system-ui, sans-serif;
-  color: theme("colors.ink");
-  background: theme("colors.paper");
+  color: rgb(var(--color-ink));
+  background: rgb(var(--color-paper));
 }
 
 h1,
@@ -29,10 +123,25 @@ h6 {
 }
 
 a:focus-visible,
-button:focus-visible {
-  outline: 2px solid theme("colors.accent.DEFAULT");
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* Theme switching repaints most of the page at once. Without this, every element carrying a
+   color transition animates independently and the swap reads as a smear rather than a change.
+   The class is applied for one frame by the theme provider. */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: none !important;
 }
 
 /* Depth system for the marketing hero (epic-design redesign, issue #84 follow-up). Each layer is
@@ -83,7 +192,7 @@ button:focus-visible {
 
 /* Hero headline reveal: an ink-fills-the-ledger-line wipe via clip-path, left to right, once the
    headline scrolls into view (JS toggles .is-lit; see HomePage.tsx's Headline component). Kept as
-   a single text node — clip-path never fragments the DOM text — so it stays exact-text-matchable. */
+   a single text node, clip-path never fragments the DOM text, so it stays exact-text-matchable. */
 .headline-reveal {
   clip-path: inset(0 100% 0 0);
   transition: clip-path 0.9s cubic-bezier(0.16, 1, 0.3, 1);
@@ -108,7 +217,7 @@ button:focus-visible {
 .stagger-children.stagger-in > *:nth-child(3) { transition-delay: 180ms; }
 .stagger-children.stagger-in > *:nth-child(4) { transition-delay: 270ms; }
 
-/* Staff dashboard: quick, restrained choreography only (no float loops, no parallax) — this is
+/* Staff dashboard: quick, restrained choreography only (no float loops, no parallax), this is
    transactional UI, not a marketing scroll story. Sidebar links stagger in once on mount; routed
    page content gets a short fade-rise on navigation. */
 @keyframes sidebar-item-in {
