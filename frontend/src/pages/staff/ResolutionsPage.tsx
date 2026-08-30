@@ -18,6 +18,7 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -206,7 +207,7 @@ export default function ResolutionsPage() {
         <Modal title="Open Resolution" onClose={() => setShowOpenModal(false)}>
           <form onSubmit={handleOpen} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             <FormField label="Meeting" htmlFor="resolution-meeting" required>
               <Select id="resolution-meeting" required value={form.meetingId}

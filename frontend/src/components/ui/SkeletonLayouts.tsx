@@ -29,7 +29,7 @@ export function TablePageSkeleton({
           <SkeletonLine className="h-3.5 w-16" />
         </div>
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="flex items-center gap-6 px-4 py-3.5 border-b border-black/5 last:border-0">
+          <div key={i} className="flex items-center gap-6 px-4 py-3.5 border-b border-border last:border-0">
             <SkeletonLine className="h-4 w-28" />
             <SkeletonLine className="h-4 w-40" />
             <SkeletonBlock className="h-5 w-16 rounded-full" />

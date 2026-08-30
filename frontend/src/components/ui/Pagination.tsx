@@ -24,7 +24,9 @@ export default function Pagination({ page, totalPages, total, pageSize, onPage, 
     }, [])
 
   return (
-    <div className="flex items-center justify-between pt-2">
+    // A landmark with a name, so a screen reader user can jump straight to the pager and knows
+    // which one it is when a page has more than one list.
+    <nav aria-label={`${label} pagination`} className="flex items-center justify-between pt-2">
       <p className="text-xs text-muted">
         {from}–{to} of {total} {label}
       </p>
@@ -32,17 +34,21 @@ export default function Pagination({ page, totalPages, total, pageSize, onPage, 
         <button
           onClick={() => onPage(page - 1)}
           disabled={page === 1}
+          aria-label="Previous page"
           className="p-1.5 rounded-lg border border-border text-muted hover:bg-paper-dim disabled:opacity-40"
         >
-          <ChevronLeftIcon className="w-4 h-4" />
+          <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
         </button>
         {pages.map((n, i) =>
           n === '…' ? (
-            <span key={`e${i}`} className="px-1 text-muted text-xs">…</span>
+            <span key={`e${i}`} aria-hidden="true" className="px-1 text-muted text-xs">…</span>
           ) : (
             <button
               key={n}
               onClick={() => onPage(n as number)}
+              // The current page is otherwise conveyed by background colour alone.
+              aria-current={page === n ? 'page' : undefined}
+              aria-label={`Page ${n}`}
               className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                 page === n ? 'bg-primary text-white' : 'border border-border text-ink/70 hover:bg-paper-dim'
               }`}
@@ -54,11 +60,12 @@ export default function Pagination({ page, totalPages, total, pageSize, onPage, 
         <button
           onClick={() => onPage(page + 1)}
           disabled={page === totalPages}
+          aria-label="Next page"
           className="p-1.5 rounded-lg border border-border text-muted hover:bg-paper-dim disabled:opacity-40"
         >
-          <ChevronRightIcon className="w-4 h-4" />
+          <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
-    </div>
+    </nav>
   )
 }

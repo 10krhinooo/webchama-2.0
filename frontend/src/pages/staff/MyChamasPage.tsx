@@ -6,6 +6,7 @@ import { extractErrorMessage } from '../../api/client'
 import { roleBadgeText } from '../../utils/roleBadges'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import PhoneInput from '../../components/ui/PhoneInput'
@@ -139,7 +140,7 @@ export default function MyChamasPage() {
         <Modal title="Join a chama" onClose={() => setShowJoinModal(false)}>
           <form onSubmit={handleJoin} className="space-y-4">
             {joinNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{joinNotice}</div>
+              <FormError message={joinNotice} />
             )}
             <FormField label="Join code" htmlFor="join-code" required hint="Ask the chama's chairperson for their join code.">
               <Input

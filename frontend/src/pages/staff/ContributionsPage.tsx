@@ -24,6 +24,7 @@ import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
@@ -377,7 +378,7 @@ export default function ContributionsPage() {
         <Modal title="New Contribution" onClose={() => setShowCreateModal(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             <FormField label="Member" htmlFor="contribution-member" required>
               <Select
@@ -409,7 +410,7 @@ export default function ContributionsPage() {
         <Modal title={`Record Payment — ${payingContribution.memberName}`} onClose={() => setPayingContribution(null)}>
           <form onSubmit={handleRecordPayment} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             <p className="text-sm text-muted">
               Due {payingContribution.amountDue.toLocaleString()}, already paid {payingContribution.amountPaid.toLocaleString()}.
@@ -441,7 +442,7 @@ export default function ContributionsPage() {
         <Modal title="Confirm M-Pesa Payment" onClose={() => setMpesaConfirm(null)}>
           <div className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             <p className="text-sm text-ink/80">Send an M-Pesa prompt to your registered phone for:</p>
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">
@@ -473,7 +474,7 @@ export default function ContributionsPage() {
         <Modal title="Pay by Card" onClose={() => setCardPayment(null)}>
           <form onSubmit={handleStartCardCheckout} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             <p className="text-sm text-ink/80">You will be taken to Flutterwave's secure checkout to pay:</p>
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">

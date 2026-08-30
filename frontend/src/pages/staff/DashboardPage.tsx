@@ -18,6 +18,7 @@ import { SkeletonBlock, SkeletonLine } from '../../components/ui/Skeleton'
 import TransientAlert from '../../components/ui/TransientAlert'
 import Reveal from '../../components/ui/Reveal'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -453,7 +454,7 @@ export default function DashboardPage() {
         <Modal title="Edit Savings Goal" onClose={() => setShowGoalModal(false)}>
           <form onSubmit={handleGoalSubmit} className="space-y-4">
             {goalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{goalNotice}</div>
+              <FormError message={goalNotice} />
             )}
             <FormField label="Savings goal" htmlFor="dashboard-savings-goal" hint="Leave blank to clear the goal.">
               <Input
@@ -476,7 +477,7 @@ export default function DashboardPage() {
         <Modal title="Edit Welfare Fund Goal" onClose={() => setShowWelfareGoalModal(false)}>
           <form onSubmit={handleWelfareGoalSubmit} className="space-y-4">
             {welfareGoalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{welfareGoalNotice}</div>
+              <FormError message={welfareGoalNotice} />
             )}
             <FormField label="Welfare fund goal" htmlFor="dashboard-welfare-goal" hint="Leave blank to clear the goal.">
               <Input

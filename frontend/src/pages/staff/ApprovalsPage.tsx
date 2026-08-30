@@ -18,6 +18,7 @@ import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import ApprovalStampBadge from '../../components/marketing/ApprovalStampBadge'
 import SignOffTrail from '../../components/marketing/SignOffTrail'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
@@ -201,7 +202,7 @@ export default function ApprovalsPage() {
         <Modal title="Request Approval" onClose={() => setShowCreateModal(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             <FormField label="Type" htmlFor="approval-target-type" required>
               <Select id="approval-target-type" required value={form.targetType}
