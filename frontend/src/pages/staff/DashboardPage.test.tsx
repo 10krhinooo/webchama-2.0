@@ -37,6 +37,15 @@ vi.mock('../../api/meetings', () => ({
 vi.mock('../../api/resolutions', () => ({
   getResolutions: vi.fn(),
 }))
+vi.mock('../../api/analytics', async () => {
+  const actual = await vi.importActual<typeof import('../../api/analytics')>('../../api/analytics')
+  return {
+    ...actual,
+    getChamaHealth: vi.fn(),
+    getContributionTrend: vi.fn(),
+    getArrears: vi.fn(),
+  }
+})
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
@@ -54,6 +63,7 @@ import { getPendingApprovals } from '../../api/approvals'
 import { getMeetings } from '../../api/meetings'
 import { getResolutions } from '../../api/resolutions'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import { getChamaHealth, getContributionTrend, getArrears } from '../../api/analytics'
 import { useActivityFeed } from '../../hooks/useActivityFeed'
 
 const mockGetChama = getChama as ReturnType<typeof vi.fn>
@@ -73,6 +83,21 @@ const mockGetPendingApprovals = getPendingApprovals as ReturnType<typeof vi.fn>
 const mockGetMeetings = getMeetings as ReturnType<typeof vi.fn>
 const mockGetResolutions = getResolutions as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
+const mockGetChamaHealth = getChamaHealth as ReturnType<typeof vi.fn>
+const mockGetContributionTrend = getContributionTrend as ReturnType<typeof vi.fn>
+const mockGetArrears = getArrears as ReturnType<typeof vi.fn>
+
+const health = {
+  chamaId: 3,
+  score: 72,
+  band: 'GOOD' as const,
+  components: [{ code: 'COLLECTION_RATE', label: 'Contributions collected', rate: 0.9, weight: 1 }],
+  activeMembers: 2,
+  membersInArrears: 1,
+  totalContributed: '1000.00',
+  totalOutstandingArrears: '500.00',
+  outstandingLoanPrincipal: '0.00',
+}
 const mockUseActivityFeed = useActivityFeed as ReturnType<typeof vi.fn>
 
 const chama = { id: 3, name: 'Tumaini Chama', currency: 'KES' }
@@ -118,6 +143,46 @@ describe('DashboardPage', () => {
     mockUpdateChama.mockResolvedValue(chama)
     mockUpdateWelfareFundTarget.mockResolvedValue({ chamaId: 3, balance: 0, target: null })
     mockUseActivityFeed.mockReturnValue({ entries: [], loading: false })
+    mockGetChamaHealth.mockResolvedValue(health)
+    mockGetContributionTrend.mockResolvedValue([])
+    mockGetArrears.mockResolvedValue([
+      { bucket: '1-30', members: 1, amount: '500.00' },
+      { bucket: '31-60', members: 0, amount: '0.00' },
+      { bucket: '61-90', members: 0, amount: '0.00' },
+      { bucket: '90+', members: 0, amount: '0.00' },
+    ])
+  })
+
+  it('shows the health score and arrears ageing to a manager', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    renderAt()
+
+    expect(await screen.findByTestId('health-score-card')).toBeTruthy()
+    expect(screen.getByTestId('arrears-ageing-chart')).toBeTruthy()
+    expect(screen.getByText('72')).toBeTruthy()
+  })
+
+  it('does not show analytics to a plain member', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: false, isTreasurer: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([])
+    renderAt()
+
+    await waitFor(() => expect(mockGetMyContributions).toHaveBeenCalled())
+    expect(screen.queryByTestId('health-score-card')).toBeNull()
+    expect(mockGetChamaHealth).not.toHaveBeenCalled()
+  })
+
+  it('keeps the rest of the dashboard when analytics fails to load', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockGetChamaHealth.mockRejectedValue(new Error('offline'))
+    renderAt()
+
+    // Analytics is supplementary. A failure there must leave the dashboard standing rather than
+    // replacing it with an error, which is why it loads in its own effect.
+    await waitFor(() => expect(screen.getByText('Tumaini Chama')).toBeTruthy())
+    expect(screen.queryByTestId('health-score-card')).toBeNull()
   })
 
   it('shows the chama-wide collection progress for a chairperson/treasurer', async () => {
