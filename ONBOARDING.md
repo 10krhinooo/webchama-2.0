@@ -212,6 +212,25 @@ passes when you run the class alone and fails in the full suite, on rows some ot
 behind that still reference `member` or `chama`. Older classes still carry their own copy of the
 list; new ones should not.
 
+**Add a cross-browser smoke journey.** Only if a Chromium-only Playwright spec genuinely cannot
+see the thing. `src/test/java/org/chama/smoke` exists for behaviour that is known to diverge between
+engines: third-party cookie policy, a download written to disk, an EventSource, a Keycloak-rendered
+page React never touches. Anything both engines agree on belongs in `e2e/specs`, which is an order
+of magnitude cheaper to run and to read.
+
+Extend `SmokeJourney` and take `SmokeBrowser` as a `@ParameterizedTest` parameter sourced from
+`org.chama.smoke.SmokeJourney#browsers`, then call `start(browser)` as the first statement; the base
+class quits the driver afterwards. Name the divergence being watched in the class comment, because
+the next person will otherwise assume the journey belongs in Playwright and delete it.
+
+These are plain JUnit 5 and must not be `@QuarkusTest`. They drive a stack already running in
+Docker, so booting a second Quarkus in-process would start a competing application and re-run Flyway
+against a database it does not own.
+
+Seed through the UI rather than reading the Playwright fixture, so `-Psmoke` works against a stack
+that has only just started, and give anything you create a unique name so repeated runs do not
+collide.
+
 **Gate a new action behind dual sign-off.** Follow `WelfareFundService`: split the action into a
 `request` that records the intent without moving anything and a `markDisbursed` that releases it,
 add the target to `ApprovalTargetType` in its own Flyway migration (Postgres refuses to use an enum
