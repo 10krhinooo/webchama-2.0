@@ -3,7 +3,7 @@
 # between a green CI build and something you can actually run). See DEPLOYMENT.md for the runtime
 # environment variables this image needs and frontend/Dockerfile for the SPA's own image.
 
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3-eclipse-temurin-24 AS build
 WORKDIR /workspace
 
 # Dependency layer first so `docker build` can cache it across source-only changes.
