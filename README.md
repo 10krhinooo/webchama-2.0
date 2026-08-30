@@ -77,9 +77,11 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   in-app voting/resolutions to digitize meeting decisions.
 - **Documents**: PDF statement and receipt generation, plus a freeform document generator, delivered
   by email.
-- **Notifications**: email alerts for approval requests, loan status changes (approved, disbursed,
-  failed), payment receipts, payout and penalty status, meeting scheduling, welfare withdrawals, and
-  failed auto-STK-push attempts.
+- **Notifications**: an in-app notification centre, reached from the bell in the header, with a live
+  stream and a per-user inbox spanning every chama the user belongs to. The same events are also sent
+  by email: approval requests, loan status changes (approved, disbursed, failed), payment receipts,
+  payout and penalty status, meeting scheduling, welfare withdrawals, and failed auto-STK-push
+  attempts. Each user chooses per event type whether to be told in app, by email, both, or neither.
 - **Audit trail**: an immutable activity log covering financial and governance events, and a synced
   feed of Keycloak security events (logins, failed attempts, password changes), viewable on a
   SUPER_ADMIN-only security events page with suspicious rows highlighted and email alerts on
@@ -127,7 +129,7 @@ docker compose -f docker-compose.e2e.yml up -d --build
 | Service | URL |
 |---|---|
 | SPA | http://localhost:5174 |
-| Backend | http://localhost:8081 |
+| Backend | http://localhost:8082 |
 | Keycloak | http://localhost:8181 |
 | Payment provider stub | http://localhost:8090 |
 | Postgres | localhost:5435, database `chama_e2e` |

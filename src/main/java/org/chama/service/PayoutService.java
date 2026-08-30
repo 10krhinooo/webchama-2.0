@@ -8,6 +8,7 @@ import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.ApprovalTargetType;
 import org.chama.domain.enums.MemberStatus;
+import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.enums.PayoutScheduleEntryStatus;
 import org.chama.domain.enums.PayoutStatus;
 import org.chama.domain.enums.RotationOrderType;
@@ -37,6 +38,9 @@ public class PayoutService {
 
     @Inject
     PayoutRepository payoutRepository;
+
+    @Inject
+    NotificationService notificationService;
 
     @Inject
     PayoutScheduleRepository payoutScheduleRepository;
@@ -160,8 +164,15 @@ public class PayoutService {
         payout.scheduledDate = dto.scheduledDate();
         payout.amount = chama.contributionAmount.multiply(BigDecimal.valueOf(active.size()));
         payoutRepository.persist(payout);
-        payoutStatusEmailService.sendScheduled(turn.member.keycloakUserId, turn.member.fullName,
-            chama.name, chama.currency, payout.roundNumber, payout.amount, payout.scheduledDate);
+        notificationService.record(turn.member.keycloakUserId, chama.id,
+            NotificationEventFamily.PAYOUT,
+            "Your payout is scheduled",
+            "Round %d, %s %s, due %s.".formatted(payout.roundNumber, chama.currency, payout.amount, payout.scheduledDate),
+            "/chamas/" + chama.id + "/payouts");
+        if (notificationService.emailEnabled(turn.member.keycloakUserId, NotificationEventFamily.PAYOUT)) {
+            payoutStatusEmailService.sendScheduled(turn.member.keycloakUserId, turn.member.fullName,
+                chama.name, chama.currency, payout.roundNumber, payout.amount, payout.scheduledDate);
+        }
         return payout;
     }
 
@@ -183,8 +194,15 @@ public class PayoutService {
         payout.disbursedAt = Instant.now();
         activityLogService.log(payout.chama, ActivityEventType.PAYOUT_DISBURSED,
             payout.member.fullName + " received their round " + payout.roundNumber + " payout of " + payout.chama.currency + " " + payout.amount);
-        payoutStatusEmailService.sendDisbursed(payout.member.keycloakUserId, payout.member.fullName,
-            payout.chama.name, payout.chama.currency, payout.roundNumber, payout.amount);
+        notificationService.record(payout.member.keycloakUserId, payout.chama.id,
+            NotificationEventFamily.PAYOUT,
+            "Payout sent",
+            "Your round %d payout of %s %s has been disbursed.".formatted(payout.roundNumber, payout.chama.currency, payout.amount),
+            "/chamas/" + payout.chama.id + "/payouts");
+        if (notificationService.emailEnabled(payout.member.keycloakUserId, NotificationEventFamily.PAYOUT)) {
+            payoutStatusEmailService.sendDisbursed(payout.member.keycloakUserId, payout.member.fullName,
+                payout.chama.name, payout.chama.currency, payout.roundNumber, payout.amount);
+        }
         return payout;
     }
 

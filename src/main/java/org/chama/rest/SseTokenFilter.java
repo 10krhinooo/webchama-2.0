@@ -18,7 +18,10 @@ public class SseTokenFilter {
     void register(@Observes Filters filters) {
         filters.register(routingContext -> {
             String path = routingContext.request().path();
-            if (path.endsWith("/activity-log/stream")) {
+            // EventSource cannot set headers, so both streams pass the token as a query
+            // parameter and it is promoted here. Any new stream endpoint has to be added, or it
+            // will simply answer 401 with nothing explaining why.
+            if (path.endsWith("/activity-log/stream") || path.endsWith("/notifications/stream")) {
                 String token = routingContext.request().getParam("token");
                 if (token != null && !token.isBlank()) {
                     routingContext.request().headers().set("Authorization", "Bearer " + token);

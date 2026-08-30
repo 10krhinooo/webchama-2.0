@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.AttendanceStatus;
 import org.chama.domain.enums.MemberStatus;
+import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.model.Meeting;
 import org.chama.domain.model.MeetingAttendance;
 import org.chama.domain.model.Member;
@@ -22,6 +23,9 @@ public class MeetingService {
 
     @Inject
     MeetingRepository meetingRepository;
+
+    @Inject
+    NotificationService notificationService;
 
     @Inject
     MeetingAttendanceRepository meetingAttendanceRepository;
@@ -54,8 +58,10 @@ public class MeetingService {
         meeting.meetingDate = dto.meetingDate();
         meeting.agenda = dto.agenda();
         meetingRepository.persist(meeting);
+        List<MeetingNotificationEmailService.Recipient> emailable = announce(chamaId,
+            "Meeting scheduled", "%s: %s".formatted(meeting.meetingDate, meeting.agenda));
         meetingNotificationEmailService.sendMeetingScheduled(
-            activeMemberRecipients(chamaId), meeting.chama.name, meeting.meetingDate, meeting.agenda);
+            emailable, meeting.chama.name, meeting.meetingDate, meeting.agenda);
         return meeting;
     }
 
@@ -63,9 +69,26 @@ public class MeetingService {
     public Meeting updateMinutes(Long chamaId, Long meetingId, String minutes) {
         Meeting meeting = get(chamaId, meetingId);
         meeting.minutes = minutes;
+        List<MeetingNotificationEmailService.Recipient> emailable = announce(chamaId,
+            "Minutes published",
+            "Minutes for the meeting of %s are available.".formatted(meeting.meetingDate));
         meetingNotificationEmailService.sendMinutesPublished(
-            activeMemberRecipients(chamaId), meeting.chama.name, meeting.meetingDate);
+            emailable, meeting.chama.name, meeting.meetingDate);
         return meeting;
+    }
+
+    /**
+     * Puts a meeting announcement in every active member's inbox and returns the subset who still
+     * want it by email as well, so both channels come from a single member query.
+     */
+    private List<MeetingNotificationEmailService.Recipient> announce(Long chamaId, String title, String body) {
+        List<MeetingNotificationEmailService.Recipient> recipients = activeMemberRecipients(chamaId);
+        String link = "/chamas/" + chamaId + "/meetings";
+        recipients.forEach(r -> notificationService.record(
+            r.keycloakUserId(), chamaId, NotificationEventFamily.MEETING, title, body, link));
+        return recipients.stream()
+            .filter(r -> notificationService.emailEnabled(r.keycloakUserId(), NotificationEventFamily.MEETING))
+            .toList();
     }
 
     private List<MeetingNotificationEmailService.Recipient> activeMemberRecipients(Long chamaId) {

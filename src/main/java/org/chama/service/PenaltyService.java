@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.enums.PaymentMethod;
 import org.chama.domain.enums.PaymentPurpose;
 import org.chama.domain.enums.PaymentStatus;
@@ -26,6 +27,9 @@ public class PenaltyService {
 
     @Inject
     PenaltyRepository penaltyRepository;
+
+    @Inject
+    NotificationService notificationService;
 
     @Inject
     PaymentRepository paymentRepository;
@@ -80,8 +84,15 @@ public class PenaltyService {
         penalty.status = PenaltyStatus.APPROVED;
         penalty.decidedBy = memberRepository.findByIdOptional(deciderMemberId).orElseThrow(NotFoundException::new);
         penalty.decidedAt = Instant.now();
-        penaltyStatusEmailService.sendIssued(penalty.member.keycloakUserId, penalty.member.fullName,
-            penalty.chama.name, penalty.chama.currency, penalty.amount, reasonLabel(penalty.reason));
+        notificationService.record(penalty.member.keycloakUserId, penalty.chama.id,
+            NotificationEventFamily.PENALTY,
+            "Penalty issued",
+            "%s %s was charged for %s.".formatted(penalty.chama.currency, penalty.amount, reasonLabel(penalty.reason)),
+            "/chamas/" + penalty.chama.id + "/penalties");
+        if (notificationService.emailEnabled(penalty.member.keycloakUserId, NotificationEventFamily.PENALTY)) {
+            penaltyStatusEmailService.sendIssued(penalty.member.keycloakUserId, penalty.member.fullName,
+                penalty.chama.name, penalty.chama.currency, penalty.amount, reasonLabel(penalty.reason));
+        }
         return penalty;
     }
 
@@ -95,8 +106,15 @@ public class PenaltyService {
         penalty.decidedBy = memberRepository.findByIdOptional(deciderMemberId).orElseThrow(NotFoundException::new);
         penalty.decidedAt = Instant.now();
         penalty.waiverReason = waiverReason;
-        penaltyStatusEmailService.sendWaived(penalty.member.keycloakUserId, penalty.member.fullName,
-            penalty.chama.name, penalty.chama.currency, penalty.amount, waiverReason);
+        notificationService.record(penalty.member.keycloakUserId, penalty.chama.id,
+            NotificationEventFamily.PENALTY,
+            "Penalty waived",
+            "%s %s was cancelled. %s".formatted(penalty.chama.currency, penalty.amount, waiverReason),
+            "/chamas/" + penalty.chama.id + "/penalties");
+        if (notificationService.emailEnabled(penalty.member.keycloakUserId, NotificationEventFamily.PENALTY)) {
+            penaltyStatusEmailService.sendWaived(penalty.member.keycloakUserId, penalty.member.fullName,
+                penalty.chama.name, penalty.chama.currency, penalty.amount, waiverReason);
+        }
         return penalty;
     }
 

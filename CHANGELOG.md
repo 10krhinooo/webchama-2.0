@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [unreleased] - 2026-08-07
 
 ### Added
+- an in-app notification centre, with a bell, a live stream, and per-event-type preferences
+  covering both the inbox and email
 - a penalties page, making the existing issue, approve, waive and settle workflow reachable
 - loan disbursement from the loans page, making the M-Pesa B2C payout path reachable
 - dark mode, selectable per user and following the operating system by default
@@ -20,6 +22,8 @@ All notable changes to this project will be documented in this file.
   login, tenant isolation checks, and the M-Pesa contribution path end to end
 
 ### Fixed
+- deleting a chama that had recorded any activity failed on a foreign key, because activity_log
+  was missing from the ordered cleanup
 - frontend: stream server-sent events through nginx unbuffered, so the live activity feed
   works in a deployed environment instead of silently falling back to polling
 - db: generate a join_code for each chama in the dev demo seed
@@ -32,7 +36,7 @@ not collide on a version:
 
 | Version | Reserved for |
 |---|---|
-| V41 | notification and notification_preference tables |
+| V41 | notification and notification_preference tables (applied) |
 | V42 | chama_reminder_settings and reminder_dispatch tables |
 | V43 | WELFARE_WITHDRAWAL approval target type |
 | V44 | welfare_withdrawal status, requested_by, requested_at |

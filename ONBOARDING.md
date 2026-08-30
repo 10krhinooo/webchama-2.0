@@ -131,6 +131,25 @@ a dark surface, which is why that class no longer exists.
 Never write `bg-white`, `border-black/10` or a literal hex value into a component. Each is correct
 in exactly one theme.
 
+**Notify someone.** `NotificationService.record(...)` writes to a user's in-app inbox, and
+`notificationService.emailEnabled(...)` says whether the matching email should still go out. A
+business service does both, so one event produces an inbox row and a message, and a user who has
+switched that family off gets neither:
+
+```java
+notificationService.record(member.keycloakUserId, chama.id, NotificationEventFamily.LOAN,
+    "Loan approved", "Your loan of KES 10,000 was approved.", "/chamas/" + chama.id + "/loans");
+if (notificationService.emailEnabled(member.keycloakUserId, NotificationEventFamily.LOAN)) {
+    loanStatusEmailService.sendApproved(...);
+}
+```
+
+Notifications are addressed to a Keycloak user, not a member row: someone in three chamas has one
+inbox, and the bell renders on pages with no chama in the route. `record` joins the caller's
+transaction, so a rolled back action cannot leave someone told about something that did not
+happen. Preferences are per event family rather than per email, and a missing row means both
+channels are on.
+
 **Add a theme-aware colour.** Add the RGB triple to both the `:root` and `.dark` blocks in
 `index.css`, then expose it in `tailwind.config.js` through the `withAlpha` helper so it composes
 with an alpha channel like any built-in colour.

@@ -13,6 +13,7 @@ import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateAutoPushSettingsDto;
 import org.chama.dto.UpdateChamaDto;
+import org.chama.repository.ActivityLogRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.LoanDisbursementRepository;
@@ -55,6 +56,9 @@ public class ChamaService {
 
     @Inject
     PaymentRepository paymentRepository;
+
+    @Inject
+    ActivityLogRepository activityLogRepository;
 
     @Inject
     LoanRepaymentRepository loanRepaymentRepository;
@@ -213,6 +217,11 @@ public class ChamaService {
         contributionRepository.delete("chama.id", id);
         memberRoleRepository.deleteByChamaId(id);
         memberRepository.delete("chama.id", id);
+        // activity_log references chama with no cascade and was missing from this list, so
+        // deleting a chama that had recorded any activity, which is every chama that has been
+        // used, failed on the foreign key. notification is absent here deliberately: its own
+        // foreign key cascades, see V41.
+        activityLogRepository.delete("chama.id", id);
         chamaRepository.deleteById(id);
     }
 }

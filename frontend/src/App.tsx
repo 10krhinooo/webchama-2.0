@@ -18,6 +18,7 @@ import ApprovalsPage from './pages/staff/ApprovalsPage'
 import ResolutionsPage from './pages/staff/ResolutionsPage'
 import WelfareFundPage from './pages/staff/WelfareFundPage'
 import DocumentGeneratorPage from './pages/staff/DocumentGeneratorPage'
+import NotificationPreferencesPage from './pages/staff/NotificationPreferencesPage'
 import AdminOverviewPage from './pages/staff/AdminOverviewPage'
 import SecurityEventsPage from './pages/staff/SecurityEventsPage'
 
@@ -36,6 +37,7 @@ function App() {
               }
             >
               <Route path="/my-chamas" element={<MyChamasPage />} />
+              <Route path="/notification-preferences" element={<NotificationPreferencesPage />} />
               <Route path="/chamas" element={<ChamasPage />} />
               <Route path="/chamas/:chamaId/dashboard" element={<DashboardPage />} />
               <Route path="/chamas/:chamaId/members" element={<MembersPage />} />

@@ -10,6 +10,7 @@ import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.ApprovalTargetType;
 import org.chama.domain.enums.LoanDisbursementStatus;
 import org.chama.domain.enums.LoanStatus;
+import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.model.Loan;
 import org.chama.domain.model.LoanDisbursement;
 import org.chama.dto.B2cResultCallbackDto;
@@ -43,6 +44,9 @@ public class LoanDisbursementService {
 
     @Inject
     LoanRepository loanRepository;
+
+    @Inject
+    NotificationService notificationService;
 
     @Inject
     LoanDisbursementRepository loanDisbursementRepository;
@@ -165,8 +169,15 @@ public class LoanDisbursementService {
             Loan loan = disbursement.loan;
             loan.status = LoanStatus.DISBURSED;
             loan.disbursedAt = disbursement.disbursedAt;
-            loanStatusEmailService.sendDisbursed(loan.member.keycloakUserId, loan.member.fullName,
-                loan.chama.name, loan.chama.currency, disbursement.amount);
+            notificationService.record(loan.member.keycloakUserId, loan.chama.id,
+                NotificationEventFamily.LOAN,
+                "Loan disbursed",
+                "%s %s has been sent to your M-Pesa number.".formatted(loan.chama.currency, disbursement.amount),
+                "/chamas/" + loan.chama.id + "/loans");
+            if (notificationService.emailEnabled(loan.member.keycloakUserId, NotificationEventFamily.LOAN)) {
+                loanStatusEmailService.sendDisbursed(loan.member.keycloakUserId, loan.member.fullName,
+                    loan.chama.name, loan.chama.currency, disbursement.amount);
+            }
         } else {
             disbursement.status = LoanDisbursementStatus.FAILED;
             // Reopen the loan for a retry: initiate() requires status == APPROVED, and claim()
@@ -176,8 +187,15 @@ public class LoanDisbursementService {
             loan.status = LoanStatus.APPROVED;
             LOG.infof("[B2C] Disbursement %d failed: resultCode=%d %s",
                 disbursement.id, result.resultCode(), result.resultDesc());
-            loanStatusEmailService.sendDisbursementFailed(loan.member.keycloakUserId, loan.member.fullName,
-                loan.chama.name, loan.chama.currency, disbursement.amount, result.resultDesc());
+            notificationService.record(loan.member.keycloakUserId, loan.chama.id,
+                NotificationEventFamily.LOAN,
+                "Loan payout failed",
+                "The payout of %s %s did not go through. %s".formatted(loan.chama.currency, disbursement.amount, result.resultDesc()),
+                "/chamas/" + loan.chama.id + "/loans");
+            if (notificationService.emailEnabled(loan.member.keycloakUserId, NotificationEventFamily.LOAN)) {
+                loanStatusEmailService.sendDisbursementFailed(loan.member.keycloakUserId, loan.member.fullName,
+                    loan.chama.name, loan.chama.currency, disbursement.amount, result.resultDesc());
+            }
         }
     }
 

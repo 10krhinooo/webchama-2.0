@@ -145,7 +145,10 @@ services:
       CONTRIBUTION_AUTO_PUSH_ENABLED: "false"
       PAYMENT_MPESA_RECONCILIATION_ENABLED: "false"
     ports:
-      - "8081:8080"
+      # Deliberately not 8081: that is the port @QuarkusTest binds, so publishing the e2e
+      # backend there means `./mvnw verify` fails with "port already bound" whenever this stack
+      # happens to be running.
+      - "8082:8080"
 
   frontend:
     build:

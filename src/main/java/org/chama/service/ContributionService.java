@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.ContributionStatus;
+import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.model.Contribution;
 import org.chama.domain.model.Member;
 import org.chama.dto.CreateContributionDto;
@@ -29,6 +30,9 @@ public class ContributionService {
 
     @Inject
     ContributionRepository contributionRepository;
+
+    @Inject
+    NotificationService notificationService;
 
     @Inject
     MemberRepository memberRepository;
@@ -119,11 +123,20 @@ public class ContributionService {
             contribution.member.fullName + " paid " + contribution.chama.currency + " " + amount + " towards their contribution");
 
         BigDecimal remaining = contribution.amountDue.subtract(contribution.amountPaid);
-        paymentReceiptEmailService.sendContributionReceipt(
-            contribution.member.keycloakUserId, contribution.member.fullName,
-            contribution.chama.name, contribution.chama.currency,
-            amount, contribution.amountDue, remaining.max(BigDecimal.ZERO),
-            contribution.period, method, contribution.paidAt);
+        notificationService.record(contribution.member.keycloakUserId, contribution.chama.id,
+            NotificationEventFamily.PAYMENT,
+            "Contribution received",
+            "%s %s recorded for %s. %s %s still outstanding.".formatted(
+                contribution.chama.currency, amount, contribution.period,
+                contribution.chama.currency, remaining.max(BigDecimal.ZERO)),
+            "/chamas/" + contribution.chama.id + "/contributions");
+        if (notificationService.emailEnabled(contribution.member.keycloakUserId, NotificationEventFamily.PAYMENT)) {
+            paymentReceiptEmailService.sendContributionReceipt(
+                contribution.member.keycloakUserId, contribution.member.fullName,
+                contribution.chama.name, contribution.chama.currency,
+                amount, contribution.amountDue, remaining.max(BigDecimal.ZERO),
+                contribution.period, method, contribution.paidAt);
+        }
         return contribution;
     }
 

@@ -8,6 +8,7 @@ import jakarta.ws.rs.NotFoundException;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.LoanRepaymentStatus;
 import org.chama.domain.enums.LoanStatus;
+import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.enums.PaymentMethod;
 import org.chama.domain.enums.PaymentPurpose;
 import org.chama.domain.enums.PaymentStatus;
@@ -37,6 +38,9 @@ public class LoanService {
 
     @Inject
     LoanRepository loanRepository;
+
+    @Inject
+    NotificationService notificationService;
 
     @Inject
     LoanRepaymentRepository loanRepaymentRepository;
@@ -112,8 +116,15 @@ public class LoanService {
         loan.approvedAt = Instant.now();
         activityLogService.log(loan.chama, ActivityEventType.LOAN_APPROVED,
             loan.member.fullName + "'s loan of " + loan.chama.currency + " " + loan.principal + " was approved");
-        loanStatusEmailService.sendApproved(loan.member.keycloakUserId, loan.member.fullName,
-            loan.chama.name, loan.chama.currency, loan.principal);
+        notificationService.record(loan.member.keycloakUserId, loan.chama.id,
+            NotificationEventFamily.LOAN,
+            "Loan approved",
+            "Your loan of %s %s was approved.".formatted(loan.chama.currency, loan.principal),
+            "/chamas/" + loan.chama.id + "/loans");
+        if (notificationService.emailEnabled(loan.member.keycloakUserId, NotificationEventFamily.LOAN)) {
+            loanStatusEmailService.sendApproved(loan.member.keycloakUserId, loan.member.fullName,
+                loan.chama.name, loan.chama.currency, loan.principal);
+        }
         return loan;
     }
 
@@ -127,8 +138,15 @@ public class LoanService {
         loan.status = LoanStatus.REJECTED;
         activityLogService.log(loan.chama, ActivityEventType.LOAN_REJECTED,
             loan.member.fullName + "'s loan of " + loan.chama.currency + " " + loan.principal + " was rejected");
-        loanStatusEmailService.sendRejected(loan.member.keycloakUserId, loan.member.fullName,
-            loan.chama.name, loan.chama.currency, loan.principal);
+        notificationService.record(loan.member.keycloakUserId, loan.chama.id,
+            NotificationEventFamily.LOAN,
+            "Loan rejected",
+            "Your loan request of %s %s was not approved.".formatted(loan.chama.currency, loan.principal),
+            "/chamas/" + loan.chama.id + "/loans");
+        if (notificationService.emailEnabled(loan.member.keycloakUserId, NotificationEventFamily.LOAN)) {
+            loanStatusEmailService.sendRejected(loan.member.keycloakUserId, loan.member.fullName,
+                loan.chama.name, loan.chama.currency, loan.principal);
+        }
         return loan;
     }
 

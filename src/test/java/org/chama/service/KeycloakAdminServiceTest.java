@@ -2,6 +2,7 @@ package org.chama.service;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
@@ -32,6 +33,11 @@ class KeycloakAdminServiceTest {
 
     @Inject
     KeycloakAdminService keycloakAdminService;
+
+    // The same key the service itself reads, so the suite follows the Keycloak it is pointed at
+    // rather than assuming the dev container's port is free.
+    @ConfigProperty(name = "keycloak.admin.url", defaultValue = "http://localhost:8180")
+    String keycloakUrl;
 
     @Test
     void createUserThenFindingItByEmailReturnsTheSameId() throws Exception {
@@ -108,7 +114,7 @@ class KeycloakAdminServiceTest {
             + "&password=" + URLEncoder.encode("definitely-the-wrong-password", StandardCharsets.UTF_8);
 
         HttpRequest req = HttpRequest.newBuilder(
-                URI.create("http://localhost:8180/realms/chama/protocol/openid-connect/token"))
+                URI.create(keycloakUrl + "/realms/chama/protocol/openid-connect/token"))
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .build();

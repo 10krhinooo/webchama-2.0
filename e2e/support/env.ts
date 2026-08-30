@@ -1,6 +1,6 @@
 /** One place for the addresses of the stack in docker-compose.e2e.yml. */
 export const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5174'
-export const BACKEND_URL = process.env.E2E_BACKEND_URL ?? 'http://localhost:8081'
+export const BACKEND_URL = process.env.E2E_BACKEND_URL ?? 'http://localhost:8082'
 export const KEYCLOAK_URL = process.env.E2E_KEYCLOAK_URL ?? 'http://localhost:8181'
 
 /**
