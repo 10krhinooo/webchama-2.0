@@ -2,6 +2,7 @@ package org.chama.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.chama.domain.ChamaTime;
 import org.chama.domain.enums.ContributionStatus;
 import org.chama.domain.enums.LoanRepaymentStatus;
 import org.chama.domain.enums.LoanStatus;
@@ -22,7 +23,6 @@ import org.chama.repository.WelfareContributionRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +41,6 @@ import java.util.Set;
 @ApplicationScoped
 public class MemberSummaryService {
 
-    private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
     private static final int MONEY_SCALE = 2;
 
     @Inject
@@ -69,7 +68,7 @@ public class MemberSummaryService {
     CreditScoreService creditScoreService;
 
     public MemberSummaryDto summarise(Long chamaId, Member member) {
-        LocalDate today = LocalDate.now(CHAMA_ZONE);
+        LocalDate today = LocalDate.now(ChamaTime.ZONE);
         List<Contribution> contributions = contributionRepository.findByChamaAndMember(chamaId, member.id);
 
         BigDecimal contributedTotal = sum(contributions.stream().map(c -> c.amountPaid).toList());

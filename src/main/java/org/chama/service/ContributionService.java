@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.ChamaTime;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.enums.ContributionStatus;
 import org.chama.domain.enums.NotificationEventFamily;
@@ -17,7 +18,6 @@ import org.chama.service.notification.PaymentReceiptEmailService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 @ApplicationScoped
@@ -26,7 +26,6 @@ public class ContributionService {
     // Every chama and member is Kenya-based (single currency KES, M-Pesa-only payments), so "today"
     // for due-date/streak purposes is always the Nairobi calendar day, never the server's own
     // timezone or UTC, both of which disagree with Nairobi for part of every day.
-    private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
 
     @Inject
     ContributionRepository contributionRepository;
@@ -65,7 +64,7 @@ public class ContributionService {
      * drift out of sync with the underlying payment records the way a cached counter could.
      */
     public int currentStreak(Long chamaId, Long memberId) {
-        LocalDate today = LocalDate.now(CHAMA_ZONE);
+        LocalDate today = LocalDate.now(ChamaTime.ZONE);
         int streak = 0;
         for (Contribution contribution : contributionRepository.findByChamaAndMemberOrderByPeriodDesc(chamaId, memberId)) {
             if (contribution.period.isAfter(today)) {
@@ -82,7 +81,7 @@ public class ContributionService {
     private boolean isPaidOnTime(Contribution contribution) {
         return contribution.status == ContributionStatus.PAID
             && contribution.paidAt != null
-            && !LocalDate.ofInstant(contribution.paidAt, CHAMA_ZONE).isAfter(contribution.period);
+            && !LocalDate.ofInstant(contribution.paidAt, ChamaTime.ZONE).isAfter(contribution.period);
     }
 
     public Contribution get(Long chamaId, Long contributionId) {

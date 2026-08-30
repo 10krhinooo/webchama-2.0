@@ -60,6 +60,10 @@ All notable changes to this project will be documented in this file.
 - the loans table reads every credit score in one request instead of one request per member
 
 ### Fixed
+- the contribution streak test built its fixture on the server's calendar while the service it
+  exercised reads Nairobi's, so it passed for twenty-one hours a day and failed for the other
+  three on any UTC host. The zone is now stated once, in ChamaTime, rather than redeclared in
+  seven services and restated in the tests
 - a failed list request rendered as a confident empty state. A page that could not reach the server
   said "you are not part of any chama yet" and invited the reader to create one
 - every modal in the app was positioned off centre, because the open and close animations set the

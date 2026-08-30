@@ -5,6 +5,7 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.chama.domain.ChamaTime;
 import org.chama.domain.enums.NotificationEventFamily;
 import org.chama.domain.enums.ReminderKind;
 import org.chama.domain.model.ChamaReminderSettings;
@@ -19,7 +20,6 @@ import org.jboss.logging.Logger;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -46,8 +46,7 @@ public class ContributionReminderService {
 
     private static final Logger LOG = Logger.getLogger(ContributionReminderService.class);
 
-    /** Same reasoning as ContributionService.CHAMA_ZONE: a due date is a Nairobi calendar date. */
-    private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
+    /** Same reasoning as ContributionService.ChamaTime.ZONE: a due date is a Nairobi calendar date. */
 
     @ConfigProperty(name = "contribution.reminders.enabled", defaultValue = "true")
     boolean remindersEnabled;
@@ -98,8 +97,8 @@ public class ContributionReminderService {
         if (!remindersEnabled) {
             return;
         }
-        LocalDate today = LocalDate.now(CHAMA_ZONE);
-        int hour = LocalTime.now(CHAMA_ZONE).getHour();
+        LocalDate today = LocalDate.now(ChamaTime.ZONE);
+        int hour = LocalTime.now(ChamaTime.ZONE).getHour();
 
         List<Long> chamaIds = QuarkusTransaction.requiringNew().call(() ->
             settingsRepository.findEnabledForHour(hour).stream().map(s -> s.chama.id).toList());
