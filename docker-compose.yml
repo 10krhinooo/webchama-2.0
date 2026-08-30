@@ -22,16 +22,16 @@ services:
     image: quay.io/keycloak/keycloak:24.0
     container_name: webchama-keycloak
     restart: unless-stopped
-    # See keycloak/dev-realm-entrypoint.sh: refuses to import realm-chama.json (which is committed
-    # to git) unless CHAMA_DEV_REALM_IMPORT=true, and randomizes the SUPER_ADMIN password on every
-    # start rather than using the committed placeholder value (audit finding P0-2).
+    # See keycloak/dev-realm-entrypoint.sh: always imports realm-chama.json (which is committed to
+    # git, dev-only) but substitutes in CHAMA_SUPERADMIN_PASSWORD rather than using the committed
+    # placeholder value (audit finding P0-2).
     entrypoint: ["/bin/sh", "/opt/keycloak/dev-realm-entrypoint.sh"]
     environment:
       KC_DB: dev-file
       KC_HTTP_PORT: 8180
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      CHAMA_DEV_REALM_IMPORT: "${CHAMA_DEV_REALM_IMPORT:-}"
+      CHAMA_SUPERADMIN_PASSWORD: "${CHAMA_SUPERADMIN_PASSWORD:-}"
     ports:
       - "8180:8180"
     volumes:
