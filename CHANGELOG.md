@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
   billed against contributions collected month by month, and unpaid balances aged into buckets
 - bulk member import from a CSV file, with a preview that reports every problem in the file before
   anything is created
+- a My Money page: a member's own contributions, loans, payouts, penalties, welfare contributions
+  and credit score gathered into one mobile-first summary instead of five pages to visit and add up
 - an in-app notification centre, with a bell, a live stream, and per-event-type preferences
   covering both the inbox and email
 - a penalties page, making the existing issue, approve, waive and settle workflow reachable

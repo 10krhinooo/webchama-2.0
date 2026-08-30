@@ -128,6 +128,38 @@ export async function resendInvite(chamaId: number, id: number): Promise<MemberI
   return data
 }
 
+export interface MemberSummary {
+  memberId: number
+  fullName: string
+  currency: string
+  contributedTotal: string
+  contributionsOutstanding: string
+  overdueContributionCount: number
+  /** Null when nothing is outstanding. A zero date would read as a real one. */
+  nextContributionDue: string | null
+  nextContributionAmount: string | null
+  onTimeStreak: number
+  activeLoanCount: number
+  loanOutstanding: string
+  nextRepaymentDue: string | null
+  nextRepaymentAmount: string | null
+  outstandingPenaltyCount: number
+  outstandingPenaltyTotal: string
+  payoutsReceived: number
+  nextPayoutRound: number | null
+  nextPayoutDate: string | null
+  welfareContributed: string
+  /** Null with an INSUFFICIENT_HISTORY band when there is nothing to judge. */
+  creditScore: number | null
+  creditScoreBand: CreditScoreBand
+}
+
+/** The caller's own standing in one chama. Resolved from the session, never from an id. */
+export async function getMySummary(chamaId: number): Promise<MemberSummary> {
+  const { data } = await client.get<MemberSummary>(`/chamas/${chamaId}/members/mine/summary`)
+  return data
+}
+
 export async function getCreditScore(chamaId: number, memberId: number): Promise<CreditScore> {
   const { data } = await client.get<CreditScore>(`/chamas/${chamaId}/members/${memberId}/credit-score`)
   return data

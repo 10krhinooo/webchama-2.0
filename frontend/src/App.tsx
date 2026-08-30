@@ -10,6 +10,7 @@ import MyChamasPage from './pages/staff/MyChamasPage'
 import DashboardPage from './pages/staff/DashboardPage'
 import MembersPage from './pages/staff/MembersPage'
 import ContributionsPage from './pages/staff/ContributionsPage'
+import MyMoneyPage from './pages/staff/MyMoneyPage'
 import ContributionPaymentResultPage from './pages/staff/ContributionPaymentResultPage'
 import LoansPage from './pages/staff/LoansPage'
 import PenaltiesPage from './pages/staff/PenaltiesPage'
@@ -42,6 +43,7 @@ function App() {
               <Route path="/chamas" element={<ChamasPage />} />
               <Route path="/chamas/:chamaId/dashboard" element={<DashboardPage />} />
               <Route path="/chamas/:chamaId/members" element={<MembersPage />} />
+              <Route path="/chamas/:chamaId/my-money" element={<MyMoneyPage />} />
               <Route path="/chamas/:chamaId/contributions" element={<ContributionsPage />} />
               <Route path="/chamas/:chamaId/loans" element={<LoansPage />} />
               <Route path="/chamas/:chamaId/penalties" element={<PenaltiesPage />} />
