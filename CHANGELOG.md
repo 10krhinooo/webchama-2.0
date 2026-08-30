@@ -38,6 +38,10 @@ All notable changes to this project will be documented in this file.
   creation, and the CSV export
 
 ### Changed
+- adopted a new Webchama mark: two ticks, the second confirming the first, drawing the
+  maker-checker rule the product is built on. It replaces the woven-cross-hatch swatch in the
+  favicon, the Keycloak sign-in page, the sidebar, the footer and the error screens. The concepts
+  it was chosen from are kept in design/logos
 - the home page fills a wide screen instead of sitting in a narrow column, and the hero drops its
   background glow in dark mode, where the saffron one read as a yellow smear rather than as light
 - route changes now animate in, staggering what sits at the top of a page so a dashboard of cards
