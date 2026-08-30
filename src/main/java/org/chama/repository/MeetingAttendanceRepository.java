@@ -21,4 +21,14 @@ public class MeetingAttendanceRepository implements PanacheRepository<MeetingAtt
     public List<MeetingAttendance> findByChamaAndMember(Long chamaId, Long memberId) {
         return list("meeting.chama.id = ?1 and member.id = ?2", chamaId, memberId);
     }
+
+    /**
+     * Every attendance row in a chama, with the meeting joined in. Credit scoring reads each
+     * row's meeting date, so leaving the association lazy would turn one query into one per
+     * meeting.
+     */
+    public List<MeetingAttendance> findByChama(Long chamaId) {
+        return find("select a from MeetingAttendance a join fetch a.meeting m where m.chama.id = ?1", chamaId)
+            .list();
+    }
 }

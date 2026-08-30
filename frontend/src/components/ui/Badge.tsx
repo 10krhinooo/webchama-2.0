@@ -1,6 +1,12 @@
 interface Props {
   label: string
   variant: 'success' | 'danger' | 'warning' | 'primary' | 'muted'
+  /**
+   * Explains a label that is too terse to stand alone, such as a bare number. Rendered for screen
+   * readers as well as in the tooltip, because a title attribute alone is announced inconsistently
+   * and is unreachable without a pointer.
+   */
+  description?: string
 }
 
 const variants = {
@@ -11,10 +17,14 @@ const variants = {
   muted: 'bg-muted/10 text-muted ring-1 ring-muted/25',
 }
 
-export default function Badge({ label, variant }: Props) {
+export default function Badge({ label, variant, description }: Props) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${variants[variant]}`}>
+    <span
+      title={description}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${variants[variant]}`}
+    >
       {label}
+      {description && <span className="sr-only">, {description}</span>}
     </span>
   )
 }

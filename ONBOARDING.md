@@ -165,6 +165,30 @@ balance because another withdrawal may have cleared while this one waited for a 
 `index.css`, then expose it in `tailwind.config.js` through the `withAlpha` helper so it composes
 with an alpha channel like any built-in colour.
 
+**Change the credit score.** `CreditScoreService` is not a weighted average of three ratios, and
+several of its rules exist because the obvious version of them was wrong. Before adjusting a
+weight, know which of these you are changing:
+
+- *Absent evidence is not good evidence.* A component with nothing to measure is dropped and its
+  weight redistributed over the rest. Scoring it as a pass hands every member in a chama that does
+  not track attendance a free 20 percent.
+- *Money is measured, not statuses counted.* Rates come from `amountPaid` against `amountDue`,
+  because `PARTIAL` and `PENDING` are the same value to a status check but not to a treasurer.
+  Each obligation is capped at its own amount due, so overpaying one month is not a credit against
+  skipping the next.
+- *Thin records are pulled toward the middle,* by smoothing toward a neutral prior worth a couple
+  of observations. A member's first missed payment does not make them a zero percent payer.
+  `confidence` reports how much evidence there was, separately from the score.
+- *Penalties are a deduction, not a component.* They are only ever evidence in one direction, so
+  scoring them would pay a bonus to the overwhelming majority who have none.
+- *A default is categorical.* It caps the score rather than costing it a few points.
+- *A member with no history has no score,* not a perfect one. `score` is null and `band` is
+  `INSUFFICIENT_HISTORY`; callers must branch on the band.
+
+Anything that renders a score per row calls `GET .../members/credit-scores`, which reads each
+table once for the whole chama. Calling the single-member endpoint in a loop is five queries per
+member.
+
 ## Debugging guide
 
 - **Postgres**: `localhost:5434`, database `chama` (dev) or `chama_test` (tests), user/password

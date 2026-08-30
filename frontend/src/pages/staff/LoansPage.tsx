@@ -13,7 +13,7 @@ import {
   type LoanRepayment,
   type InterestMethod,
 } from '../../api/loans'
-import { getMembers, getCreditScore, type Member } from '../../api/members'
+import { getMembers, getCreditScores, CREDIT_SCORE_BAND_LABELS, type CreditScore, type Member } from '../../api/members'
 import { getChama, type Chama } from '../../api/chamas'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { extractErrorMessage } from '../../api/client'
@@ -54,10 +54,29 @@ function repaymentStatusVariant(status: LoanRepayment['status']) {
 
 const formatMoney = (amount: number) => `KES ${amount.toLocaleString()}`
 
-function creditScoreVariant(score: number) {
-  if (score >= 70) return 'success' as const
-  if (score >= 40) return 'warning' as const
-  return 'danger' as const
+function creditScoreVariant(band: CreditScore['band']) {
+  if (band === 'EXCELLENT' || band === 'GOOD') return 'success' as const
+  if (band === 'FAIR') return 'warning' as const
+  if (band === 'POOR') return 'danger' as const
+  return 'muted' as const
+}
+
+/**
+ * A thin record is shown as such rather than as a number. A member with two months of history is
+ * not comparable to one with two years, and a bare "62" hides that difference entirely.
+ */
+function creditScoreLabel(score: CreditScore) {
+  if (score.score === null) return 'New'
+  return score.confidence < 0.5 ? `${score.score}?` : String(score.score)
+}
+
+function creditScoreDescription(score: CreditScore) {
+  const band = CREDIT_SCORE_BAND_LABELS[score.band]
+  if (score.score === null) {
+    return `${band}, nothing to score yet`
+  }
+  const evidence = `${score.contributionsConsidered} contributions, ${score.loanRepaymentsConsidered} repayments, ${score.meetingsConsidered} meetings`
+  return score.confidence < 0.5 ? `${band}, based on limited history: ${evidence}` : `${band}, based on ${evidence}`
 }
 
 export default function LoansPage() {
@@ -68,7 +87,7 @@ export default function LoansPage() {
 
   const [loans, setLoans] = useState<Loan[]>([])
   const [members, setMembers] = useState<Member[]>([])
-  const [creditScores, setCreditScores] = useState<Record<number, number>>({})
+  const [creditScores, setCreditScores] = useState<Record<number, CreditScore>>({})
   const [chama, setChama] = useState<Chama | null>(null)
   const [disbursing, setDisbursing] = useState<Loan | null>(null)
   const [disbursingId, setDisbursingId] = useState<number | null>(null)
@@ -98,7 +117,7 @@ export default function LoansPage() {
       .then(([l, m]) => {
         setLoans(l)
         setMembers(m)
-        if (canManage) loadCreditScores(l)
+        if (canManage) loadCreditScores()
       })
       .finally(() => setLoading(false))
 
@@ -113,14 +132,13 @@ export default function LoansPage() {
   }
 
   // A data-backed signal for the chairperson/treasurer reviewing a loan request, not a hard gate
-  // (issue #59). Fetched per distinct member on the current page of loans, a missing entry just
-  // means the lookup hasn't resolved yet.
-  const loadCreditScores = (currentLoans: Loan[]) => {
-    const memberIds = [...new Set(currentLoans.map((l) => l.memberId))]
-    Promise.all(memberIds.map((id) => getCreditScore(chamaId, id).then((s) => [id, s.score] as const)))
-      .then((entries) => setCreditScores(Object.fromEntries(entries)))
+  // (issue #59). One request for the whole chama rather than one per member on the page, which
+  // was a request each and five queries behind every one.
+  const loadCreditScores = () => {
+    getCreditScores(chamaId)
+      .then((scores) => setCreditScores(Object.fromEntries(scores.map((s) => [s.memberId, s]))))
       .catch(() => {
-        /* Non-critical signal, a failed lookup just leaves that loan's score blank. */
+        /* Non-critical signal, a failed lookup just leaves the scores blank. */
       })
   }
 
@@ -278,7 +296,11 @@ export default function LoansPage() {
                   {canManage && (
                     <TableCell>
                       {creditScores[loan.memberId] !== undefined
-                        ? <Badge label={String(creditScores[loan.memberId])} variant={creditScoreVariant(creditScores[loan.memberId])} />
+                        ? <Badge
+                            label={creditScoreLabel(creditScores[loan.memberId])}
+                            variant={creditScoreVariant(creditScores[loan.memberId].band)}
+                            description={creditScoreDescription(creditScores[loan.memberId])}
+                          />
                         : <span className="text-muted text-xs">—</span>}
                     </TableCell>
                   )}

@@ -93,6 +93,20 @@ public class MemberResource {
         return creditScoreService.calculate(chamaId, id);
     }
 
+    /**
+     * Every active member's score in one request, for tables that show a score per row.
+     *
+     * <p>Restricted to CHAIRPERSON and TREASURER with no self-service variant, unlike the single
+     * member endpoint above. One member's own score is theirs to see; the whole chama's is a
+     * ranked view of everyone's financial standing, which is treasury information.
+     */
+    @GET
+    @Path("/credit-scores")
+    public List<CreditScoreDto> creditScores(@PathParam("chamaId") Long chamaId) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        return creditScoreService.calculateAll(chamaId);
+    }
+
     @POST
     public Response create(@PathParam("chamaId") Long chamaId, @Valid CreateMemberDto dto) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.CHAIRPERSON);

@@ -26,8 +26,16 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - welfare fund withdrawals above the chama's approval threshold now require the same maker-checker
   dual sign-off as loan disbursements and payouts, and move no money until it clears
+- rebuilt the member credit score: it measures amounts rather than counting statuses, weights
+  recent behaviour more heavily than old, smooths thin records toward a neutral middle, drops a
+  component the chama records nothing for instead of scoring it as a pass, deducts for penalties
+  that stood, caps the score on a defaulted loan, and reports a member with no history as having
+  no score rather than a perfect one
+- the loans table reads every credit score in one request instead of one request per member
 
 ### Fixed
+- credit scoring compared due dates in UTC rather than Africa/Nairobi, so contributions due today
+  read as overdue for the first three hours of a Nairobi morning
 - deleting a chama that had recorded any activity failed on a foreign key, because activity_log
   was missing from the ordered cleanup
 - frontend: stream server-sent events through nginx unbuffered, so the live activity feed
@@ -48,7 +56,7 @@ not collide on a version:
 | V44 | welfare_withdrawal status, requested_by, requested_at (applied) |
 | V45 | REMINDER_SENT and MEMBERS_IMPORTED activity event types |
 | V46 | analytics aggregation indexes |
-| V47 | loan_repayment.paid_at |
+| V47 | loan_repayment.paid_at (applied) |
 
 V28 has never existed and is a permanent hole in the sequence. Flyway does not care, but it is
 worth knowing before someone tries to fill it.

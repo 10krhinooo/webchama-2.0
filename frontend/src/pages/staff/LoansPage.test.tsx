@@ -16,7 +16,14 @@ vi.mock('../../api/loans', () => ({
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
-  getCreditScore: vi.fn(),
+  getCreditScores: vi.fn(),
+  CREDIT_SCORE_BAND_LABELS: {
+    INSUFFICIENT_HISTORY: 'Not enough history',
+    POOR: 'Poor',
+    FAIR: 'Fair',
+    GOOD: 'Good',
+    EXCELLENT: 'Excellent',
+  },
 }))
 vi.mock('../../api/chamas', () => ({
   getChama: vi.fn(),
@@ -27,7 +34,7 @@ vi.mock('../../hooks/useMyMembership', () => ({
 
 import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment, disburseLoan } from '../../api/loans'
 import type { Loan } from '../../api/loans'
-import { getMembers, getCreditScore } from '../../api/members'
+import { getMembers, getCreditScores, type CreditScore } from '../../api/members'
 import { getChama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 
@@ -41,7 +48,7 @@ const mockRejectLoan = rejectLoan as ReturnType<typeof vi.fn>
 const mockGetLoanRepayments = getLoanRepayments as ReturnType<typeof vi.fn>
 const mockRecordLoanRepayment = recordLoanRepayment as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
-const mockGetCreditScore = getCreditScore as ReturnType<typeof vi.fn>
+const mockGetCreditScores = getCreditScores as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 
 const loan = {
@@ -59,6 +66,29 @@ const loan = {
   requestedAt: '2026-07-01T00:00:00Z',
   approvedAt: null,
   disbursedAt: null,
+}
+
+function aCreditScore(overrides: Partial<CreditScore> = {}): CreditScore {
+  return {
+    memberId: 5,
+    score: 82,
+    band: 'GOOD',
+    confidence: 0.9,
+    contributionConsistency: 0.88,
+    contributionTimeliness: 0.8,
+    loanRepaymentRate: 0.9,
+    meetingAttendanceRate: 0.7,
+    penaltyDeduction: 0,
+    outstandingDebt: '0.00',
+    totalSavings: '12000.00',
+    hasDefaultedLoan: false,
+    contributionsConsidered: 12,
+    meetingsConsidered: 6,
+    loanRepaymentsConsidered: 4,
+    strengths: [],
+    weaknesses: [],
+    ...overrides,
+  }
 }
 
 const repayment = {
@@ -101,7 +131,7 @@ describe('LoansPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetMembers.mockResolvedValue([{ id: 5, fullName: 'Jane Doe' }])
-    mockGetCreditScore.mockResolvedValue({ memberId: 5, score: 82 })
+    mockGetCreditScores.mockResolvedValue([aCreditScore()])
     mockGetChama.mockResolvedValue({ id: 3, name: 'Umoja', approvalThreshold: 50000 })
   })
 
@@ -120,8 +150,41 @@ describe('LoansPage', () => {
     mockGetLoans.mockResolvedValue([loan])
     renderPage()
 
-    await waitFor(() => expect(mockGetCreditScore).toHaveBeenCalledWith(3, 5))
+    // One request for the whole chama, not one per member on the page.
+    await waitFor(() => expect(mockGetCreditScores).toHaveBeenCalledWith(3))
     await waitFor(() => expect(screen.getByText('82')).toBeTruthy())
+  })
+
+  it('marks a thinly evidenced score rather than presenting it as settled', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    mockGetCreditScores.mockResolvedValue([aCreditScore({ score: 82, confidence: 0.2 })])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('82?')).toBeTruthy())
+    expect(screen.getByText(/based on limited history/)).toBeTruthy()
+  })
+
+  it('shows a member with no history as new instead of inventing a number', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    mockGetCreditScores.mockResolvedValue([
+      aCreditScore({ score: null, band: 'INSUFFICIENT_HISTORY', confidence: 0 }),
+    ])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('New')).toBeTruthy())
+    expect(screen.getByText(/nothing to score yet/)).toBeTruthy()
+  })
+
+  it('leaves the score blank when the lookup fails, without emptying the loans table', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetLoans.mockResolvedValue([loan])
+    mockGetCreditScores.mockRejectedValue(new Error('offline'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+    expect(screen.getByText('\u2014')).toBeTruthy()
   })
 
   it("does not show a credit score column to a plain member", async () => {
@@ -130,7 +193,7 @@ describe('LoansPage', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('View Schedule')).toBeTruthy())
-    expect(mockGetCreditScore).not.toHaveBeenCalled()
+    expect(mockGetCreditScores).not.toHaveBeenCalled()
     expect(screen.queryByText('Credit Score')).toBeNull()
   })
 

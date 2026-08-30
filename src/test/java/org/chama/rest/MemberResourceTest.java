@@ -48,6 +48,9 @@ import java.util.List;
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -367,7 +370,42 @@ class MemberResourceTest {
             .then()
                 .statusCode(200)
                 .body("memberId", equalTo(chairId.intValue()))
-                .body("score", equalTo(100));
+                // Nothing has been recorded for this member, so there is no number to report.
+                .body("score", nullValue())
+                .body("band", equalTo("INSUFFICIENT_HISTORY"));
+    }
+
+    @Test
+    @TestSecurity(user = "chair-1")
+    void chairpersonCanReadEveryScoreInOneRequest() {
+        given()
+            .when().get("/api/chamas/{chamaId}/members/credit-scores", chamaId)
+            .then()
+                .statusCode(200)
+                .body("size()", greaterThan(0))
+                .body("memberId", hasItem(chairId.intValue()));
+    }
+
+    @Test
+    @TestSecurity(user = "scores-plain-member")
+    void aPlainMemberCannotReadTheWholeChamasScores() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            Member plain = new Member();
+            plain.chama = chamaRepository.findById(chamaId);
+            plain.keycloakUserId = "scores-plain-member";
+            plain.fullName = "Scores Plain Member";
+            plain.phone = "254700000009";
+            memberRepository.persist(plain);
+            MemberRole role = new MemberRole();
+            role.member = plain;
+            role.role = MemberRoleType.MEMBER;
+            role.persist();
+        });
+
+        // Their own score is theirs to see. Everyone's, side by side, is treasury information.
+        given()
+            .when().get("/api/chamas/{chamaId}/members/credit-scores", chamaId)
+            .then().statusCode(403);
     }
 
     @Test
