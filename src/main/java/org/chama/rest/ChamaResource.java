@@ -15,6 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.ChamaDto;
+import org.chama.dto.ChamaReminderSettingsDto;
 import org.chama.dto.CreateChamaDto;
 import org.chama.dto.InviteToChamaDto;
 import org.chama.dto.JoinChamaDto;
@@ -23,9 +24,11 @@ import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateAutoPushSettingsDto;
 import org.chama.dto.UpdateChamaDto;
+import org.chama.dto.UpdateChamaReminderSettingsDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
 import org.chama.service.ChamaService;
+import org.chama.service.ContributionReminderService;
 import org.chama.service.MemberService;
 import org.chama.service.notification.ChamaInvitationEmailService;
 
@@ -39,6 +42,9 @@ public class ChamaResource {
 
     @Inject
     ChamaService chamaService;
+
+    @Inject
+    ContributionReminderService contributionReminderService;
 
     @Inject
     MemberService memberService;
@@ -95,6 +101,26 @@ public class ChamaResource {
     public ChamaDto updateAutoPushSettings(@PathParam("id") Long id, @Valid UpdateAutoPushSettingsDto dto) {
         tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON, MemberRoleType.TREASURER);
         return ChamaDto.from(chamaService.updateAutoPushSettings(id, dto));
+    }
+
+    @GET
+    @Path("/{id}/reminder-settings")
+    public ChamaReminderSettingsDto reminderSettings(@PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON, MemberRoleType.TREASURER);
+        return ChamaReminderSettingsDto.from(contributionReminderService.getOrCreate(id));
+    }
+
+    /**
+     * Same gate as the auto-push settings above: both decide what the application sends to members
+     * on their behalf, so both are a chairperson or treasurer call.
+     */
+    @PUT
+    @Path("/{id}/reminder-settings")
+    public ChamaReminderSettingsDto updateReminderSettings(@PathParam("id") Long id,
+                                                           @Valid UpdateChamaReminderSettingsDto dto) {
+        tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON, MemberRoleType.TREASURER);
+        return ChamaReminderSettingsDto.from(contributionReminderService.update(
+            id, dto.enabled(), dto.daysBeforeDue(), dto.overdueEveryDays(), dto.sendHour()));
     }
 
     /** Self-service: redeem another chama's join code to become a MEMBER there. Issue #170. */

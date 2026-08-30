@@ -113,6 +113,30 @@ export async function updateAutoPushSettings(
   return data
 }
 
+export interface ChamaReminderSettings {
+  chamaId: number
+  enabled: boolean
+  /** How many days ahead of the due date the first nudge goes out. */
+  daysBeforeDue: number
+  /** How often to nudge again once a contribution is overdue. */
+  overdueEveryDays: number
+  /** Hour of the Nairobi day to send at, 0 to 23. */
+  sendHour: number
+}
+
+export async function getReminderSettings(id: number): Promise<ChamaReminderSettings> {
+  const { data } = await client.get<ChamaReminderSettings>(`/chamas/${id}/reminder-settings`)
+  return data
+}
+
+export async function updateReminderSettings(
+  id: number,
+  payload: Omit<ChamaReminderSettings, 'chamaId'>,
+): Promise<ChamaReminderSettings> {
+  const { data } = await client.put<ChamaReminderSettings>(`/chamas/${id}/reminder-settings`, payload)
+  return data
+}
+
 export async function getSavingsProgress(id: number): Promise<SavingsProgress> {
   const { data } = await client.get<SavingsProgress>(`/chamas/${id}/savings-progress`)
   return data

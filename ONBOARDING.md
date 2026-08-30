@@ -150,6 +150,24 @@ transaction, so a rolled back action cannot leave someone told about something t
 happen. Preferences are per event family rather than per email, and a missing row means both
 channels are on.
 
+**Add a scheduled job that sends something.** Follow `ContributionReminderService`. Three rules
+carry most of the weight:
+
+- *Sweep hourly, act in one hour.* The job runs every hour and does nothing unless the current
+  Nairobi hour matches the chama's configured send hour, so a restart or a missed tick self-heals
+  on the next run instead of firing a batch of mail at three in the morning.
+- *Claim before sending, never after.* An `INSERT ... ON CONFLICT DO NOTHING` against a unique
+  constraint, skipping if the row count is zero. A select-then-insert is not atomic across
+  instances, and letting the constraint violation surface would mark the whole sweep transaction
+  rollback-only and undo every message already sent in it. A claim followed by a failed send is
+  deliberately not retried: a duplicate nudge annoys someone who has done nothing wrong, and the
+  next rung catches a genuine problem.
+- *One fresh transaction per recipient,* via `QuarkusTransaction.requiringNew()`, for the same
+  reason `ContributionAutoPushService` does it.
+
+Anything that sends on a member's behalf defaults to off. Turning a new channel on for every
+existing chama at migration time means mail nobody asked for, the morning after a deploy.
+
 **Gate a new action behind dual sign-off.** Follow `WelfareFundService`: split the action into a
 `request` that records the intent without moving anything and a `markDisbursed` that releases it,
 add the target to `ApprovalTargetType` in its own Flyway migration (Postgres refuses to use an enum

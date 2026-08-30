@@ -85,4 +85,17 @@ public class ContributionRepository implements PanacheRepository<Contribution> {
                 + " and (lastAutoPushAt is null or lastAutoPushAt < ?4)",
             ContributionStatus.PENDING, ContributionStatus.OVERDUE, today, earliestPossibleRetry);
     }
+
+    /**
+     * Everything in one chama that still owes money on or before a date, with the member joined in
+     * because the reminder sweep addresses each of them by name.
+     *
+     * <p>PAID is excluded, obviously; PARTIAL is not, because a member who has paid half still owes
+     * the other half and is exactly who a reminder is for.
+     */
+    public List<Contribution> findUnsettledByChamaUpTo(Long chamaId, LocalDate latestPeriod) {
+        return find("select c from Contribution c join fetch c.member"
+                + " where c.chama.id = ?1 and c.period <= ?2 and c.status <> ?3",
+            chamaId, latestPeriod, ContributionStatus.PAID).list();
+    }
 }

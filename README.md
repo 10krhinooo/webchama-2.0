@@ -63,6 +63,9 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   silently lost.
 - **Contributions**: due dates, partial payments, overdue flagging, on-time streak tracking, and
   opt-in scheduled auto-STK-push so a member's contribution can be charged automatically when due.
+  A chama can also switch on automatic reminders, a nudge some days before the due date, one on the
+  day, and a repeating one while a contribution stays outstanding, delivered in the app and by
+  email at an hour of the chama's choosing.
 - **Payments**: M-Pesa STK Push and Flutterwave card checkout for contributions, self-service only (a
   member can only pay their own remaining balance). M-Pesa B2C for loan disbursement. A background
   sweep reconciles M-Pesa payments still stuck PENDING after a lost or delayed Daraja callback, and

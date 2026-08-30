@@ -21,6 +21,10 @@ vi.mock('../../api/members', () => ({
   updateMyAutoPay: vi.fn(),
   exportMyData: vi.fn(),
 }))
+vi.mock('../../api/chamas', () => ({
+  getReminderSettings: vi.fn(),
+  updateReminderSettings: vi.fn(),
+}))
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
@@ -41,6 +45,7 @@ import {
   getMyPayments,
 } from '../../api/contributions'
 import { getMembers, updateMyAutoPay, exportMyData } from '../../api/members'
+import { getReminderSettings, updateReminderSettings } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 
@@ -57,6 +62,8 @@ const mockGetMyPayments = getMyPayments as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUpdateMyAutoPay = updateMyAutoPay as ReturnType<typeof vi.fn>
 const mockExportMyData = exportMyData as ReturnType<typeof vi.fn>
+const mockGetReminderSettings = getReminderSettings as ReturnType<typeof vi.fn>
+const mockUpdateReminderSettings = updateReminderSettings as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
 const mockSavePendingCardPayment = savePendingCardPayment as ReturnType<typeof vi.fn>
 
@@ -90,6 +97,80 @@ describe('ContributionsPage', () => {
     mockGetMyContributionStreak.mockResolvedValue(0)
     mockGetPayments.mockResolvedValue([])
     mockGetMyPayments.mockResolvedValue([])
+    mockGetReminderSettings.mockResolvedValue({
+      chamaId: 3, enabled: false, daysBeforeDue: 3, overdueEveryDays: 7, sendHour: 8,
+    })
+  })
+
+  it('lets a manager turn contribution reminders on', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockUpdateReminderSettings.mockResolvedValue({
+      chamaId: 3, enabled: true, daysBeforeDue: 5, overdueEveryDays: 7, sendHour: 8,
+    })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Reminders')).toBeTruthy())
+    fireEvent.click(screen.getByText('Reminders'))
+
+    await waitFor(() => expect(screen.getByLabelText('Send contribution reminders')).toBeTruthy())
+    fireEvent.click(screen.getByLabelText('Send contribution reminders'))
+    fireEvent.change(screen.getByLabelText(/days before the due date/i), { target: { value: '5' } })
+    fireEvent.click(screen.getByText('Save reminders', { selector: 'button[type="submit"]' }))
+
+    await waitFor(() => expect(mockUpdateReminderSettings).toHaveBeenCalledWith(3, {
+      enabled: true, daysBeforeDue: 5, overdueEveryDays: 7, sendHour: 8,
+    }))
+  })
+
+  it('shows reminders as off until someone turns them on', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Reminders')).toBeTruthy())
+    fireEvent.click(screen.getByText('Reminders'))
+
+    // Off by default, so a chama opts in rather than discovering it has been mailing members.
+    expect(await screen.findByLabelText('Send contribution reminders')).not.toBeChecked()
+  })
+
+  it('reports a failure to load the reminder settings instead of showing stale defaults', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockGetReminderSettings.mockRejectedValue(new Error('offline'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Reminders')).toBeTruthy())
+    fireEvent.click(screen.getByText('Reminders'))
+
+    expect(await screen.findByTestId('form-error')).toBeTruthy()
+    // Saving is blocked rather than writing back settings that were never loaded.
+    expect(screen.getByText('Save reminders', { selector: 'button[type="submit"]' })).toBeDisabled()
+  })
+
+  it('reports a failed reminder save without closing the modal', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, loading: false })
+    mockGetContributions.mockResolvedValue([])
+    mockUpdateReminderSettings.mockRejectedValue(new Error('Conflict'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Reminders')).toBeTruthy())
+    fireEvent.click(screen.getByText('Reminders'))
+    await waitFor(() => expect(screen.getByLabelText('Send contribution reminders')).toBeTruthy())
+    fireEvent.click(screen.getByText('Save reminders', { selector: 'button[type="submit"]' }))
+
+    expect(await screen.findByTestId('form-error')).toBeTruthy()
+    expect(screen.getByLabelText('Send contribution reminders')).toBeTruthy()
+  })
+
+  it('does not offer reminder settings to a plain member', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([])
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('My Contributions')).toBeTruthy())
+    expect(screen.queryByText('Reminders')).toBeNull()
   })
 
   it('shows the member self-service view with no management controls', async () => {

@@ -16,6 +16,7 @@ import {
   type PaymentMethod,
 } from '../../api/contributions'
 import { getMembers, updateMyAutoPay, exportMyData, type Member } from '../../api/members'
+import { getReminderSettings, updateReminderSettings, type ChamaReminderSettings } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -29,6 +30,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
+import { SkeletonLine } from '../../components/ui/Skeleton'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
@@ -71,6 +73,11 @@ export default function ContributionsPage() {
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [showRemindersModal, setShowRemindersModal] = useState(false)
+  const [reminderForm, setReminderForm] = useState<Omit<ChamaReminderSettings, 'chamaId'> | null>(null)
+  const [reminderNotice, setReminderNotice] = useState<string | null>(null)
+  const [reminderSaving, setReminderSaving] = useState(false)
+
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [payingContribution, setPayingContribution] = useState<Contribution | null>(null)
   const [mpesaConfirm, setMpesaConfirm] = useState<Contribution | null>(null)
@@ -115,6 +122,31 @@ export default function ContributionsPage() {
   }
 
   useEffect(refresh, [chamaId, canManage, roleLoading])
+
+  const openReminders = () => {
+    setReminderNotice(null)
+    setReminderForm(null)
+    setShowRemindersModal(true)
+    getReminderSettings(chamaId)
+      .then(({ chamaId: _ignored, ...settings }) => setReminderForm(settings))
+      .catch((err) => setReminderNotice(extractErrorMessage(err)))
+  }
+
+  const handleSaveReminders = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!reminderForm) return
+    setReminderSaving(true)
+    setReminderNotice(null)
+    try {
+      await updateReminderSettings(chamaId, reminderForm)
+      setNotice({ variant: 'success', message: 'Reminder settings saved.' })
+      setShowRemindersModal(false)
+    } catch (err) {
+      setReminderNotice(extractErrorMessage(err))
+    } finally {
+      setReminderSaving(false)
+    }
+  }
 
   const openCreate = () => {
     setCreateForm(EMPTY_CONTRIBUTION_FORM)
@@ -292,6 +324,9 @@ export default function ContributionsPage() {
             <LoadingButton variant="secondary" loading={exportingData} onClick={handleExportMyData}>
               Export my data
             </LoadingButton>
+            {canManage && (
+              <Button variant="secondary" onClick={openReminders}>Reminders</Button>
+            )}
             {canManage && <Button onClick={openCreate}>+ New Contribution</Button>}
           </div>
         )}
@@ -372,6 +407,54 @@ export default function ContributionsPage() {
 
       {!loading && !roleLoading && (
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} label="contributions" />
+      )}
+
+      {showRemindersModal && (
+        <Modal title="Contribution reminders" onClose={() => setShowRemindersModal(false)}>
+          <form onSubmit={handleSaveReminders} className="space-y-4">
+            <FormError message={reminderNotice} />
+            <p className="text-sm text-muted">
+              Members are nudged in the app and by email. Anyone who would rather not hear about
+              reminders can switch them off for themselves in their notification preferences.
+            </p>
+            {reminderForm === null ? (
+              <SkeletonLine className="h-24 w-full" />
+            ) : (
+              <>
+                <label className="flex items-center gap-2 text-sm text-ink/80">
+                  <input
+                    type="checkbox"
+                    checked={reminderForm.enabled}
+                    onChange={(e) => setReminderForm({ ...reminderForm, enabled: e.target.checked })}
+                    aria-label="Send contribution reminders"
+                  />
+                  Send contribution reminders
+                </label>
+                <FormField label="Days before the due date" htmlFor="reminder-days-before" required>
+                  <Input id="reminder-days-before" required type="number" min="1" max="30"
+                    value={String(reminderForm.daysBeforeDue)}
+                    onChange={(e) => setReminderForm({ ...reminderForm, daysBeforeDue: Number(e.target.value) })} />
+                </FormField>
+                <FormField label="Repeat every (days) once overdue" htmlFor="reminder-overdue-every" required>
+                  <Input id="reminder-overdue-every" required type="number" min="1" max="30"
+                    value={String(reminderForm.overdueEveryDays)}
+                    onChange={(e) => setReminderForm({ ...reminderForm, overdueEveryDays: Number(e.target.value) })} />
+                </FormField>
+                <FormField label="Send at (hour, Nairobi time)" htmlFor="reminder-send-hour" required>
+                  <Input id="reminder-send-hour" required type="number" min="0" max="23"
+                    value={String(reminderForm.sendHour)}
+                    onChange={(e) => setReminderForm({ ...reminderForm, sendHour: Number(e.target.value) })} />
+                </FormField>
+              </>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setShowRemindersModal(false)}>Cancel</Button>
+              <LoadingButton type="submit" loading={reminderSaving} disabled={reminderForm === null}>
+                Save reminders
+              </LoadingButton>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {showCreateModal && (
