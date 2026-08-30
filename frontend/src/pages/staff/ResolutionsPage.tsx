@@ -12,6 +12,7 @@ import { getMeetings, type Meeting } from '../../api/meetings'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -43,6 +44,7 @@ export default function ResolutionsPage() {
   const [resolutions, setResolutions] = useState<Resolution[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -55,11 +57,13 @@ export default function ResolutionsPage() {
   const refresh = () => {
     if (roleLoading) return
     setLoading(true)
+    setLoadError(null)
     Promise.all([getResolutions(chamaId), canManage ? getMeetings(chamaId) : Promise.resolve([])])
       .then(([r, m]) => {
         setResolutions(r)
         setMeetings(m)
       })
+      .catch((err) => setLoadError(extractErrorMessage(err)))
       .finally(() => setLoading(false))
   }
 
@@ -128,6 +132,8 @@ export default function ResolutionsPage() {
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
+      ) : loadError ? (
+        <LoadFailed what="resolutions" detail={loadError} onRetry={refresh} />
       ) : (
         <Table>
           <TableHeader>

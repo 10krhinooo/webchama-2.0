@@ -58,4 +58,38 @@ describe('Modal', () => {
     fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true })
     expect(screen.getByText('Last')).toBe(document.activeElement)
   })
+
+  it('is centred by layout rather than by a transform', () => {
+    // jsdom does no layout, so this asserts the mechanism rather than the position. It is worth
+    // pinning: the open and close animations set `transform` themselves and override a static
+    // translate, so a translate-centred dialog sits at 50% of the viewport instead of in the
+    // middle of it, and on a narrow screen it hangs off the right edge.
+    render(
+      <Modal title="Add Member" onClose={vi.fn()}>
+        <p>Body</p>
+      </Modal>,
+    )
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.className).not.toMatch(/translate-x-1\/2|left-1\/2/)
+
+    const wrapper = dialog.parentElement
+    expect(wrapper?.className).toContain('flex')
+    expect(wrapper?.className).toContain('items-center')
+    expect(wrapper?.className).toContain('justify-center')
+  })
+
+  it('lets a click beside the dialog through to the overlay behind it', () => {
+    render(
+      <Modal title="Add Member" onClose={vi.fn()}>
+        <p>Body</p>
+      </Modal>,
+    )
+
+    // The centring wrapper spans the viewport, so it would otherwise swallow every click meant
+    // for the overlay and the dialog could never be dismissed by clicking outside it.
+    const wrapper = screen.getByRole('dialog').parentElement
+    expect(wrapper?.className).toContain('pointer-events-none')
+    expect(screen.getByRole('dialog').className).toContain('pointer-events-auto')
+  })
 })

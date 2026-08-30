@@ -19,7 +19,10 @@ client.interceptors.request.use((config) => {
 function TokenRefresh() {
   useEffect(() => {
     const id = setInterval(() => {
-      keycloak.updateToken(30)
+      // A rejection here means the session is genuinely over, which the app already handles by
+      // sending an unauthenticated visitor to Keycloak. Left uncaught it is an unhandled rejection
+      // every twenty seconds for as long as the tab stays open.
+      keycloak.updateToken(30).catch(() => undefined)
     }, 20_000)
     return () => clearInterval(id)
   }, [])

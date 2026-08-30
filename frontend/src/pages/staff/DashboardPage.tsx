@@ -322,7 +322,7 @@ export default function DashboardPage() {
           />
         </Card>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatTile label="Members" value={memberCount} />
           <StatTile
             label="Contributions paid in full"

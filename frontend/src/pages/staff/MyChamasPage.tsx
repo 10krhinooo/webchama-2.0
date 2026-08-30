@@ -4,6 +4,7 @@ import { useKeycloak } from '@react-keycloak/web'
 import { getMyChamas, joinChama, type MyChama, type JoinChamaRequest } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import { roleBadgeText } from '../../utils/roleBadges'
+import LoadFailed from '../../components/ui/LoadFailed'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
@@ -28,11 +29,18 @@ export default function MyChamasPage() {
   const [joinForm, setJoinForm] = useState(EMPTY_JOIN_FORM)
   const [joining, setJoining] = useState(false)
   const [joinNotice, setJoinNotice] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const navigate = useNavigate()
   const { keycloak } = useKeycloak()
   const isSuperAdmin = keycloak.hasRealmRole('SUPER_ADMIN')
 
-  const refresh = () => getMyChamas().then(setChamas).finally(() => setLoading(false))
+  const refresh = () => {
+    setLoadError(null)
+    return getMyChamas()
+      .then(setChamas)
+      .catch((err) => setLoadError(extractErrorMessage(err)))
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
     if (isSuperAdmin) return
@@ -103,7 +111,9 @@ export default function MyChamasPage() {
         </div>
       </div>
 
-      {chamas.length === 0 ? (
+      {loadError ? (
+        <LoadFailed what="your chamas" detail={loadError} onRetry={refresh} />
+      ) : chamas.length === 0 ? (
         <Card className="px-4 py-10 text-center text-muted text-sm">
           You are not part of any chama yet.{' '}
           <Link to="/chamas" className="font-semibold text-brand hover:underline">

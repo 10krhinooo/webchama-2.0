@@ -15,6 +15,7 @@ import { getMembers, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
+import LoadFailed from '../../components/ui/LoadFailed'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -184,7 +185,7 @@ export default function PenaltiesPage() {
       {loading ? (
         <TablePageSkeleton />
       ) : loadError ? (
-        <FormError message={loadError} />
+        <LoadFailed what="penalties" detail={loadError} onRetry={refresh} />
       ) : penalties.length === 0 ? (
         <EmptyState
           title={canManage ? 'No penalties issued' : 'No penalties against you'}

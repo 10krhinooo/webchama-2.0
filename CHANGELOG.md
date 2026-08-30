@@ -38,6 +38,11 @@ All notable changes to this project will be documented in this file.
   creation, and the CSV export
 
 ### Changed
+- quarkus-groovy-junit5 moved to test scope. It was shipping a test framework into the production
+  image, with no Groovy sources anywhere in the tree
+- armed the Qodana severity thresholds, which were fully commented out, so the quality gate can
+  actually fail a build
+- removed the unused PasswordRules component and the @radix-ui/react-slot dependency
 - the staff pages now share the Card, StatTile and EmptyState primitives instead of writing the
   same surface, the same figure and the same empty row out by hand on each page, so elevation,
   spacing and type no longer drift between them
@@ -55,6 +60,19 @@ All notable changes to this project will be documented in this file.
 - the loans table reads every credit score in one request instead of one request per member
 
 ### Fixed
+- a failed list request rendered as a confident empty state. A page that could not reach the server
+  said "you are not part of any chama yet" and invited the reader to create one
+- every modal in the app was positioned off centre, because the open and close animations set the
+  transform the centring relied on. On a desktop screen it read as slightly off; on a phone the
+  dialog hung off the right edge with its fields cut in half
+- the two-column groups in the chama, loan and dashboard forms did not collapse on a narrow screen
+- the mark above the Keycloak sign-in form was not a link, and the one link back to the site sat in
+  a panel that is hidden below 1024px, so there was no way back from a phone
+- the forgot-password page fell through to Keycloak's stock markup, whose grid escaped the card
+  padding on a narrow screen and put the instructions after the submit button
+- the welfare fund page raced two requests into the same state for a manager, so a slow response
+  could reduce the page to one member's history
+- the token refresh left an unhandled rejection every twenty seconds once a session expired
 - credit scoring compared due dates in UTC rather than Africa/Nairobi, so contributions due today
   read as overdue for the first three hours of a Nairobi morning
 - frontend: the dashboard contribution chart used hard-coded colours and stayed light in dark mode

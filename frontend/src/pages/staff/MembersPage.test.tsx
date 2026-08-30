@@ -477,4 +477,16 @@ describe('MembersPage', () => {
 
     await waitFor(() => expect(screen.getByText('mail server unavailable')).toBeTruthy())
   })
+
+  it('distinguishes a failed load from an empty list', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockGetMembers.mockRejectedValue(new Error('Service unavailable'))
+    renderPage()
+
+    expect(await screen.findByTestId('load-failed')).toBeTruthy()
+    expect(screen.getByText('Service unavailable')).toBeTruthy()
+    // A request that failed is not an account with nothing in it. Saying the second when the first
+    // happened states something false and then invites the reader to act on it.
+    expect(screen.queryByTestId('empty-state')).toBeNull()
+  })
 })

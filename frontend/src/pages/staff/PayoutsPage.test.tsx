@@ -277,4 +277,17 @@ describe('PayoutsPage', () => {
     await waitFor(() => expect(screen.getByText('Auto-push settings')).toBeTruthy())
     expect(screen.getByLabelText(/retry after/i)).toBeDisabled()
   })
+
+  it('distinguishes a failed load from an empty list', async () => {
+    mockUseMyMembership.mockReturnValue({ isTreasurer: true, isChairperson: false, member: null, loading: false })
+    mockGetPayouts.mockResolvedValue([])
+    mockGetPayoutSchedule.mockRejectedValue(new Error('Service unavailable'))
+    renderPage()
+
+    expect(await screen.findByTestId('load-failed')).toBeTruthy()
+    expect(screen.getByText('Service unavailable')).toBeTruthy()
+    // A request that failed is not an account with nothing in it. Saying the second when the first
+    // happened states something false and then invites the reader to act on it.
+    expect(screen.queryByTestId('empty-state')).toBeNull()
+  })
 })

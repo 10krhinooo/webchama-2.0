@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" width="260" height="64" role="img" aria-label="Webchama">
+  <g>
+    <rect width="64" height="64" rx="16" fill="#1B4D45"/>
+      <!--
+        A woven lattice, drawn as broken strands so the over-under reads without any masking. Kept to
+        two strands each way: at favicon size a denser weave fills in solid, and a single diagonal
+        pair reads as an error cross rather than as a basket.
+      -->
+      <g stroke="#F7F0E4" stroke-width="4.5" stroke-linecap="round">
+        <path d="M16 25 H26"/><path d="M38 25 H48"/>
+        <path d="M16 39 H26"/><path d="M38 39 H48"/>
+      </g>
+      <g stroke="#F7F0E4" stroke-width="4.5" stroke-linecap="round" opacity="0.62">
+        <path d="M25 16 V26"/><path d="M25 38 V48"/>
+        <path d="M39 16 V26"/><path d="M39 38 V48"/>
+      </g>
+      <circle cx="32" cy="32" r="5" fill="#E0A233"/>
+  </g>
+  <text x="80" y="41" font-family="Archivo, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#1B4D45">Webchama</text>
+</svg>

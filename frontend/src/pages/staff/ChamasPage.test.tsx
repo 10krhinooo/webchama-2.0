@@ -195,4 +195,15 @@ describe('ChamasPage', () => {
     fireEvent.click(screen.getByText('Edit'))
     expect(screen.getByLabelText(/savings target/i)).toHaveValue(250000)
   })
+
+  it('distinguishes a failed load from an empty list', async () => {
+    mockGetChamas.mockRejectedValue(new Error('Service unavailable'))
+    renderPage()
+
+    expect(await screen.findByTestId('load-failed')).toBeTruthy()
+    expect(screen.getByText('Service unavailable')).toBeTruthy()
+    // A request that failed is not an account with nothing in it. Saying the second when the first
+    // happened states something false and then invites the reader to act on it.
+    expect(screen.queryByTestId('empty-state')).toBeNull()
+  })
 })
