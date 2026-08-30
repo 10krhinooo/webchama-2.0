@@ -51,13 +51,13 @@ describe('KeycloakProvider', () => {
     expect(updateToken).toHaveBeenCalledWith(30)
   })
 
-  it('swallows a refresh failure rather than leaving an unhandled rejection', async () => {
-    // A rejection means the session is genuinely over, which ProtectedRoute already handles by
-    // sending the visitor to Keycloak. Uncaught it would fire every twenty seconds for as long as
-    // the tab stays open.
-    updateToken.mockImplementation(() => Promise.reject(new Error('session expired')))
-    const unhandled = vi.fn()
-    process.on('unhandledRejection', unhandled)
+  it('swallows a refresh failure rather than leaving an unhandled rejection', () => {
+    // Asserts the handler is attached rather than watching for a process-level unhandled
+    // rejection: the frontend's type set has no Node globals, and this states the mechanism
+    // directly. A rejection means the session is genuinely over, which ProtectedRoute already
+    // handles; uncaught it would fire every twenty seconds for as long as the tab stays open.
+    const refresh = { catch: vi.fn() }
+    updateToken.mockReturnValue(refresh as unknown as Promise<boolean>)
     vi.useFakeTimers()
 
     render(
@@ -66,12 +66,9 @@ describe('KeycloakProvider', () => {
       </KeycloakProvider>,
     )
     vi.advanceTimersByTime(20_000)
-    vi.useRealTimers()
-    await new Promise((resolve) => setTimeout(resolve, 0))
 
-    process.off('unhandledRejection', unhandled)
     expect(updateToken).toHaveBeenCalledWith(30)
-    expect(unhandled).not.toHaveBeenCalled()
+    expect(refresh.catch).toHaveBeenCalledTimes(1)
   })
 
   it('attaches the Authorization header via the axios interceptor when a token is present', () => {
