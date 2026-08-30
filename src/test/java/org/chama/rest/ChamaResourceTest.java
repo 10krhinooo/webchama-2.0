@@ -284,6 +284,79 @@ class ChamaResourceTest {
     }
 
     @Test
+    @TestSecurity(user = "founder")
+    void reminderSettingsStartSwitchedOffAndAreCreatedOnFirstRead() {
+        int id = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201).extract().path("id");
+
+        given()
+            .when().get("/api/chamas/{id}/reminder-settings", id)
+            .then()
+                .statusCode(200)
+                .body("enabled", equalTo(false))
+                .body("daysBeforeDue", equalTo(3))
+                .body("sendHour", equalTo(8));
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void aChairpersonTurnsRemindersOnAndTheSettingSticks() {
+        int id = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201).extract().path("id");
+
+        given()
+            .contentType("application/json")
+            .body("{\"enabled\":true,\"daysBeforeDue\":5,\"overdueEveryDays\":14,\"sendHour\":17}")
+            .when().put("/api/chamas/{id}/reminder-settings", id)
+            .then()
+                .statusCode(200)
+                .body("enabled", equalTo(true))
+                .body("daysBeforeDue", equalTo(5));
+
+        given()
+            .when().get("/api/chamas/{id}/reminder-settings", id)
+            .then().statusCode(200).body("overdueEveryDays", equalTo(14)).body("sendHour", equalTo(17));
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void reminderSettingsRejectValuesOutsideTheirBounds() {
+        int id = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201).extract().path("id");
+
+        // A send hour of 24 or a ninety day lead would otherwise pass validation and fail on the
+        // database check constraint as a 500.
+        given()
+            .contentType("application/json")
+            .body("{\"enabled\":true,\"daysBeforeDue\":90,\"overdueEveryDays\":7,\"sendHour\":8}")
+            .when().put("/api/chamas/{id}/reminder-settings", id)
+            .then().statusCode(400);
+
+        given()
+            .contentType("application/json")
+            .body("{\"enabled\":true,\"daysBeforeDue\":3,\"overdueEveryDays\":7,\"sendHour\":24}")
+            .when().put("/api/chamas/{id}/reminder-settings", id)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "nobody")
+    void aNonMemberCannotReadOrChangeReminderSettings() {
+        given()
+            .when().get("/api/chamas/{id}/reminder-settings", 1)
+            .then().statusCode(403);
+    }
+
+    @Test
     @TestSecurity(user = "nobody")
     void mineIsEmptyForAUserWithNoChamas() {
         given()

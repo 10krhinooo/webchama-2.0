@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [unreleased] - 2026-08-07
 
 ### Added
+- automatic contribution reminders: a nudge some days before the due date, one on the day, and a
+  repeating one while a contribution stays outstanding, in the app and by email. Off until a
+  chairperson turns them on, and configurable per chama
 - an in-app notification centre, with a bell, a live stream, and per-event-type preferences
   covering both the inbox and email
 - a penalties page, making the existing issue, approve, waive and settle workflow reachable
@@ -51,10 +54,10 @@ not collide on a version:
 | Version | Reserved for |
 |---|---|
 | V41 | notification and notification_preference tables (applied) |
-| V42 | chama_reminder_settings and reminder_dispatch tables |
+| V42 | chama_reminder_settings and reminder_dispatch tables (applied) |
 | V43 | WELFARE_WITHDRAWAL approval target type (applied) |
 | V44 | welfare_withdrawal status, requested_by, requested_at (applied) |
-| V45 | REMINDER_SENT and MEMBERS_IMPORTED activity event types |
+| V45 | MEMBERS_IMPORTED activity event type (reminders needed no event, see reminder_dispatch) |
 | V46 | analytics aggregation indexes |
 | V47 | loan_repayment.paid_at (applied) |
 
