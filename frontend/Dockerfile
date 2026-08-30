@@ -19,7 +19,7 @@ ARG VITE_KEYCLOAK_URL
 ENV VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /workspace/dist /usr/share/nginx/html
 
