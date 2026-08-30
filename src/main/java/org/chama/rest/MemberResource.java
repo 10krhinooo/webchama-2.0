@@ -19,6 +19,7 @@ import org.chama.domain.enums.MemberRoleType;
 import org.chama.dto.CreateMemberDto;
 import org.chama.dto.CreditScoreDto;
 import org.chama.dto.MemberDataExportDto;
+import org.chama.dto.MemberSummaryDto;
 import org.chama.dto.MemberDto;
 import org.chama.dto.MemberInvitationDto;
 import org.chama.dto.UpdateAutoPayDto;
@@ -27,6 +28,7 @@ import org.chama.dto.UpdateMemberStatusDto;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
 import org.chama.service.CreditScoreService;
+import org.chama.service.MemberSummaryService;
 import org.chama.service.MemberService;
 
 import java.util.List;
@@ -42,6 +44,9 @@ public class MemberResource {
 
     @Inject
     CreditScoreService creditScoreService;
+
+    @Inject
+    MemberSummaryService memberSummaryService;
 
     @Inject
     TenantAccessService tenantAccessService;
@@ -79,6 +84,20 @@ public class MemberResource {
     public MemberDataExportDto exportMyData(@PathParam("chamaId") Long chamaId) {
         var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
         return memberService.exportData(chamaId, member);
+    }
+
+    /**
+     * The caller's own money in this chama, in one response.
+     *
+     * <p>Resolved from the session, never from a path parameter, so there is no id here for anyone
+     * to substitute. Exposes nothing a member could not already reach through the various /mine
+     * endpoints; it only spares them visiting five pages and doing the arithmetic themselves.
+     */
+    @GET
+    @Path("/mine/summary")
+    public MemberSummaryDto mySummary(@PathParam("chamaId") Long chamaId) {
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        return memberSummaryService.summarise(chamaId, member);
     }
 
     /** CHAIRPERSON/TREASURER, or the member themselves, can view their own credit score. */

@@ -62,6 +62,9 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   previewing every problem in it before anything is created. Deleting a member with any financial history is
   rejected in favor of marking them exited, so contribution/loan/payment/penalty records are never
   silently lost.
+- **Member self-service**: a My Money page gathering a member's own contributions, loans, payouts,
+  penalties and welfare contributions into one mobile-first summary, so they can see where they
+  stand without visiting five pages and doing the arithmetic themselves.
 - **Contributions**: due dates, partial payments, overdue flagging, on-time streak tracking, and
   opt-in scheduled auto-STK-push so a member's contribution can be charged automatically when due.
   A chama can also switch on automatic reminders, a nudge some days before the due date, one on the
