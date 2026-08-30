@@ -168,6 +168,24 @@ carry most of the weight:
 Anything that sends on a member's behalf defaults to off. Turning a new channel on for every
 existing chama at migration time means mail nobody asked for, the morning after a deploy.
 
+**Add a dashboard figure.** Aggregate it in the database, following `AnalyticsRepository` and
+`PlatformStatsService`. A chama with three years of history has thousands of contributions, and
+none of them need to reach Java for a total. Every native query there is scoped by `chama_id` in
+its own WHERE clause and none of them take a widening parameter, which is what keeps tenant
+isolation intact in a class that bypasses Panache.
+
+Two shapes are load-bearing for anything that ends up in a chart. Trends return every month in the
+window, empty ones zero-filled; bucketed figures return every bucket, zeros included. A chart that
+silently drops its empty categories redraws its axis and reads as a different shape. Scale the
+zero-fill the same way as real values too, so a field is not sometimes `0` and sometimes `0.00`
+depending on whether data happened to exist.
+
+Score the same way `CreditScoreService` does: drop a component the chama has no evidence for and
+redistribute its weight, report the shares actually applied, and return a null score with an
+INSUFFICIENT_HISTORY band rather than a number nothing supports. Watch for evidence that is not
+really evidence, the way "nobody has left" looked like perfect retention in a chama nobody had had
+the chance to leave yet.
+
 **Gate a new action behind dual sign-off.** Follow `WelfareFundService`: split the action into a
 `request` that records the intent without moving anything and a `markDisbursed` that releases it,
 add the target to `ApprovalTargetType` in its own Flyway migration (Postgres refuses to use an enum

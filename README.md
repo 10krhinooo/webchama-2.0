@@ -91,6 +91,12 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   by email: approval requests, loan status changes (approved, disbursed, failed), payment receipts,
   payout and penalty status, meeting scheduling, welfare withdrawals, and failed auto-STK-push
   attempts. Each user chooses per event type whether to be told in app, by email, both, or neither.
+- **Analytics**: a chama health score built from collection rate, arrears, loan repayment, meeting
+  attendance and membership stability, with the components behind it shown rather than only the
+  number. Alongside it, contributions billed against contributions collected month by month, unpaid
+  balances aged into buckets, and a loan book broken down by status. A component the chama records
+  nothing for is dropped rather than scored as a pass, and a chama with no history reports no score
+  instead of a flattering one.
 - **Audit trail**: an immutable activity log covering financial and governance events, and a synced
   feed of Keycloak security events (logins, failed attempts, password changes), viewable on a
   SUPER_ADMIN-only security events page with suspicious rows highlighted and email alerts on

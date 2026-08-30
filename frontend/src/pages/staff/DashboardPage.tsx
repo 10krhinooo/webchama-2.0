@@ -17,6 +17,17 @@ import ContributionPot from '../../components/marketing/ContributionPot'
 import { SkeletonBlock, SkeletonLine } from '../../components/ui/Skeleton'
 import TransientAlert from '../../components/ui/TransientAlert'
 import Reveal from '../../components/ui/Reveal'
+import HealthScoreCard from '../../components/analytics/HealthScoreCard'
+import ContributionTrendChart from '../../components/analytics/ContributionTrendChart'
+import ArrearsAgeingChart from '../../components/analytics/ArrearsAgeingChart'
+import {
+  getChamaHealth,
+  getContributionTrend,
+  getArrears,
+  type ChamaHealth,
+  type ContributionTrendPoint,
+  type ArrearsBucket,
+} from '../../api/analytics'
 import Modal from '../../components/ui/Modal'
 import FormError from '../../components/ui/FormError'
 import FormField from '../../components/ui/FormField'
@@ -101,6 +112,9 @@ export default function DashboardPage() {
   const [openResolutionCount, setOpenResolutionCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [health, setHealth] = useState<ChamaHealth | null>(null)
+  const [trend, setTrend] = useState<ContributionTrendPoint[]>([])
+  const [arrears, setArrears] = useState<ArrearsBucket[]>([])
 
   const { entries: activityEntries, loading: activityLoading } = useActivityFeed(chamaId, isManager && !roleLoading)
 
@@ -163,6 +177,26 @@ export default function DashboardPage() {
       cancelled = true
     }
   }, [chamaId, isManager, isChairperson, isSecretary, roleLoading])
+
+  // A separate effect from the main dashboard load, deliberately. Analytics is supplementary, so
+  // a failure here leaves the rest of the dashboard intact rather than replacing it with an error.
+  useEffect(() => {
+    if (roleLoading || !isManager) return
+    let cancelled = false
+    Promise.all([getChamaHealth(chamaId), getContributionTrend(chamaId), getArrears(chamaId)])
+      .then(([healthData, trendData, arrearsData]) => {
+        if (cancelled) return
+        setHealth(healthData)
+        setTrend(trendData)
+        setArrears(arrearsData)
+      })
+      .catch(() => {
+        /* Supplementary, so a failure simply leaves the analytics section out. */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [chamaId, isManager, roleLoading])
 
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [goalForm, setGoalForm] = useState('')
@@ -413,14 +447,18 @@ export default function DashboardPage() {
           <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
             Contributions by status
           </p>
-          <div className="mt-4 h-56">
+          <div className="mt-4 h-56 text-muted">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDE1CC" />
-                <XAxis dataKey="status" tick={{ fontSize: 12, fill: '#6E6759' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6E6759' }} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: '#EDE1CC' }} />
-                <Bar dataKey="count" fill="#1B4D45" radius={[6, 6, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                {/*
+                  currentColor and Tailwind fill utilities rather than hex literals: this chart
+                  predates dark mode and stayed light on a dark surface.
+                */}
+                <XAxis dataKey="status" tick={{ fontSize: 12, fill: 'currentColor' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'currentColor' }} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ className: 'fill-paper-dim' }} />
+                <Bar dataKey="count" className="fill-primary" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -449,6 +487,23 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {isManager && health && (
+        <Reveal>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <HealthScoreCard health={health} />
+            <div className="lg:col-span-2">
+              <ContributionTrendChart points={trend} />
+            </div>
+          </div>
+        </Reveal>
+      )}
+
+      {isManager && arrears.length > 0 && (
+        <Reveal>
+          <ArrearsAgeingChart buckets={arrears} />
+        </Reveal>
+      )}
 
       {showGoalModal && (
         <Modal title="Edit Savings Goal" onClose={() => setShowGoalModal(false)}>
