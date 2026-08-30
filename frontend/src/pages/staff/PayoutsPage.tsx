@@ -15,6 +15,7 @@ import { getMembers, type Member } from '../../api/members'
 import { getChama, updateAutoPushSettings, type Chama } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -52,6 +53,7 @@ export default function PayoutsPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [chama, setChama] = useState<Chama | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
 
   const [autoPushEnabled, setAutoPushEnabled] = useState(true)
@@ -76,6 +78,7 @@ export default function PayoutsPage() {
   const refresh = () => {
     if (roleLoading) return
     setLoading(true)
+    setLoadError(null)
     Promise.all([
       getPayoutSchedule(chamaId),
       canManage ? getPayouts(chamaId) : getMyPayouts(chamaId),
@@ -92,6 +95,7 @@ export default function PayoutsPage() {
           setAutoPushRetryHours(String(c.autoPushRetryHours))
         }
       })
+      .catch((err) => setLoadError(extractErrorMessage(err)))
       .finally(() => setLoading(false))
   }
 
@@ -197,6 +201,8 @@ export default function PayoutsPage() {
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={canManage} />
+      ) : loadError ? (
+        <LoadFailed what="payouts" detail={loadError} onRetry={refresh} />
       ) : (
         <>
           <Reveal eager delayMs={80} as="section" className="space-y-3">

@@ -2,6 +2,7 @@ package org.chama.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.chama.domain.ChamaTime;
 import org.chama.domain.enums.HealthBand;
 import org.chama.dto.ArrearsBucketDto;
 import org.chama.dto.ChamaHealthDto;
@@ -14,7 +15,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +37,6 @@ import java.util.Map;
 public class AnalyticsService {
 
     /** Due dates are Nairobi calendar dates, as everywhere else that compares against one. */
-    private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
 
     static final String COLLECTION_RATE = "COLLECTION_RATE";
     static final String ARREARS_HEALTH = "ARREARS_HEALTH";
@@ -81,7 +80,7 @@ public class AnalyticsService {
      */
     public List<ContributionTrendPointDto> contributionTrend(Long chamaId, int months) {
         int window = Math.clamp(months, 1, MAX_TREND_MONTHS);
-        YearMonth end = YearMonth.now(CHAMA_ZONE);
+        YearMonth end = YearMonth.now(ChamaTime.ZONE);
         YearMonth start = end.minusMonths(window - 1L);
 
         Map<String, Object[]> byMonth = new HashMap<>();
@@ -209,7 +208,7 @@ public class AnalyticsService {
     }
 
     private static LocalDate today() {
-        return LocalDate.now(CHAMA_ZONE);
+        return LocalDate.now(ChamaTime.ZONE);
     }
 
     /** Zero when nothing was billed, so an empty month reports a rate rather than a divide by zero. */

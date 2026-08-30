@@ -17,6 +17,7 @@ import {
 import { getMembers, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import Card from '../../components/ui/Card'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
@@ -54,6 +55,7 @@ export default function WelfareFundPage() {
   const [withdrawals, setWithdrawals] = useState<WelfareWithdrawal[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
 
   const [showContributeModal, setShowContributeModal] = useState(false)
@@ -77,16 +79,22 @@ export default function WelfareFundPage() {
   const refresh = () => {
     if (roleLoading) return
     setLoading(true)
-    const promises: Promise<unknown>[] = [
-      getMyWelfareContributions(chamaId).then(setContributions),
-    ]
+    setLoadError(null)
+    // A manager reads the whole fund and a member reads only their own contributions. Firing both
+    // and letting them race into the same state meant whichever answered last decided what a
+    // manager saw, so a slow request could quietly reduce the page to one person's history.
+    const contributions = isManager
+      ? getWelfareContributions(chamaId)
+      : getMyWelfareContributions(chamaId)
+    const promises: Promise<unknown>[] = [contributions.then(setContributions)]
     if (isManager) {
       promises.push(getWelfareFund(chamaId).then(setFund))
-      promises.push(getWelfareContributions(chamaId).then(setContributions))
       promises.push(getWelfareWithdrawals(chamaId).then(setWithdrawals))
       promises.push(getMembers(chamaId).then(setMembers))
     }
-    Promise.all(promises).finally(() => setLoading(false))
+    Promise.all(promises)
+      .catch((err) => setLoadError(extractErrorMessage(err)))
+      .finally(() => setLoading(false))
   }
 
   useEffect(refresh, [chamaId, isManager, roleLoading])
@@ -205,6 +213,8 @@ export default function WelfareFundPage() {
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
+      ) : loadError ? (
+        <LoadFailed what="the welfare fund" detail={loadError} onRetry={refresh} />
       ) : (
         <>
           {isManager && fund && (

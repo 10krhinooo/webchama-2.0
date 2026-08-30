@@ -4,6 +4,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
+import org.chama.domain.ChamaTime;
 import org.chama.domain.enums.ChamaStatus;
 import org.chama.domain.enums.ChamaType;
 import org.chama.domain.enums.ContributionFrequency;
@@ -248,7 +249,10 @@ class ContributionResourceTest {
             org.chama.domain.model.Contribution contribution = new org.chama.domain.model.Contribution();
             contribution.chama = chamaRepository.findById(chamaId);
             contribution.member = memberRepository.findById(memberId);
-            contribution.period = LocalDate.now();
+            // The chama's calendar, not the server's. Built with a bare LocalDate.now() this
+            // fixture was a day behind the Nairobi date the service reads for the first three
+            // hours of every Nairobi morning, so the payment looked late and the streak was zero.
+            contribution.period = ChamaTime.today();
             contribution.amountDue = new BigDecimal("500");
             contribution.amountPaid = new BigDecimal("500");
             contribution.status = org.chama.domain.enums.ContributionStatus.PAID;

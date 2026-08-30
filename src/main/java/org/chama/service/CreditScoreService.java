@@ -3,6 +3,7 @@ package org.chama.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
+import org.chama.domain.ChamaTime;
 import org.chama.domain.enums.AttendanceStatus;
 import org.chama.domain.enums.CreditScoreBand;
 import org.chama.domain.enums.LoanStatus;
@@ -27,7 +28,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -71,7 +71,6 @@ public class CreditScoreService {
      * ContributionAutoPushService. On UTC, everything due today looks overdue for the first three
      * hours of a Nairobi morning.
      */
-    private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
 
     static final String CONTRIBUTION_CONSISTENCY = "CONTRIBUTION_CONSISTENCY";
     static final String CONTRIBUTION_TIMELINESS = "CONTRIBUTION_TIMELINESS";
@@ -218,7 +217,7 @@ public class CreditScoreService {
     }
 
     private CreditScoreDto score(Long memberId, Evidence evidence) {
-        LocalDate today = LocalDate.now(CHAMA_ZONE);
+        LocalDate today = LocalDate.now(ChamaTime.ZONE);
 
         // An obligation that has not fallen due yet is not a missed one. Nothing that is still in
         // the future counts either way.
@@ -355,7 +354,7 @@ public class CreditScoreService {
 
     /** Full credit on or before the due date, sliding to none {@link #LATENESS_GRACE_DAYS} later. */
     private static double promptness(LocalDate due, Instant settled) {
-        long daysLate = ChronoUnit.DAYS.between(due, LocalDate.ofInstant(settled, CHAMA_ZONE));
+        long daysLate = ChronoUnit.DAYS.between(due, LocalDate.ofInstant(settled, ChamaTime.ZONE));
         if (daysLate <= 0) {
             return 1.0;
         }
@@ -391,7 +390,7 @@ public class CreditScoreService {
             if (p.status != PenaltyStatus.APPROVED && p.status != PenaltyStatus.PAID) {
                 continue;
             }
-            upheld += recencyWeight(LocalDate.ofInstant(p.imposedAt, CHAMA_ZONE), today);
+            upheld += recencyWeight(LocalDate.ofInstant(p.imposedAt, ChamaTime.ZONE), today);
         }
         return (int) Math.min(MAX_PENALTY_DEDUCTION, Math.round(upheld * POINTS_PER_UPHELD_PENALTY));
     }

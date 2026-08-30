@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Webchama">
+  <rect width="64" height="64" rx="16" fill="#1B4D45"/>
+  <!-- Four equal turns with even gaps, one of them this round's. Unequal arcs read as a broken
+       ring rather than a rotation. -->
+  <g fill="none" stroke-width="5" stroke-linecap="round" transform="rotate(-45 32 32)">
+    <path d="M32 15 A17 17 0 0 1 49 32" stroke="#E0A233"/>
+    <path d="M49 32 A17 17 0 0 1 32 49" stroke="#F7F0E4" opacity="0.4"/>
+    <path d="M32 49 A17 17 0 0 1 15 32" stroke="#F7F0E4" opacity="0.4"/>
+    <path d="M15 32 A17 17 0 0 1 32 15" stroke="#F7F0E4" opacity="0.4"/>
+  </g>
+  <circle cx="32" cy="32" r="4.5" fill="#F7F0E4"/>
+</svg>

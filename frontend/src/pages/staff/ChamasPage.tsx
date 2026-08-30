@@ -10,6 +10,7 @@ import {
   type UpdateChamaRequest,
 } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -53,11 +54,16 @@ export default function ChamasPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleting, setDeleting] = useState<Chama | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(chamas)
 
   const refresh = () => {
     setLoading(true)
-    getChamas().then(setChamas).finally(() => setLoading(false))
+    setLoadError(null)
+    getChamas()
+      .then(setChamas)
+      .catch((err) => setLoadError(extractErrorMessage(err)))
+      .finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -153,6 +159,8 @@ export default function ChamasPage() {
 
       {loading ? (
         <TablePageSkeleton withFilter={false} />
+      ) : loadError ? (
+        <LoadFailed what="your chamas" detail={loadError} onRetry={refresh} />
       ) : (
         <Reveal eager delayMs={80}>
           <Table>
@@ -212,7 +220,7 @@ export default function ChamasPage() {
             <FormField label="Description" htmlFor="chama-description">
               <Textarea id="chama-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </FormField>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Type" htmlFor="chama-type" required>
                 <Select id="chama-type" value={form.type} onChange={(v) => setForm({ ...form, type: v as Chama['type'] })}>
                   <option value="MERRY_GO_ROUND">Merry-go-round</option>
@@ -231,7 +239,7 @@ export default function ChamasPage() {
                 </Select>
               </FormField>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Contribution amount" htmlFor="chama-amount" required>
                 <Input
                   id="chama-amount"

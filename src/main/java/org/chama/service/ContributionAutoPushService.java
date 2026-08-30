@@ -4,6 +4,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.chama.domain.ChamaTime;
 import org.chama.domain.enums.ActivityEventType;
 import org.chama.domain.model.Contribution;
 import org.chama.repository.ContributionRepository;
@@ -14,7 +15,6 @@ import org.jboss.logging.Logger;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -60,8 +60,7 @@ public class ContributionAutoPushService {
 
     // Every chama and member is Kenya-based, so a contribution is "due today" against the Nairobi
     // calendar day, never UTC or the server's own timezone, both of which disagree with Nairobi
-    // for part of every day (see ContributionService.CHAMA_ZONE for the same reasoning).
-    private static final ZoneId CHAMA_ZONE = ZoneId.of("Africa/Nairobi");
+    // for part of every day (see ContributionService.ChamaTime.ZONE for the same reasoning).
 
     @Scheduled(every = "1h", identity = "contribution-auto-stk-push",
         concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
@@ -69,7 +68,7 @@ public class ContributionAutoPushService {
         if (!autoPushEnabled) {
             return;
         }
-        LocalDate today = LocalDate.now(CHAMA_ZONE);
+        LocalDate today = LocalDate.now(ChamaTime.ZONE);
         Instant earliestPossibleRetry = Instant.now().minus(Duration.ofHours(MIN_RETRY_HOURS));
 
         List<Long> dueContributionIds = QuarkusTransaction.requiringNew().call(() ->

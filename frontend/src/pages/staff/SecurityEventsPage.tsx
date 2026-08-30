@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { getSecurityEvents, type SecurityEvent } from '../../api/securityEvents'
 import { extractErrorMessage } from '../../api/client'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
-import TransientAlert from '../../components/ui/TransientAlert'
 import Pagination from '../../components/ui/Pagination'
 import { usePagination } from '../../hooks/usePagination'
 
@@ -79,10 +79,10 @@ export default function SecurityEventsPage() {
         </button>
       </form>
 
-      <TransientAlert variant="error" message={error} onDismiss={() => setError(null)} />
-
       {loading ? (
         <TablePageSkeleton withButton={false} withFilter={false} />
+      ) : error ? (
+        <LoadFailed what="the security event feed" detail={error} onRetry={refresh} />
       ) : (
         <Table>
           <TableHeader>

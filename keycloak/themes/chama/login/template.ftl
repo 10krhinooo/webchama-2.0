@@ -79,9 +79,20 @@
   </div>
   <div class="chama-panel-right">
     <div class="${properties.kcLoginClass!}">
+      <#--
+        The mark above the card is the only branding on screen below 1024px, where the left panel
+        is hidden, so it carries the way back to the site. CSS paints it as a logo tile and hides
+        the text with a negative indent, hence the accessible name on the element itself.
+      -->
       <div id="kc-header" class="${properties.kcHeaderClass!}">
+          <#if chamaHomeUrl?has_content>
+          <a id="kc-header-wrapper" href="${chamaHomeUrl}"
+             class="${properties.kcHeaderWrapperClass!}"
+             aria-label="${msg('backToApplication')?replace('&laquo; ','')}">${kcSanitize(msg("loginTitleHtml",(realm.displayNameHtml!'')))?no_esc}</a>
+          <#else>
           <div id="kc-header-wrapper"
                class="${properties.kcHeaderWrapperClass!}">${kcSanitize(msg("loginTitleHtml",(realm.displayNameHtml!'')))?no_esc}</div>
+          </#if>
       </div>
       <div class="${properties.kcFormCardClass!}">
         <header class="${properties.kcFormHeaderClass!}">

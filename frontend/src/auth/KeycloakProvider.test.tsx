@@ -2,7 +2,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 const { updateToken, fakeKeycloak } = vi.hoisted(() => ({
-  updateToken: vi.fn(),
+  // Resolves by default, because the real updateToken returns a promise and the caller attaches a
+  // rejection handler to it.
+  updateToken: vi.fn(() => Promise.resolve(true)),
   fakeKeycloak: { token: 'fake-token' as string | undefined },
 }))
 
@@ -25,6 +27,7 @@ describe('KeycloakProvider', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.clearAllMocks()
+    updateToken.mockImplementation(() => Promise.resolve(true))
     fakeKeycloak.token = 'fake-token'
   })
 
@@ -46,6 +49,26 @@ describe('KeycloakProvider', () => {
     )
     vi.advanceTimersByTime(20_000)
     expect(updateToken).toHaveBeenCalledWith(30)
+  })
+
+  it('swallows a refresh failure rather than leaving an unhandled rejection', () => {
+    // Asserts the handler is attached rather than watching for a process-level unhandled
+    // rejection: the frontend's type set has no Node globals, and this states the mechanism
+    // directly. A rejection means the session is genuinely over, which ProtectedRoute already
+    // handles; uncaught it would fire every twenty seconds for as long as the tab stays open.
+    const refresh = { catch: vi.fn() }
+    updateToken.mockReturnValue(refresh as unknown as Promise<boolean>)
+    vi.useFakeTimers()
+
+    render(
+      <KeycloakProvider>
+        <div />
+      </KeycloakProvider>,
+    )
+    vi.advanceTimersByTime(20_000)
+
+    expect(updateToken).toHaveBeenCalledWith(30)
+    expect(refresh.catch).toHaveBeenCalledTimes(1)
   })
 
   it('attaches the Authorization header via the axios interceptor when a token is present', () => {

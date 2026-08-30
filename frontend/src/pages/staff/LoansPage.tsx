@@ -376,7 +376,7 @@ export default function LoansPage() {
               <Input id="loan-principal" required type="number" min="0" step="0.01" value={form.principal}
                 onChange={(e) => setForm({ ...form, principal: e.target.value })} />
             </FormField>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Interest rate (annual %)" htmlFor="loan-rate" required>
                 <Input id="loan-rate" required type="number" min="0" step="0.01" value={form.interestRate}
                   onChange={(e) => setForm({ ...form, interestRate: e.target.value })} />

@@ -11,6 +11,7 @@ import {
 import { getMembers, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import Card from '../../components/ui/Card'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
@@ -55,6 +56,7 @@ export default function DocumentGeneratorPage() {
   const [documents, setDocuments] = useState<GeneratedDocument[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
 
   const [step, setStep] = useState(0)
@@ -83,11 +85,13 @@ export default function DocumentGeneratorPage() {
       return
     }
     setLoading(true)
+    setLoadError(null)
     Promise.all([getDocuments(chamaId), getMembers(chamaId)])
       .then(([d, m]) => {
         setDocuments(d)
         setMembers(m)
       })
+      .catch((err) => setLoadError(extractErrorMessage(err)))
       .finally(() => setLoading(false))
   }
 
@@ -427,6 +431,8 @@ export default function DocumentGeneratorPage() {
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
+      ) : loadError ? (
+        <LoadFailed what="documents" detail={loadError} onRetry={refresh} />
       ) : (
         <Table>
           <TableHeader>

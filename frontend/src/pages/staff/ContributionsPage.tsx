@@ -20,6 +20,7 @@ import { getReminderSettings, updateReminderSettings, type ChamaReminderSettings
 import { extractErrorMessage } from '../../api/client'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -71,6 +72,7 @@ export default function ContributionsPage() {
   const [contributions, setContributions] = useState<Contribution[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -103,6 +105,7 @@ export default function ContributionsPage() {
   const refresh = () => {
     if (roleLoading) return
     setLoading(true)
+    setLoadError(null)
     const contributionsPromise = canManage ? getContributions(chamaId) : getMyContributions(chamaId)
     const paymentsPromise = canManage ? getPayments(chamaId) : getMyPayments(chamaId)
     Promise.all([contributionsPromise, canManage ? getMembers(chamaId) : Promise.resolve([]), paymentsPromise])
@@ -111,6 +114,7 @@ export default function ContributionsPage() {
         setMembers(m)
         setPayments(p)
       })
+      .catch((err) => setLoadError(extractErrorMessage(err)))
       .finally(() => setLoading(false))
 
     if (!canManage) {
@@ -339,6 +343,8 @@ export default function ContributionsPage() {
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} withButton={canManage} />
+      ) : loadError ? (
+        <LoadFailed what="contributions" detail={loadError} onRetry={refresh} />
       ) : (
         <Reveal eager delayMs={80}>
           <Table>

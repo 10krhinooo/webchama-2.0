@@ -14,6 +14,7 @@ import { getPayouts, type Payout } from '../../api/payouts'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
+import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -53,6 +54,7 @@ export default function ApprovalsPage() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -64,6 +66,7 @@ export default function ApprovalsPage() {
   const refresh = () => {
     if (roleLoading) return
     setLoading(true)
+    setLoadError(null)
     Promise.all([getApprovals(chamaId), getMembers(chamaId), getLoans(chamaId), getPayouts(chamaId)])
       .then(([a, m, l, p]) => {
         setApprovals(a)
@@ -71,6 +74,7 @@ export default function ApprovalsPage() {
         setLoans(l)
         setPayouts(p)
       })
+      .catch((err) => setLoadError(extractErrorMessage(err)))
       .finally(() => setLoading(false))
   }
 
@@ -146,6 +150,8 @@ export default function ApprovalsPage() {
 
       {loading || roleLoading ? (
         <TablePageSkeleton withFilter={false} />
+      ) : loadError ? (
+        <LoadFailed what="approvals" detail={loadError} onRetry={refresh} />
       ) : (
         <Table>
           <TableHeader>
