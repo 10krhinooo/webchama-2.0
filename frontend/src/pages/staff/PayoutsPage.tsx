@@ -21,6 +21,7 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
@@ -275,7 +276,7 @@ export default function PayoutsPage() {
                 auto-pay on their contribution's due date.
               </p>
               {autoPushNotice && (
-                <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{autoPushNotice}</div>
+                <FormError message={autoPushNotice} />
               )}
               <label className="flex items-center gap-2 text-sm text-ink/80">
                 <input
@@ -320,7 +321,7 @@ export default function PayoutsPage() {
         <Modal title="Generate Payout Schedule" onClose={() => setShowScheduleModal(false)}>
           <form onSubmit={handleGenerateSchedule} className="space-y-4">
             {scheduleModalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{scheduleModalNotice}</div>
+              <FormError message={scheduleModalNotice} />
             )}
             <p className="text-xs text-muted">Regenerating replaces the current rotation schedule.</p>
             <FormField label="Rotation order" htmlFor="payout-rotation-type" required>
@@ -363,7 +364,7 @@ export default function PayoutsPage() {
         <Modal title="Create Next Payout" onClose={() => setShowPayoutModal(false)}>
           <form onSubmit={handleCreatePayout} className="space-y-4">
             {payoutModalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{payoutModalNotice}</div>
+              <FormError message={payoutModalNotice} />
             )}
             <p className="text-xs text-muted">Whose turn it is is resolved automatically from the rotation schedule.</p>
             <FormField label="Scheduled date" htmlFor="payout-scheduled-date" required>

@@ -14,6 +14,7 @@ import { useMyMembership } from '../../hooks/useMyMembership'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
+import FormError from '../../components/ui/FormError'
 import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import TransientAlert from '../../components/ui/TransientAlert'
@@ -217,14 +218,14 @@ export default function DocumentGeneratorPage() {
                 {i + 1}
               </span>
               <span className={`text-sm ${i === step ? 'font-semibold text-ink' : 'text-muted'}`}>{label}</span>
-              {i < STEPS.length - 1 && <span className="mx-1 h-px w-8 bg-black/10" />}
+              {i < STEPS.length - 1 && <span className="mx-1 h-px w-8 bg-border" />}
             </li>
           ))}
         </ol>
 
         <div className="bg-surface rounded-2xl shadow-card p-6 space-y-4">
           {wizardError && (
-            <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{wizardError}</div>
+            <FormError message={wizardError} />
           )}
 
           {step === 0 && (
@@ -385,7 +386,7 @@ export default function DocumentGeneratorPage() {
           </p>
         </div>
         {agmError && (
-          <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{agmError}</div>
+          <FormError message={agmError} />
         )}
         <div className="flex flex-wrap items-end gap-4">
           <FormField label="From" htmlFor="agm-from">

@@ -21,6 +21,7 @@ import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -276,7 +277,7 @@ export default function LoansPage() {
         <Modal title="Request Loan" onClose={() => setShowCreateModal(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             {canManage && (
               <FormField label="Member" htmlFor="loan-member" required>
@@ -317,7 +318,7 @@ export default function LoansPage() {
       {scheduleLoan && (
         <Modal title={`Repayment Schedule — ${scheduleLoan.memberName}`} onClose={() => setScheduleLoan(null)}>
           {scheduleNotice && (
-            <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2 mb-4">{scheduleNotice}</div>
+            <FormError message={scheduleNotice} className="mb-4" />
           )}
           {scheduleLoading ? (
             <p className="text-sm text-muted">Loading…</p>
@@ -360,7 +361,7 @@ export default function LoansPage() {
         <Modal title={`Record Payment — Installment ${payingRepayment.installmentNumber}`} onClose={() => setPayingRepayment(null)}>
           <form onSubmit={handleRecordPayment} className="space-y-4">
             {paymentNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{paymentNotice}</div>
+              <FormError message={paymentNotice} />
             )}
             <p className="text-sm text-muted">
               Due {payingRepayment.amountDue.toLocaleString()}, already paid {payingRepayment.amountPaid.toLocaleString()}.

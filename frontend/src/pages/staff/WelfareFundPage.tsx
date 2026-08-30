@@ -22,6 +22,7 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -226,7 +227,7 @@ export default function WelfareFundPage() {
         <Modal title="Contribute to Welfare Fund" onClose={() => setShowContributeModal(false)}>
           <form onSubmit={handleContribute} className="space-y-4">
             {contributeNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{contributeNotice}</div>
+              <FormError message={contributeNotice} />
             )}
             <FormField label="Amount" htmlFor="welfare-contribute-amount" required>
               <Input id="welfare-contribute-amount" required type="number" min="0" step="0.01" value={contributeAmount}
@@ -244,7 +245,7 @@ export default function WelfareFundPage() {
         <Modal title="Record Contribution" onClose={() => setShowRecordModal(false)}>
           <form onSubmit={handleRecord} className="space-y-4">
             {recordNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{recordNotice}</div>
+              <FormError message={recordNotice} />
             )}
             <FormField label="Member" htmlFor="welfare-record-member" required>
               <Select id="welfare-record-member" required value={recordForm.memberId}
@@ -277,7 +278,7 @@ export default function WelfareFundPage() {
         <Modal title="Record Withdrawal" onClose={() => setShowWithdrawModal(false)}>
           <form onSubmit={handleWithdraw} className="space-y-4">
             {withdrawNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{withdrawNotice}</div>
+              <FormError message={withdrawNotice} />
             )}
             <FormField label="Amount" htmlFor="welfare-withdraw-amount" required>
               <Input id="welfare-withdraw-amount" required type="number" min="0" step="0.01" value={withdrawForm.amount}

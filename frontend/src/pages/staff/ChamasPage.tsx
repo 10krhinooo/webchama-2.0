@@ -15,6 +15,7 @@ import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
 import PhoneInput from '../../components/ui/PhoneInput'
@@ -196,7 +197,7 @@ export default function ChamasPage() {
         <Modal title={editing ? 'Edit Chama' : 'New Chama'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             <FormField label="Name" htmlFor="chama-name" required>
               <Input id="chama-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

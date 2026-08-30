@@ -20,6 +20,7 @@ import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
+import FormError from '../../components/ui/FormError'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import TransientAlert from '../../components/ui/TransientAlert'
 import PhoneInput from '../../components/ui/PhoneInput'
@@ -331,7 +332,7 @@ export default function MembersPage() {
                           className="rounded px-2 py-1.5 text-brand text-xs hover:bg-primary/10 disabled:opacity-40">
                           {resendingId === m.id ? 'Reissuing…' : 'Reissue invite'}
                         </button>
-                        <span className="mx-1 h-4 w-px bg-black/10" aria-hidden="true" />
+                        <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
                         <button onClick={() => setRemoving(m)} className="rounded px-2 py-1.5 text-danger text-xs hover:bg-danger/10">Remove</button>
                       </div>
                     </TableCell>
@@ -351,7 +352,7 @@ export default function MembersPage() {
         <Modal title={editing ? 'Edit Member' : 'Invite Member'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {modalNotice && (
-              <div className="bg-danger/10 border border-danger/25 text-danger text-sm rounded-lg px-3 py-2">{modalNotice}</div>
+              <FormError message={modalNotice} />
             )}
             {!editing && (
               <FormField label="Email" htmlFor="member-email" required hint="We will create their account and email them sign-in instructions.">

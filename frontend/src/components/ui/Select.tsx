@@ -54,7 +54,7 @@ export default function Select({
         id={id}
         className={cn(
           'flex w-full items-center justify-between rounded-lg border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50',
-          invalid ? 'border-danger' : 'border-black/15',
+          invalid ? 'border-danger' : 'border-border-strong',
           className
         )}
         {...rest}
@@ -67,7 +67,7 @@ export default function Select({
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
           position="popper"
-          className="z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-black/15 bg-surface text-ink shadow-md"
+          className="z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-lg border border-border-strong bg-surface text-ink shadow-md"
         >
           <SelectPrimitive.Viewport className="p-1">
             {items.map(({ option, value: itemValue }) => (

@@ -70,7 +70,7 @@ export default function StaffLayout() {
       {navOpen && (
         <div
           data-testid="nav-backdrop"
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/40 dark:bg-black/60 lg:hidden"
           onClick={() => setNavOpen(false)}
         />
       )}
