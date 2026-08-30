@@ -197,6 +197,42 @@ Three things about the fixture are worth knowing before changing it:
   `e2e/fixtures/members.ts`, rather than being checked in as ciphertext. Changing the key needs no
   regeneration.
 
+### Cross-browser smoke journeys
+
+Playwright runs on Chromium only, which leaves everything that differs between engines unmeasured.
+A small Selenium suite covers that gap against the same running stack:
+
+```bash
+docker compose -f docker-compose.e2e.yml up -d --build
+./mvnw -Psmoke verify
+```
+
+Four journeys run in both Chrome and Firefox, about ninety seconds in total: the branded Keycloak
+login page and its inline script, the single-sign-on session surviving keycloak-js's login-status
+poll and a second tab, a chairperson creating a chama and reaching a dashboard whose activity feed
+opens a real EventSource, and the platform overview CSV export writing an actual file to disk.
+
+The suite deliberately seeds whatever it needs through the UI, so it does not depend on the
+Playwright fixture and can run against a stack that has only just started.
+
+`./mvnw verify` is unaffected: the journeys live in `src/test/java/org/chama/smoke` as `*IT` classes,
+which only failsafe runs and only under `-Psmoke`. They cannot move the coverage numbers either,
+since JaCoCo instruments `target/classes` and the gate reads an execution file written during the
+test phase, before failsafe starts.
+
+Useful overrides:
+
+| Property | Default | Why |
+|---|---|---|
+| `-Dsmoke.browsers` | `chrome,firefox` | Narrow to one engine while iterating |
+| `-Dsmoke.headless` | `true` | `false` to watch a journey run |
+| `-Dsmoke.firefoxBinary` | (PATH) | Ubuntu's `/usr/bin/firefox` is a shell wrapper around the snap and is not launchable; point this at `/snap/firefox/current/usr/lib/firefox/firefox` |
+| `-Dsmoke.chromeBinary` | (PATH) | Same escape hatch for Chrome |
+| `-Dsmoke.baseUrl` | `http://localhost:5174` | Aim at a stack on other ports |
+
+Downloads land in `target/smoke-downloads/` rather than a temporary directory, because the snap
+Firefox is not permitted to write under `/tmp` and the download then never appears at all.
+
 ## Contribution workflow
 
 This repository never receives commits directly on `main`. Every change lands on its own feature branch

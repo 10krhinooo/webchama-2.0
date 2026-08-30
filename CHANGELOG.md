@@ -33,6 +33,9 @@ All notable changes to this project will be documented in this file.
   login, tenant isolation checks, and the M-Pesa contribution path end to end
 - end-to-end coverage of member administration, the penalty lifecycle, and a loan from request
   to money leaving the chama, including dual sign-off on an amount above the approval threshold
+- a cross-browser smoke suite in Chrome and Firefox, run with `mvn -Psmoke verify` against the
+  same stack, covering the branded Keycloak login page, single-sign-on session survival, chama
+  creation, and the CSV export
 
 ### Changed
 - welfare fund withdrawals above the chama's approval threshold now require the same maker-checker
@@ -62,6 +65,8 @@ All notable changes to this project will be documented in this file.
   "Request failed with status code 400"
 - frontend: a confirm dialog stayed open when the action behind it was refused, hiding the
   explanation behind its own overlay, so the button read as having done nothing
+- frontend: the "Your phone" and "Phone" form labels pointed at no element, so clicking a label
+  did not focus its field and a screen reader announced the input unlabelled
 
 ### Schema
 

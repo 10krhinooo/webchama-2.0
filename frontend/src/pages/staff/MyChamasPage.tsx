@@ -161,7 +161,7 @@ export default function MyChamasPage() {
               />
             </FormField>
             <FormField label="Your phone" htmlFor="join-phone" required>
-              <PhoneInput value={joinForm.phone} onChange={(v) => setJoinForm({ ...joinForm, phone: v })} required />
+              <PhoneInput id="join-phone" value={joinForm.phone} onChange={(v) => setJoinForm({ ...joinForm, phone: v })} required />
             </FormField>
             <FormField label="National ID" htmlFor="join-national-id">
               <Input

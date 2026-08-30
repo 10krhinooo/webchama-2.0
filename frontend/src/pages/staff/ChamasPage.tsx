@@ -277,7 +277,7 @@ export default function ChamasPage() {
                   />
                 </FormField>
                 <FormField label="Your phone" htmlFor="chama-creator-phone" required>
-                  <PhoneInput value={form.creatorPhone} onChange={(v) => setForm({ ...form, creatorPhone: v })} required />
+                  <PhoneInput id="chama-creator-phone" value={form.creatorPhone} onChange={(v) => setForm({ ...form, creatorPhone: v })} required />
                 </FormField>
                 <p className="text-xs text-muted -mt-1">You will become this chama&apos;s chairperson.</p>
               </>
