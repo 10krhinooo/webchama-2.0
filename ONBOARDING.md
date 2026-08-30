@@ -185,6 +185,32 @@ redistribute its weight, report the shares actually applied, and return a null s
 INSUFFICIENT_HISTORY band rather than a number nothing supports. Watch for evidence that is not
 really evidence, the way "nobody has left" looked like perfect retention in a chama nobody had had
 the chance to leave yet.
+**Add a bulk action.** `MemberImportService` is the template, and two rules are what make it
+usable rather than merely correct:
+
+- *A structural failure rejects the batch; a row failure never does.* If the file cannot be parsed,
+  nothing can be judged and nothing is attempted. But refusing two hundred and fifty valid rows
+  because row three has a typo is what makes a bulk action useless.
+- *One fresh transaction per row,* via `QuarkusTransaction.requiringNew()`. A single ambient
+  transaction lets one bad row mark the batch rollback-only and silently undo every row already
+  committed in it, so the caller is told rows succeeded while the database disagrees.
+
+Report every problem with a row at once, not the first one: otherwise fixing a file costs one
+upload per mistake. Answer 200 with per-row outcomes even when everything failed, since the detail
+is the response rather than an error. And check for in-batch duplicates yourself, because a unique
+index cannot catch a collision between two rows of one upload: neither exists when the other is
+checked. Any check against `member.phone` or `member.nationalId` must go through Panache so the
+converter encrypts it, or it compares plaintext against ciphertext, matches nothing, and reads as
+"free" right up until the insert fails.
+
+Email is sent on one shared bounded pool (`MailExecutor`). Bulk actions are why: eleven unbounded
+executors meant a three hundred row import opened three hundred concurrent SMTP handshakes.
+
+**Write a test that touches the database.** Call `TestDataCleaner.deleteAll()` from `@BeforeEach`,
+inside `QuarkusTransaction.requiringNew()`. Cleaning up only the tables your own test writes to
+passes when you run the class alone and fails in the full suite, on rows some other class left
+behind that still reference `member` or `chama`. Older classes still carry their own copy of the
+list; new ones should not.
 
 **Gate a new action behind dual sign-off.** Follow `WelfareFundService`: split the action into a
 `request` that records the intent without moving anything and a `markDisbursed` that releases it,

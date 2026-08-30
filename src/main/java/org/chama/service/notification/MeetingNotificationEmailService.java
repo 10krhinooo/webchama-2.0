@@ -5,8 +5,6 @@ import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.chama.service.KeycloakAdminService;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.eclipse.microprofile.context.ThreadContext;
 import org.jboss.logging.Logger;
 
 import java.time.LocalDate;
@@ -27,11 +25,6 @@ public class MeetingNotificationEmailService {
 
     private static final Logger LOG = Logger.getLogger(MeetingNotificationEmailService.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("EEEE, d MMM yyyy");
-
-    private static final ManagedExecutor MAIL_EXECUTOR = ManagedExecutor.builder()
-        .propagated(ThreadContext.NONE)
-        .cleared(ThreadContext.ALL_REMAINING)
-        .build();
 
     @Inject
     Mailer mailer;
@@ -67,7 +60,7 @@ public class MeetingNotificationEmailService {
     }
 
     private void send(Recipient recipient, String subject, String html) {
-        MAIL_EXECUTOR.runAsync(() -> {
+        MailExecutor.INSTANCE.runAsync(() -> {
             try {
                 String email = keycloakAdminService.getUserEmail(recipient.keycloakUserId());
                 if (email == null) {

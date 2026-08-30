@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
   chairperson turns them on, and configurable per chama
 - chama analytics on the dashboard: a health score with the components behind it, contributions
   billed against contributions collected month by month, and unpaid balances aged into buckets
+- bulk member import from a CSV file, with a preview that reports every problem in the file before
+  anything is created
 - an in-app notification centre, with a bell, a live stream, and per-event-type preferences
   covering both the inbox and email
 - a penalties page, making the existing issue, approve, waive and settle workflow reachable
@@ -42,6 +44,8 @@ All notable changes to this project will be documented in this file.
 - credit scoring compared due dates in UTC rather than Africa/Nairobi, so contributions due today
   read as overdue for the first three hours of a Nairobi morning
 - frontend: the dashboard contribution chart used hard-coded colours and stayed light in dark mode
+- email sending shared one bounded thread pool instead of eleven unbounded ones, so a bulk action
+  queues its messages rather than opening a connection per recipient at once
 - deleting a chama that had recorded any activity failed on a foreign key, because activity_log
   was missing from the ordered cleanup
 - frontend: stream server-sent events through nginx unbuffered, so the live activity feed
@@ -60,7 +64,7 @@ not collide on a version:
 | V42 | chama_reminder_settings and reminder_dispatch tables (applied) |
 | V43 | WELFARE_WITHDRAWAL approval target type (applied) |
 | V44 | welfare_withdrawal status, requested_by, requested_at (applied) |
-| V45 | MEMBERS_IMPORTED activity event type (reminders needed no event, see reminder_dispatch) |
+| V45 | MEMBERS_IMPORTED activity event type (applied) |
 | V46 | analytics aggregation indexes (applied) |
 | V47 | loan_repayment.paid_at (applied) |
 

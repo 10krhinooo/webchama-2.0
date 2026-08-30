@@ -5,8 +5,6 @@ import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.eclipse.microprofile.context.ThreadContext;
 import org.jboss.logging.Logger;
 
 /**
@@ -23,11 +21,6 @@ public class ChamaInvitationEmailService {
 
     private static final Logger LOG = Logger.getLogger(ChamaInvitationEmailService.class);
 
-    private static final ManagedExecutor MAIL_EXECUTOR = ManagedExecutor.builder()
-        .propagated(ThreadContext.NONE)
-        .cleared(ThreadContext.ALL_REMAINING)
-        .build();
-
     @Inject
     Mailer mailer;
 
@@ -35,7 +28,7 @@ public class ChamaInvitationEmailService {
     String frontendUrl;
 
     public void sendJoinInvite(String toEmail, String chamaName, String joinCode) {
-        MAIL_EXECUTOR.runAsync(() -> {
+        MailExecutor.INSTANCE.runAsync(() -> {
             try {
                 String subject = HtmlEmailSupport.forSubject("You're invited to join " + chamaName + " on Webchama");
                 mailer.send(Mail.withHtml(toEmail, subject, buildHtml(chamaName, joinCode)));
