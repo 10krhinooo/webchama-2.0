@@ -144,6 +144,34 @@ predates it:
 docker exec webchama-e2e-postgres psql -U chama -d chama -c "CREATE DATABASE chama_e2e OWNER chama;"
 ```
 
+### Running the end-to-end suite
+
+```bash
+cd e2e
+npm ci
+npx playwright install --with-deps chromium
+npm test              # or: npm run test:headed, npm run test:ui
+npm run report        # opens the last HTML report
+```
+
+`globalSetup` waits for all three services, then truncates `chama_e2e` and applies
+`e2e/fixtures/seed.sql`. If a run is interrupted and leaves the data in an odd state, reapply the
+fixture by hand with `npm run db:reset`.
+
+Three things about the fixture are worth knowing before changing it:
+
+- **Ids are literal**, so a spec can navigate straight to `/chamas/4/loans` rather than discovering
+  the id first, and every date derives from `date_trunc('month', CURRENT_DATE)` rather than a
+  literal, so "last month is overdue" stays true next year.
+- **Each mutating spec owns its own chama.** That is what lets the reset happen once per run
+  instead of between files. A spec that writes to a chama it does not own will eventually break a
+  different spec.
+- **Member `phone` and `national_id` are stored as ciphertext**, because their unique indexes are on
+  the ciphertext rather than the plaintext. Those rows are therefore written from TypeScript
+  (`e2e/support/db.ts`) with the encryption applied in flight, from the plaintext in
+  `e2e/fixtures/members.ts`, rather than being checked in as ciphertext. Changing the key needs no
+  regeneration.
+
 ## Contribution workflow
 
 This repository never receives commits directly on `main`. Every change lands on its own feature branch

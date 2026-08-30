@@ -66,7 +66,7 @@ export default function StaffLayout() {
     .toUpperCase()
 
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div data-testid="staff-layout" className="flex min-h-screen bg-paper">
       {navOpen && (
         <div
           data-testid="nav-backdrop"
