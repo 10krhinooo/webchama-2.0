@@ -522,7 +522,7 @@ export default function MembersPage() {
               <Input id="member-full-name" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
             </FormField>
             <FormField label="Phone" htmlFor="member-phone" required>
-              <PhoneInput value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} required />
+              <PhoneInput id="member-phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} required />
             </FormField>
             <FormField label="National ID" htmlFor="member-national-id">
               <Input id="member-national-id" value={form.nationalId} onChange={(e) => setForm({ ...form, nationalId: e.target.value })} />

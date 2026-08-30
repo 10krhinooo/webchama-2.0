@@ -17,6 +17,7 @@
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.6</surefire-plugin.version>
         <jacoco-plugin.version>0.8.15</jacoco-plugin.version>
+        <selenium.version>4.33.0</selenium.version>
         <coverage.minimum>0.90</coverage.minimum>
     </properties>
 
@@ -127,6 +128,17 @@
                  reflection at the JAX-RS boundary. -->
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jacoco</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Drives the cross-browser smoke journeys in src/test/java/org/chama/smoke.
+                 Those run only under -Psmoke, against an already-running stack, and never
+                 during a plain `mvn verify`. Selenium 4 resolves and caches the matching
+                 driver binary itself through Selenium Manager, so there is no WebDriverManager
+                 dependency and nothing to pin per browser version. -->
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>${selenium.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -250,6 +262,74 @@
     </build>
 
     <profiles>
+        <!--
+             Cross-browser smoke journeys, run on demand against an already-running stack:
+
+                 docker compose -f docker-compose.e2e.yml up -d
+                 ./mvnw -B -Psmoke verify
+
+             This profile deliberately changes nothing about a plain `./mvnw verify`, which still
+             runs the unit and @QuarkusTest suites and still enforces the coverage gate. The
+             coverage numbers cannot be moved by anything here either: JaCoCo instruments
+             target/classes only, so org.chama.smoke is structurally outside the bundle it
+             measures, and the gate reads jacoco-merged.exec produced during the test phase,
+             strictly before failsafe reaches integration-test.
+
+             surefire is turned off through its own `skip` rather than `skipTests`, because
+             failsafe honours `skipTests` too and would then run nothing at all.
+        -->
+        <profile>
+            <id>smoke</id>
+            <properties>
+                <skipITs>false</skipITs>
+
+                <!-- No agent, no report, no gate. Without this the coverage check would run a
+                     second time over a build that deliberately skipped every unit test. -->
+                <jacoco.skip>true</jacoco.skip>
+
+                <!-- Addresses of the docker-compose.e2e.yml stack. Overridable on the command
+                     line, which is how CI points the same journeys at its own published ports. -->
+                <smoke.baseUrl>http://localhost:5174</smoke.baseUrl>
+                <smoke.keycloakUrl>http://localhost:8181</smoke.keycloakUrl>
+                <smoke.browsers>chrome,firefox</smoke.browsers>
+                <smoke.headless>true</smoke.headless>
+
+                <!-- Empty means "whatever is on PATH". Set one when the executable there is not
+                     directly launchable, which is the case for Ubuntu's snap-wrapped Firefox. -->
+                <smoke.chromeBinary></smoke.chromeBinary>
+                <smoke.firefoxBinary></smoke.firefoxBinary>
+                <smoke.superadminPassword>Superadmin1!</smoke.superadminPassword>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <!-- Overrides the inherited @{argLine}. That placeholder is set by
+                                 jacoco:prepare-agent, which this profile skips, so leaving it in
+                                 place would hand the forked JVM the literal string. -->
+                            <argLine></argLine>
+                            <systemPropertyVariables>
+                                <smoke.baseUrl>${smoke.baseUrl}</smoke.baseUrl>
+                                <smoke.keycloakUrl>${smoke.keycloakUrl}</smoke.keycloakUrl>
+                                <smoke.browsers>${smoke.browsers}</smoke.browsers>
+                                <smoke.headless>${smoke.headless}</smoke.headless>
+                                <smoke.chromeBinary>${smoke.chromeBinary}</smoke.chromeBinary>
+                                <smoke.firefoxBinary>${smoke.firefoxBinary}</smoke.firefoxBinary>
+                                <smoke.superadminPassword>${smoke.superadminPassword}</smoke.superadminPassword>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>native</id>
             <activation>
