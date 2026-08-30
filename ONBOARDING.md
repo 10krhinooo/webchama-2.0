@@ -253,6 +253,19 @@ Re-check every precondition in `markDisbursed`, not only in `request`. Time pass
 and whatever made the action affordable may no longer hold: a welfare withdrawal re-checks the fund
 balance because another withdrawal may have cleared while this one waited for a signature.
 
+**Put text on a surface that is dark in both themes.** Use `text-on-dark`, not `text-paper`.
+`paper` is a *surface* token and inverts, so `text-paper` on the sidebar or the footer is white in
+light mode and near-black in dark mode. `on-dark` is deliberately a fixed value in
+`tailwind.config.js` for exactly this.
+
+**Give a chart a colour.** Tailwind `fill-*` and `stroke-*` classes are enough for the drawn
+series, the grid and the axes, with `currentColor` on the ticks inheriting from the container.
+They are not enough for a legend swatch or a slice label: recharts draws those from the `fill`
+*prop*, and an SVG presentation attribute cannot read a `var()`. Where a chart has a legend, take
+the colour from `useChartColors`, which resolves the tokens and recomputes when the theme class on
+the document changes. Spread `chartTooltipProps` onto every `<Tooltip>`, or its floating box stays
+white on a dark page.
+
 **Add a theme-aware colour.** Add the RGB triple to both the `:root` and `.dark` blocks in
 `index.css`, then expose it in `tailwind.config.js` through the `withAlpha` helper so it composes
 with an alpha channel like any built-in colour.

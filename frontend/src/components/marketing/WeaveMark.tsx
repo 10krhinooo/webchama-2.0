@@ -17,7 +17,7 @@ export default function WeaveMark({ className }: WeaveMarkProps) {
         <line x1="8" y1="16" x2="16" y2="8" strokeOpacity={0.35} />
         <line x1="16" y1="24" x2="24" y2="16" strokeOpacity={0.35} />
       </g>
-      <circle cx="16" cy="16" r="3" fill="#E0A233" />
+      <circle cx="16" cy="16" r="3" className="fill-accent" />
     </svg>
   )
 }

@@ -12,14 +12,17 @@ interface WovenBackdropProps {
  */
 export default function WovenBackdrop({ className, tone = 'primary' }: WovenBackdropProps) {
   const patternId = `woven-backdrop-${tone}`
-  const stroke = tone === 'primary' ? '#1B4D45' : '#0B211D'
+  // The primary tone follows the theme, so the texture stays visible when the surface under it
+  // inverts. The night tone is a fixed step off the ramp on purpose: it is only ever used on
+  // sections that are dark in both themes.
+  const strokeClass = tone === 'primary' ? 'stroke-primary' : 'stroke-primary-950'
 
   return (
     <svg className={className} aria-hidden="true" preserveAspectRatio="xMidYMid slice">
       <defs>
         <pattern id={patternId} width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="80" stroke={stroke} strokeWidth="1" strokeOpacity={0.08} />
-          <line x1="40" y1="0" x2="40" y2="80" stroke={stroke} strokeWidth="1" strokeOpacity={0.05} />
+          <line x1="0" y1="0" x2="0" y2="80" className={strokeClass} strokeWidth="1" strokeOpacity={0.08} />
+          <line x1="40" y1="0" x2="40" y2="80" className={strokeClass} strokeWidth="1" strokeOpacity={0.05} />
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#${patternId})`} />

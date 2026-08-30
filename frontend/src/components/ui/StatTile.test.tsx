@@ -33,4 +33,26 @@ describe('StatTile', () => {
     const { container } = render(<StatTile label="A" value="1" className="col-span-2" />)
     expect(container.firstElementChild?.className).toContain('col-span-2')
   })
+
+  it('says there is nothing rather than showing a figure, when there is no value', () => {
+    render(<StatTile label="Next payout" empty="No payout scheduled yet" />)
+    expect(screen.getByText('No payout scheduled yet')).toBeTruthy()
+  })
+
+  it('falls back to a generic line when no wording is given for an absent value', () => {
+    render(<StatTile label="Next payout" value={null} />)
+    expect(screen.getByText('Nothing yet')).toBeTruthy()
+  })
+
+  it('treats zero as a figure and not as an absent value', () => {
+    // Zero measured is a different claim from nothing measured, and only one of them is news.
+    render(<StatTile label="Overdue" value={0} empty="Nothing recorded" />)
+    expect(screen.getByText('0')).toBeTruthy()
+    expect(screen.queryByText('Nothing recorded')).toBeNull()
+  })
+
+  it('renders an action beside the label', () => {
+    render(<StatTile label="Welfare fund" value="1,200" action={<button>Edit goal</button>} />)
+    expect(screen.getByRole('button', { name: 'Edit goal' })).toBeTruthy()
+  })
 })

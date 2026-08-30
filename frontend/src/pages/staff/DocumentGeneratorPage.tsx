@@ -11,6 +11,8 @@ import {
 import { getMembers, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import EmptyState from '../../components/ui/EmptyState'
+import Card from '../../components/ui/Card'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -223,7 +225,7 @@ export default function DocumentGeneratorPage() {
           ))}
         </ol>
 
-        <div className="bg-surface rounded-2xl shadow-card p-6 space-y-4">
+        <Card className="space-y-4">
           {wizardError && (
             <FormError message={wizardError} />
           )}
@@ -349,7 +351,7 @@ export default function DocumentGeneratorPage() {
               <Button variant="secondary" onClick={finishWizard}>Done</Button>
             </div>
           )}
-        </div>
+        </Card>
 
         {step < 3 && (
           <div className="flex justify-between">
@@ -377,7 +379,7 @@ export default function DocumentGeneratorPage() {
         <Button onClick={openWizard}>+ New Document</Button>
       </div>
 
-      <div className="bg-surface rounded-2xl shadow-card p-6 space-y-4">
+      <Card className="space-y-4">
         <div>
           <h2 className="font-heading text-lg font-bold text-ink">AGM / Auditor Export</h2>
           <p className="text-sm text-muted">
@@ -419,7 +421,7 @@ export default function DocumentGeneratorPage() {
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
 
@@ -438,7 +440,11 @@ export default function DocumentGeneratorPage() {
           </TableHeader>
           <TableBody>
             {documents.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">No documents generated yet.</TableCell></TableRow>
+              <TableRow>
+                  <TableCell colSpan={5}>
+                    <EmptyState title="No documents generated yet" description="Generate a receipt or statement and it will be listed here." />
+                  </TableCell>
+                </TableRow>
             )}
             {pageItems.map((doc) => (
               <TableRow key={doc.id}>

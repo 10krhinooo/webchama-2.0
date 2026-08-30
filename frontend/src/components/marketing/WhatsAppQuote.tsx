@@ -11,9 +11,9 @@ interface WhatsAppQuoteProps {
 export default function WhatsAppQuote({ quote, name, role }: WhatsAppQuoteProps) {
   return (
     <div className="mx-auto max-w-md">
-      <div className="relative rounded-2xl rounded-tl-sm bg-success px-5 py-4 text-paper shadow-card">
+      <div className="relative rounded-2xl rounded-tl-sm bg-success px-5 py-4 text-on-dark shadow-card">
         <p className="text-[15px] leading-relaxed">{quote}</p>
-        <div className="mt-2 flex items-center justify-end gap-1 text-xs text-paper/70">
+        <div className="mt-2 flex items-center justify-end gap-1 text-xs text-on-dark/70">
           <span>9:41 PM</span>
           <svg viewBox="0 0 16 11" className="h-3 w-4" fill="none" aria-hidden="true">
             <path d="M1 5.5L4.5 9L10.5 1" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />

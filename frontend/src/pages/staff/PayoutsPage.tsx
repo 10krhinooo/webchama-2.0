@@ -15,6 +15,7 @@ import { getMembers, type Member } from '../../api/members'
 import { getChama, updateAutoPushSettings, type Chama } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -214,7 +215,11 @@ export default function PayoutsPage() {
               </TableHeader>
               <TableBody>
                 {schedule.length === 0 && (
-                  <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted">No rotation schedule generated yet.</TableCell></TableRow>
+                  <TableRow>
+                  <TableCell colSpan={4}>
+                    <EmptyState title="No rotation schedule generated yet" description="Generate one to set who receives each round." />
+                  </TableCell>
+                </TableRow>
                 )}
                 {schedule.map((entry) => (
                   <TableRow key={entry.id} className={member && entry.memberId === member.id ? 'bg-primary-light/40 hover:bg-primary-light/40' : undefined}>
@@ -246,7 +251,11 @@ export default function PayoutsPage() {
               </TableHeader>
               <TableBody>
                 {payouts.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No payouts yet.</TableCell></TableRow>
+                  <TableRow>
+                  <TableCell colSpan={6}>
+                    <EmptyState title="No payouts yet" description="Create the next payout once a rotation schedule exists." />
+                  </TableCell>
+                </TableRow>
                 )}
                 {payouts.map((payout) => (
                   <TableRow key={payout.id}>

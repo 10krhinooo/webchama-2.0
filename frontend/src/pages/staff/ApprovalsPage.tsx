@@ -14,6 +14,7 @@ import { getPayouts, type Payout } from '../../api/payouts'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
+import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -160,7 +161,11 @@ export default function ApprovalsPage() {
           </TableHeader>
           <TableBody>
             {approvals.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted">No approval requests yet.</TableCell></TableRow>
+              <TableRow>
+                  <TableCell colSpan={7}>
+                    <EmptyState title="No approval requests yet" description="Requests appear here when a loan or payout is above this chama's threshold." />
+                  </TableCell>
+                </TableRow>
             )}
             {pageItems.map((approval) => {
               const alreadySignedByMe = member != null && approval.firstApproverMemberId === member.id

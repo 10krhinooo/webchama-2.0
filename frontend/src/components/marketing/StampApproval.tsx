@@ -12,15 +12,15 @@ interface StampProps {
 function Stamp({ label, sublabel, visible, delayMs, rotate, reduceMotion }: StampProps) {
   return (
     <div
-      className="flex flex-col items-center justify-center rounded-lg border-4 border-paper px-6 py-5 text-center"
+      className="flex flex-col items-center justify-center rounded-lg border-4 border-on-dark px-6 py-5 text-center"
       style={{
         transform: visible ? `rotate(${rotate})` : `rotate(${rotate}) scale(0.6)`,
         opacity: visible ? 1 : 0,
         transition: reduceMotion ? "none" : `opacity 0.4s ease-out ${delayMs}ms, transform 0.4s ease-out ${delayMs}ms`,
       }}
     >
-      <span className="font-mono text-2xl font-bold uppercase tracking-wide text-paper">{label}</span>
-      <span className="mt-1 font-mono text-xs uppercase tracking-widest text-paper/70">{sublabel}</span>
+      <span className="font-mono text-2xl font-bold uppercase tracking-wide text-on-dark">{label}</span>
+      <span className="mt-1 font-mono text-xs uppercase tracking-widest text-on-dark/70">{sublabel}</span>
     </div>
   )
 }
@@ -63,7 +63,7 @@ export default function StampApproval() {
         rotate="-6deg"
         reduceMotion={reduceMotion}
       />
-      <svg viewBox="0 0 24 24" className="h-6 w-6 rotate-90 text-paper/50 sm:rotate-0" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className="h-6 w-6 rotate-90 text-on-dark/50 sm:rotate-0" aria-hidden="true">
         <path d="M4 12h16m0 0l-6-6m6 6l-6 6" stroke="currentColor" strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <Stamp

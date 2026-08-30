@@ -13,7 +13,10 @@ import { getWelfareFund, updateWelfareFundTarget, type WelfareFund } from '../..
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { useActivityFeed } from '../../hooks/useActivityFeed'
+import { chartTooltipProps } from '../../lib/chartTheme'
 import ContributionPot from '../../components/marketing/ContributionPot'
+import Card from '../../components/ui/Card'
+import StatTile from '../../components/ui/StatTile'
 import { SkeletonBlock, SkeletonLine } from '../../components/ui/Skeleton'
 import TransientAlert from '../../components/ui/TransientAlert'
 import Reveal from '../../components/ui/Reveal'
@@ -291,7 +294,7 @@ export default function DashboardPage() {
       <TransientAlert variant="error" message={error} onDismiss={() => setError(null)} />
 
       {(savingsProgress?.target != null || isChairperson) && (
-        <div className="rounded-2xl bg-surface p-8 shadow-card">
+        <Card className="p-8">
           {isChairperson && (
             <div className="mb-4 flex justify-end">
               <button onClick={openGoalEditor} className="text-brand text-xs hover:underline">
@@ -307,75 +310,63 @@ export default function DashboardPage() {
           ) : (
             <p className="text-sm text-muted">No savings goal set yet.</p>
           )}
-        </div>
+        </Card>
       )}
 
       <Reveal eager delayMs={80} className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl bg-surface p-8 shadow-card">
+        <Card className="p-8">
           <ContributionPot
             percent={percent}
             label={isManager ? 'Chama collected' : 'You have paid'}
             sublabel={sublabel}
           />
-        </div>
+        </Card>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-surface p-6 shadow-card">
-            <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">Members</p>
-            <p className="mt-2 font-mono text-3xl font-bold text-ink">{memberCount}</p>
-          </div>
-          <div className="rounded-2xl bg-surface p-6 shadow-card">
-            <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-              Contributions paid in full
-            </p>
-            <p className="mt-2 font-mono text-3xl font-bold text-ink">
-              {contributions.filter((c) => c.status === 'PAID').length}
-              <span className="ml-1 text-base font-normal text-muted">/ {contributions.length}</span>
-            </p>
-          </div>
-          <div className="rounded-2xl bg-surface p-6 shadow-card">
-            <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-              {isManager ? 'Outstanding loans' : 'My loan balance'}
-            </p>
-            <p className="mt-2 font-mono text-3xl font-bold text-ink">{formatMoney(outstandingLoanTotal, currency)}</p>
-            {isManager && (
-              <p className="mt-1 text-xs text-muted">{activeLoanCount} active loan{activeLoanCount === 1 ? '' : 's'}</p>
-            )}
-          </div>
-          <div className="rounded-2xl bg-surface p-6 shadow-card">
-            <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-              {isManager ? 'Next payout' : 'My payout position'}
-            </p>
-            {nextPayout ? (
+          <StatTile label="Members" value={memberCount} />
+          <StatTile
+            label="Contributions paid in full"
+            value={
               <>
-                <p className="mt-2 font-mono text-lg font-bold text-ink">
-                  {isManager ? nextPayout.memberName : `Round ${nextPayout.roundNumber}`}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {formatMoney(nextPayout.amount, currency)} on {nextPayout.scheduledDate}
-                </p>
+                {contributions.filter((c) => c.status === 'PAID').length}
+                <span className="ml-1 text-base font-normal text-muted">/ {contributions.length}</span>
               </>
-            ) : (
-              <p className="mt-2 text-sm text-muted">No payout scheduled yet</p>
-            )}
-          </div>
+            }
+          />
+          <StatTile
+            label={isManager ? 'Outstanding loans' : 'My loan balance'}
+            value={formatMoney(outstandingLoanTotal, currency)}
+            detail={
+              isManager ? `${activeLoanCount} active loan${activeLoanCount === 1 ? '' : 's'}` : undefined
+            }
+          />
+          <StatTile
+            label={isManager ? 'Next payout' : 'My payout position'}
+            value={nextPayout && (isManager ? nextPayout.memberName : `Round ${nextPayout.roundNumber}`)}
+            empty="No payout scheduled yet"
+            detail={
+              nextPayout
+                ? `${formatMoney(nextPayout.amount, currency)} on ${nextPayout.scheduledDate}`
+                : undefined
+            }
+          />
           {isManager && welfareFund && (
-            <div className="rounded-2xl bg-surface p-6 shadow-card">
-              <div className="flex items-start justify-between">
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-                  Welfare fund
-                </p>
-                {isChairperson && (
+            <StatTile
+              label="Welfare fund"
+              value={formatMoney(welfareFund.balance, currency)}
+              detail={
+                welfareFund.target != null
+                  ? `of ${formatMoney(welfareFund.target, currency)} goal`
+                  : undefined
+              }
+              action={
+                isChairperson && (
                   <button onClick={openWelfareGoalEditor} className="text-brand text-xs hover:underline">
                     Edit goal
                   </button>
-                )}
-              </div>
-              <p className="mt-2 font-mono text-3xl font-bold text-ink">{formatMoney(welfareFund.balance, currency)}</p>
-              {welfareFund.target != null && (
-                <p className="mt-1 text-xs text-muted">of {formatMoney(welfareFund.target, currency)} goal</p>
-              )}
-            </div>
+                )
+              }
+            />
           )}
         </div>
       </Reveal>
@@ -384,66 +375,38 @@ export default function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {isChairperson && (
             <>
-              <div className="rounded-2xl bg-surface p-6 shadow-card">
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-                  Awaiting your sign-off
-                </p>
-                <p className="mt-2 font-mono text-3xl font-bold text-ink">{pendingApprovals.length}</p>
-              </div>
-              <div className="rounded-2xl bg-surface p-6 shadow-card">
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-                  Loans awaiting decision
-                </p>
-                <p className="mt-2 font-mono text-3xl font-bold text-ink">{loansAwaitingDecision}</p>
-              </div>
+              <StatTile label="Awaiting your sign-off" value={pendingApprovals.length} />
+              <StatTile label="Loans awaiting decision" value={loansAwaitingDecision} />
             </>
           )}
           {isTreasurer && (
             <>
-              <div className="rounded-2xl bg-surface p-6 shadow-card">
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-                  Overdue contributions
-                </p>
-                <p className="mt-2 font-mono text-3xl font-bold text-ink">
-                  {contributions.filter((c) => c.status === 'OVERDUE').length}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-surface p-6 shadow-card">
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-                  Your pending requests
-                </p>
-                <p className="mt-2 font-mono text-3xl font-bold text-ink">
-                  {pendingApprovals.filter((a) => a.requestedByMemberId === member?.id).length}
-                </p>
-              </div>
+              <StatTile
+                label="Overdue contributions"
+                value={contributions.filter((c) => c.status === 'OVERDUE').length}
+              />
+              <StatTile
+                label="Your pending requests"
+                value={pendingApprovals.filter((a) => a.requestedByMemberId === member?.id).length}
+              />
             </>
           )}
           {isSecretary && (
             <>
-              <div className="rounded-2xl bg-surface p-6 shadow-card">
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">Next meeting</p>
-                {nextMeeting ? (
-                  <>
-                    <p className="mt-2 font-mono text-lg font-bold text-ink">{nextMeeting.meetingDate}</p>
-                    <p className="mt-1 text-xs text-muted line-clamp-2">{nextMeeting.agenda}</p>
-                  </>
-                ) : (
-                  <p className="mt-2 text-sm text-muted">No meeting scheduled yet</p>
-                )}
-              </div>
-              <div className="rounded-2xl bg-surface p-6 shadow-card">
-                <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
-                  Open resolutions
-                </p>
-                <p className="mt-2 font-mono text-3xl font-bold text-ink">{openResolutionCount}</p>
-              </div>
+              <StatTile
+                label="Next meeting"
+                value={nextMeeting?.meetingDate}
+                empty="No meeting scheduled yet"
+                detail={nextMeeting && <span className="line-clamp-2">{nextMeeting.agenda}</span>}
+              />
+              <StatTile label="Open resolutions" value={openResolutionCount} />
             </>
           )}
         </div>
       )}
 
       <div className={isManager ? 'grid gap-6 lg:grid-cols-2' : ''}>
-        <div className="rounded-2xl bg-surface p-6 shadow-card">
+        <Card>
           <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
             Contributions by status
           </p>
@@ -457,15 +420,15 @@ export default function DashboardPage() {
                 */}
                 <XAxis dataKey="status" tick={{ fontSize: 12, fill: 'currentColor' }} axisLine={false} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'currentColor' }} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ className: 'fill-paper-dim' }} />
+                <Tooltip {...chartTooltipProps} cursor={{ className: 'fill-paper-dim' }} />
                 <Bar dataKey="count" className="fill-primary" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </Card>
 
         {isManager && (
-          <div className="rounded-2xl bg-surface p-6 shadow-card">
+          <Card>
             <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">Recent activity</p>
             <div className="mt-4 space-y-3">
               {activityLoading && activityEntries.length === 0 && (
@@ -484,7 +447,7 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         )}
       </div>
 

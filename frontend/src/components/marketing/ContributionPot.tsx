@@ -51,14 +51,18 @@ export default function ContributionPot({ percent, label = 'This cycle', sublabe
             <path d={`${basketOutline} Z`} />
           </clipPath>
           <pattern id="pot-weave" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="10" height="10" fill="#E0A233" />
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#B87D1D" strokeWidth="2" />
-            <line x1="5" y1="0" x2="5" y2="10" stroke="#B87D1D" strokeWidth="1" strokeOpacity={0.6} />
+            <rect width="10" height="10" className="fill-accent" />
+            <line x1="0" y1="0" x2="0" y2="10" className="stroke-accent-dark" strokeWidth="2" />
+            <line x1="5" y1="0" x2="5" y2="10" className="stroke-accent-dark" strokeWidth="1" strokeOpacity={0.6} />
           </pattern>
         </defs>
 
         <g clipPath="url(#pot-clip)">
-          <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="#EDE1CC" />
+          {/*
+            The empty part of the pot. A literal here was a light cream block sitting on a
+            dark card, and the basket outline all but vanished against it.
+          */}
+          <rect x="0" y="0" width={WIDTH} height={HEIGHT} className="fill-paper-dim" />
           <rect
             className="pot-fill-animate"
             x="0"
@@ -70,8 +74,8 @@ export default function ContributionPot({ percent, label = 'This cycle', sublabe
           />
         </g>
 
-        <path d={basketOutline} fill="none" stroke="#1B4D45" strokeWidth={2.5} strokeLinejoin="round" />
-        <ellipse cx={WIDTH / 2} cy={RIM_Y} rx={TOP_HALF_WIDTH} ry={9} fill="none" stroke="#1B4D45" strokeWidth={2.5} />
+        <path d={basketOutline} fill="none" className="stroke-primary" strokeWidth={2.5} strokeLinejoin="round" />
+        <ellipse cx={WIDTH / 2} cy={RIM_Y} rx={TOP_HALF_WIDTH} ry={9} fill="none" className="stroke-primary" strokeWidth={2.5} />
         {[-1, -0.5, 0, 0.5, 1].map((t) => (
           <line
             key={t}
@@ -79,7 +83,7 @@ export default function ContributionPot({ percent, label = 'This cycle', sublabe
             y1={RIM_Y + 3}
             x2={WIDTH / 2 + t * BASE_HALF_WIDTH * 0.94}
             y2={BASE_Y - 3}
-            stroke="#1B4D45"
+            className="stroke-primary"
             strokeOpacity={0.35}
             strokeWidth={1.5}
           />

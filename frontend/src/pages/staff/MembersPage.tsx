@@ -20,6 +20,7 @@ import {
   type MemberImportResult,
 } from '../../api/memberImport'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -375,7 +376,11 @@ export default function MembersPage() {
             </TableHeader>
             <TableBody>
               {members.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">No members yet.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <EmptyState title="No members yet" description="Invite someone, or share the join code above." />
+                  </TableCell>
+                </TableRow>
               )}
               {pageItems.map((m) => (
                 <TableRow key={m.id}>
