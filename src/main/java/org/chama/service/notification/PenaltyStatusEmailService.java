@@ -5,8 +5,6 @@ import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.chama.service.KeycloakAdminService;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.eclipse.microprofile.context.ThreadContext;
 import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
@@ -21,11 +19,6 @@ import java.math.BigDecimal;
 public class PenaltyStatusEmailService {
 
     private static final Logger LOG = Logger.getLogger(PenaltyStatusEmailService.class);
-
-    private static final ManagedExecutor MAIL_EXECUTOR = ManagedExecutor.builder()
-        .propagated(ThreadContext.NONE)
-        .cleared(ThreadContext.ALL_REMAINING)
-        .build();
 
     @Inject
     Mailer mailer;
@@ -62,7 +55,7 @@ public class PenaltyStatusEmailService {
     }
 
     private void send(String keycloakUserId, String subject, String html) {
-        MAIL_EXECUTOR.runAsync(() -> {
+        MailExecutor.INSTANCE.runAsync(() -> {
             try {
                 String email = keycloakAdminService.getUserEmail(keycloakUserId);
                 if (email == null) {

@@ -14,6 +14,11 @@ import {
 } from '../../api/members'
 import { getChama, regenerateJoinCode, inviteToChama, type Chama } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
+import {
+  importMembers,
+  MEMBER_IMPORT_TEMPLATE,
+  type MemberImportResult,
+} from '../../api/memberImport'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
@@ -70,6 +75,13 @@ export default function MembersPage() {
   const [resendResult, setResendResult] = useState<MemberInvitationResult | null>(null)
   const [regenerating, setRegenerating] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  const [showImport, setShowImport] = useState(false)
+  const [importCsv, setImportCsv] = useState('')
+  const [importFileName, setImportFileName] = useState<string | null>(null)
+  const [importPreview, setImportPreview] = useState<MemberImportResult | null>(null)
+  const [importNotice, setImportNotice] = useState<string | null>(null)
+  const [importBusy, setImportBusy] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteNotice, setInviteNotice] = useState<string | null>(null)
@@ -86,6 +98,58 @@ export default function MembersPage() {
   }
 
   useEffect(refresh, [chamaId])
+
+  const openImport = () => {
+    setShowImport(true)
+    setImportCsv('')
+    setImportFileName(null)
+    setImportPreview(null)
+    setImportNotice(null)
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportFileName(file.name)
+    setImportPreview(null)
+    setImportNotice(null)
+    const reader = new FileReader()
+    reader.onload = () => setImportCsv(String(reader.result ?? ''))
+    reader.onerror = () => setImportNotice('That file could not be read.')
+    reader.readAsText(file)
+  }
+
+  const runImport = async (dryRun: boolean) => {
+    setImportBusy(true)
+    setImportNotice(null)
+    try {
+      const result = await importMembers(chamaId, importCsv, dryRun)
+      setImportPreview(result)
+      if (!dryRun && result.created > 0) {
+        setNotice({
+          variant: 'success',
+          message: `${result.created} ${result.created === 1 ? 'member' : 'members'} imported.`,
+        })
+        refresh()
+      }
+    } catch (err) {
+      setImportNotice(extractErrorMessage(err))
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
+  const downloadTemplate = () => {
+    // A template is the difference between a chairperson guessing at column names and getting it
+    // right first time, and it costs one anchor.
+    const blob = new Blob([MEMBER_IMPORT_TEMPLATE], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = 'member-import-template.csv'
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
 
   const openCreate = () => {
     setEditing(null)
@@ -247,7 +311,12 @@ export default function MembersPage() {
           <h1 className="font-heading text-2xl font-bold text-ink">Members</h1>
           {chama && <p className="text-sm text-muted">{chama.name}</p>}
         </div>
-        {isChairperson && <Button onClick={openCreate}>+ Invite Member</Button>}
+        {isChairperson && (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={openImport}>Import from file</Button>
+            <Button onClick={openCreate}>+ Invite Member</Button>
+          </div>
+        )}
       </Reveal>
 
       <TransientAlert variant={notice?.variant ?? 'success'} message={notice?.message ?? null} onDismiss={() => setNotice(null)} />
@@ -346,6 +415,96 @@ export default function MembersPage() {
 
       {!loading && !roleLoading && (
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} label="members" />
+      )}
+
+      {showImport && (
+        <Modal title="Import members from a file" onClose={() => setShowImport(false)}>
+          <div className="space-y-4">
+            <FormError message={importNotice} />
+            <p className="text-sm text-muted">
+              A CSV with an <code>email</code>, <code>fullName</code> and <code>phone</code> column,
+              plus optional <code>nationalId</code>, <code>nextOfKin</code> and <code>roles</code>.
+              Preview first: nothing is created until you choose to import.
+            </p>
+            <button type="button" onClick={downloadTemplate} className="text-xs text-brand hover:underline">
+              Download a template
+            </button>
+
+            <FormField label="File" htmlFor="member-import-file" required>
+              <input
+                id="member-import-file"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleImportFile}
+                className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-paper-dim file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink"
+              />
+            </FormField>
+            {importFileName && <p className="text-xs text-subtle">{importFileName}</p>}
+
+            {importPreview && (
+              <div data-testid="member-import-result" className="space-y-3">
+                {importPreview.structuralErrors.length > 0 ? (
+                  <div className="rounded-lg border border-danger/30 bg-danger/5 p-3">
+                    <p className="text-sm font-medium text-danger">This file could not be read.</p>
+                    <ul className="mt-1 list-disc pl-5 text-xs text-danger">
+                      {importPreview.structuralErrors.map((problem) => (
+                        <li key={problem}>{problem}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-ink">
+                      {importPreview.dryRun
+                        ? `${importPreview.ready} of ${importPreview.totalRows} rows are ready to import.`
+                        : `${importPreview.created} of ${importPreview.totalRows} rows were imported.`}
+                      {importPreview.skipped + importPreview.failed > 0 &&
+                        ` ${importPreview.skipped + importPreview.failed} could not be used.`}
+                    </p>
+                    <ul className="max-h-56 space-y-2 overflow-y-auto">
+                      {importPreview.rows
+                        .filter((row) => row.problems.length > 0 || row.temporaryPassword)
+                        .map((row) => (
+                          <li key={row.lineNumber} className="rounded-lg border border-border p-2 text-xs">
+                            <span className="font-medium text-ink">
+                              {`Line ${row.lineNumber}: ${row.email || '(no email)'}`}
+                            </span>
+                            {row.problems.map((problem) => (
+                              <span key={problem} className="mt-0.5 block text-danger">{problem}</span>
+                            ))}
+                            {row.temporaryPassword && (
+                              <span className="mt-0.5 block text-muted">
+                                Temporary password: <code>{row.temporaryPassword}</code>
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setShowImport(false)}>Close</Button>
+              <LoadingButton
+                variant="secondary"
+                loading={importBusy}
+                disabled={!importCsv}
+                onClick={() => runImport(true)}
+              >
+                Preview
+              </LoadingButton>
+              <LoadingButton
+                loading={importBusy}
+                disabled={!importPreview || !importPreview.dryRun || importPreview.ready === 0}
+                onClick={() => runImport(false)}
+              >
+                Import {importPreview?.ready ?? 0}
+              </LoadingButton>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {showModal && !inviteResult && (

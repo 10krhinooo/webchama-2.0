@@ -16,6 +16,10 @@ vi.mock('../../api/chamas', () => ({
   regenerateJoinCode: vi.fn(),
   inviteToChama: vi.fn(),
 }))
+vi.mock('../../api/memberImport', async () => {
+  const actual = await vi.importActual<typeof import('../../api/memberImport')>('../../api/memberImport')
+  return { ...actual, importMembers: vi.fn() }
+})
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
@@ -23,6 +27,7 @@ vi.mock('../../hooks/useMyMembership', () => ({
 import { getMembers, createMember, updateMember, updateMemberStatus, deleteMember, resendInvite } from '../../api/members'
 import { getChama, regenerateJoinCode, inviteToChama } from '../../api/chamas'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import { importMembers } from '../../api/memberImport'
 
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockCreateMember = createMember as ReturnType<typeof vi.fn>
@@ -34,6 +39,35 @@ const mockGetChama = getChama as ReturnType<typeof vi.fn>
 const mockRegenerateJoinCode = regenerateJoinCode as ReturnType<typeof vi.fn>
 const mockInviteToChama = inviteToChama as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
+const mockImportMembers = importMembers as ReturnType<typeof vi.fn>
+
+function anImportResult(overrides: Partial<import('../../api/memberImport').MemberImportResult> = {}) {
+  return {
+    dryRun: true,
+    totalRows: 2,
+    created: 0,
+    ready: 2,
+    skipped: 0,
+    failed: 0,
+    structuralErrors: [],
+    rows: [],
+    ...overrides,
+  }
+}
+
+/**
+ * Drives the file input the way a person does, since the modal reads the file itself.
+ *
+ * Waits for Preview to become enabled rather than for the file name, because FileReader resolves
+ * asynchronously and the name is set before the contents have been read.
+ */
+async function chooseFile(csv: string) {
+  const input = screen.getByLabelText(/^File/) as HTMLInputElement
+  const file = new File([csv], 'members.csv', { type: 'text/csv' })
+  Object.defineProperty(input, 'files', { value: [file] })
+  fireEvent.change(input)
+  await waitFor(() => expect(screen.getByText('Preview')).toBeEnabled())
+}
 
 const member = {
   id: 1,
@@ -62,6 +96,115 @@ describe('MembersPage', () => {
     vi.clearAllMocks()
     mockGetChama.mockResolvedValue({ id: 3, name: 'Tumaini', joinCode: 'AB12CD34' })
     mockGetMembers.mockResolvedValue([member])
+  })
+
+  it('does not offer import to anyone but a chairperson', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: false, loading: false })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
+
+    expect(screen.queryByText('Import from file')).toBeNull()
+  })
+
+  it('previews a file before creating anything', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockImportMembers.mockResolvedValue(anImportResult())
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Import from file')).toBeTruthy())
+    fireEvent.click(screen.getByText('Import from file'))
+    await chooseFile('email,fullName,phone\njane@example.com,Jane,254700000001\n')
+    fireEvent.click(screen.getByText('Preview'))
+
+    await waitFor(() => expect(mockImportMembers).toHaveBeenCalled())
+    // The third argument is the dry run flag: a preview must never provision accounts.
+    expect(mockImportMembers.mock.calls[0][2]).toBe(true)
+    expect(await screen.findByText(/2 of 2 rows are ready/)).toBeTruthy()
+  })
+
+  it('will not import until a preview has been run', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Import from file')).toBeTruthy())
+    fireEvent.click(screen.getByText('Import from file'))
+    await chooseFile('email,fullName,phone\njane@example.com,Jane,254700000001\n')
+
+    // Importing sight unseen would provision Keycloak accounts nobody had looked at.
+    expect(screen.getByText(/^Import 0$/)).toBeDisabled()
+  })
+
+  it('imports after a preview and reports how many landed', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockImportMembers.mockResolvedValueOnce(anImportResult())
+    mockImportMembers.mockResolvedValueOnce(anImportResult({ dryRun: false, created: 2, ready: 0 }))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Import from file')).toBeTruthy())
+    fireEvent.click(screen.getByText('Import from file'))
+    await chooseFile('email,fullName,phone\njane@example.com,Jane,254700000001\n')
+    fireEvent.click(screen.getByText('Preview'))
+
+    await waitFor(() => expect(screen.getByText(/^Import 2$/)).toBeEnabled())
+    fireEvent.click(screen.getByText(/^Import 2$/))
+
+    await waitFor(() => expect(mockImportMembers.mock.calls[1][2]).toBe(false))
+    expect(await screen.findByText('2 members imported.')).toBeTruthy()
+  })
+
+  it('shows why individual rows were rejected', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockImportMembers.mockResolvedValue(anImportResult({
+      ready: 1,
+      skipped: 1,
+      rows: [
+        { lineNumber: 2, email: 'jane@example.com', fullName: 'Jane', outcome: 'READY', problems: [], temporaryPassword: null },
+        { lineNumber: 3, email: 'bad', fullName: '', outcome: 'SKIPPED', problems: ['Email must be a well-formed email address'], temporaryPassword: null },
+      ],
+    }))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Import from file')).toBeTruthy())
+    fireEvent.click(screen.getByText('Import from file'))
+    await chooseFile('csv')
+    fireEvent.click(screen.getByText('Preview'))
+
+    // The line number is what lets someone find the row in their spreadsheet.
+    expect(await screen.findByText(/Line 3: bad/)).toBeTruthy()
+    expect(screen.getByText('Email must be a well-formed email address')).toBeTruthy()
+    // A row with nothing wrong with it is not listed; only the ones needing attention are.
+    expect(screen.queryByText(/Line 2:/)).toBeNull()
+  })
+
+  it('reports a file the parser could not read at all', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockImportMembers.mockResolvedValue(anImportResult({
+      totalRows: 0, ready: 0, structuralErrors: ['Missing required column: phone'],
+    }))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Import from file')).toBeTruthy())
+    fireEvent.click(screen.getByText('Import from file'))
+    await chooseFile('email,fullName\n')
+    fireEvent.click(screen.getByText('Preview'))
+
+    expect(await screen.findByText('This file could not be read.')).toBeTruthy()
+    expect(screen.getByText('Missing required column: phone')).toBeTruthy()
+    expect(screen.getByText(/^Import 0$/)).toBeDisabled()
+  })
+
+  it('reports a failed upload without closing the modal', async () => {
+    mockUseMyMembership.mockReturnValue({ isChairperson: true, loading: false })
+    mockImportMembers.mockRejectedValue(new Error('Request failed'))
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Import from file')).toBeTruthy())
+    fireEvent.click(screen.getByText('Import from file'))
+    await chooseFile('csv')
+    fireEvent.click(screen.getByText('Preview'))
+
+    expect(await screen.findByTestId('form-error')).toBeTruthy()
+    expect(screen.getByText('Preview')).toBeTruthy()
   })
 
   it('shows the chama name and member list', async () => {

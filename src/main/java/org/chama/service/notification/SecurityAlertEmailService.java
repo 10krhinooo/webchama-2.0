@@ -6,8 +6,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.chama.domain.model.KeycloakSecurityEvent;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.eclipse.microprofile.context.ThreadContext;
 import org.jboss.logging.Logger;
 
 import java.util.List;
@@ -27,11 +25,6 @@ public class SecurityAlertEmailService {
     // Same off-request-thread rationale as MemberInvitationEmailService: this runs off the
     // @Scheduled sync job's own thread already, but keeps SMTP latency off it regardless so a
     // slow mail server never delays the next poll tick.
-    private static final ManagedExecutor MAIL_EXECUTOR = ManagedExecutor.builder()
-        .propagated(ThreadContext.NONE)
-        .cleared(ThreadContext.ALL_REMAINING)
-        .build();
-
     @Inject
     Mailer mailer;
 
@@ -62,7 +55,7 @@ public class SecurityAlertEmailService {
             return;
         }
 
-        MAIL_EXECUTOR.runAsync(() -> {
+        MailExecutor.INSTANCE.runAsync(() -> {
             try {
                 Mail mail = new Mail()
                     .addTo(recipients.toArray(new String[0]))

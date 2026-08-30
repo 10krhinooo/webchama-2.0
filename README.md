@@ -58,7 +58,8 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   user can self-join another chama with a short join code (chairperson-generated, regenerable, and
   emailable to a prospective member), instead of only being added manually by a chairperson. A
   chairperson can also reissue a member's temporary password and re-send the credential email if the
-  original invite was lost or never arrived. Deleting a member with any financial history is
+  original invite was lost or never arrived, or add a whole group at once by importing a CSV file,
+  previewing every problem in it before anything is created. Deleting a member with any financial history is
   rejected in favor of marking them exited, so contribution/loan/payment/penalty records are never
   silently lost.
 - **Contributions**: due dates, partial payments, overdue flagging, on-time streak tracking, and

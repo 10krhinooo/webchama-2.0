@@ -7,8 +7,6 @@ import jakarta.inject.Inject;
 import org.chama.domain.enums.PaymentMethod;
 import org.chama.service.KeycloakAdminService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.eclipse.microprofile.context.ThreadContext;
 import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
@@ -37,11 +35,6 @@ public class PaymentReceiptEmailService {
     // server must never hold up a payment-recording response, and delivery failure is logged
     // rather than propagated, the member can still see their payment reflected on the contribution
     // page even if the email never arrives.
-    private static final ManagedExecutor MAIL_EXECUTOR = ManagedExecutor.builder()
-        .propagated(ThreadContext.NONE)
-        .cleared(ThreadContext.ALL_REMAINING)
-        .build();
-
     @Inject
     Mailer mailer;
 
@@ -69,7 +62,7 @@ public class PaymentReceiptEmailService {
     }
 
     private void send(String keycloakUserId, String subject, String html) {
-        MAIL_EXECUTOR.runAsync(() -> {
+        MailExecutor.INSTANCE.runAsync(() -> {
             try {
                 String email = keycloakAdminService.getUserEmail(keycloakUserId);
                 if (email == null) {

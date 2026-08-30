@@ -2,6 +2,7 @@ package org.chama.domain.enums;
 
 public enum ActivityEventType {
     MEMBER_INVITED,
+    MEMBERS_IMPORTED,
     CONTRIBUTION_PAID,
     LOAN_APPROVED,
     PAYOUT_DISBURSED,

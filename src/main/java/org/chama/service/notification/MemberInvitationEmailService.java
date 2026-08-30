@@ -4,8 +4,6 @@ import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.eclipse.microprofile.context.ThreadContext;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -24,18 +22,6 @@ public class MemberInvitationEmailService {
 
     private static final Logger LOG = Logger.getLogger(MemberInvitationEmailService.class);
 
-    // The CDI-default ManagedExecutor propagates the caller's active JTA
-    // transaction onto the background thread (this project pulls in
-    // smallrye-context-propagation-jta), so a plain @Inject ManagedExecutor
-    // here collides with MemberService.create's own transaction commit
-    // ("Enlisted connection used without active transaction"). Nothing this
-    // background task does needs any propagated context, so contexts are
-    // cleared entirely.
-    private static final ManagedExecutor MAIL_EXECUTOR = ManagedExecutor.builder()
-        .propagated(ThreadContext.NONE)
-        .cleared(ThreadContext.ALL_REMAINING)
-        .build();
-
     @Inject
     Mailer mailer;
 
@@ -43,7 +29,7 @@ public class MemberInvitationEmailService {
     String frontendUrl;
 
     public void sendCredentials(String toEmail, String fullName, String temporaryPassword) {
-        MAIL_EXECUTOR.runAsync(() -> {
+        MailExecutor.INSTANCE.runAsync(() -> {
             try {
                 mailer.send(Mail.withText(toEmail, "Your Webchama account is ready", buildPlainText(fullName, toEmail, temporaryPassword))
                     .setHtml(buildHtml(fullName, toEmail, temporaryPassword)));
