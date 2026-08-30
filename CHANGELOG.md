@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [unreleased] - 2026-08-07
 
 ### Added
+- a penalties page, making the existing issue, approve, waive and settle workflow reachable
 - dark mode, selectable per user and following the operating system by default
 - a semantic colour token layer, so a theme is defined in one place rather than written into
   each component

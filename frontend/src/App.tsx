@@ -12,6 +12,7 @@ import MembersPage from './pages/staff/MembersPage'
 import ContributionsPage from './pages/staff/ContributionsPage'
 import ContributionPaymentResultPage from './pages/staff/ContributionPaymentResultPage'
 import LoansPage from './pages/staff/LoansPage'
+import PenaltiesPage from './pages/staff/PenaltiesPage'
 import PayoutsPage from './pages/staff/PayoutsPage'
 import ApprovalsPage from './pages/staff/ApprovalsPage'
 import ResolutionsPage from './pages/staff/ResolutionsPage'
@@ -40,6 +41,7 @@ function App() {
               <Route path="/chamas/:chamaId/members" element={<MembersPage />} />
               <Route path="/chamas/:chamaId/contributions" element={<ContributionsPage />} />
               <Route path="/chamas/:chamaId/loans" element={<LoansPage />} />
+            <Route path="/chamas/:chamaId/penalties" element={<PenaltiesPage />} />
               <Route path="/chamas/:chamaId/payouts" element={<PayoutsPage />} />
               <Route path="/chamas/:chamaId/approvals" element={<ApprovalsPage />} />
               <Route path="/chamas/:chamaId/resolutions" element={<ResolutionsPage />} />

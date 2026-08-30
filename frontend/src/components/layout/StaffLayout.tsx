@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
 import ThemeToggle from '../ui/ThemeToggle'
 import { getChama, type Chama } from '../../api/chamas'
@@ -146,22 +146,26 @@ export default function StaffLayout() {
                 <RotateCw className="h-4 w-4" />
                 Payouts
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/welfare-fund`} className={navLinkClass} style={navDelay(7)}>
+              <NavLink to={`/chamas/${chamaId}/penalties`} className={navLinkClass} style={navDelay(7)}>
+                <Gavel className="h-4 w-4" />
+                Penalties
+              </NavLink>
+              <NavLink to={`/chamas/${chamaId}/welfare-fund`} className={navLinkClass} style={navDelay(8)}>
                 <HeartHandshake className="h-4 w-4" />
                 Welfare Fund
               </NavLink>
-              <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass} style={navDelay(8)}>
+              <NavLink to={`/chamas/${chamaId}/resolutions`} className={navLinkClass} style={navDelay(9)}>
                 <Vote className="h-4 w-4" />
                 Resolutions
               </NavLink>
               {!roleLoading && isManager && (
-                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass} style={navDelay(9)}>
+                <NavLink to={`/chamas/${chamaId}/documents`} className={navLinkClass} style={navDelay(10)}>
                   <FileText className="h-4 w-4" />
                   Documents
                 </NavLink>
               )}
               {!roleLoading && isManager && (
-                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass} style={navDelay(10)}>
+                <NavLink to={`/chamas/${chamaId}/approvals`} className={navLinkClass} style={navDelay(11)}>
                   <ShieldCheck className="h-4 w-4" />
                   Approvals
                 </NavLink>
