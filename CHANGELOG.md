@@ -38,6 +38,8 @@ All notable changes to this project will be documented in this file.
   creation, and the CSV export
 
 ### Changed
+- route changes now animate in, staggering what sits at the top of a page so a dashboard of cards
+  assembles rather than blinking into existence. The public pages had no transition at all
 - the full-screen dead ends, page not found, access denied, and a page that failed to render, now
   share one themed screen with a way out, instead of four hand-rolled variations
 - a backend outage now shows a Webchama page rather than nginx's own default 502

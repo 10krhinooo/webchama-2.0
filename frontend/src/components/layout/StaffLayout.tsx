@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
+import PageTransition from './PageTransition'
 import { useKeycloak } from '@react-keycloak/web'
 import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel, CalendarDays, PiggyBank } from 'lucide-react'
 import WeaveMark from '../marketing/WeaveMark'
@@ -244,9 +245,9 @@ export default function StaffLayout() {
         </header>
 
         <main className="flex-1 overflow-x-auto p-6 lg:p-8">
-          <div key={location.pathname} className="page-transition">
+          <PageTransition key={location.pathname}>
             <Outlet />
-          </div>
+          </PageTransition>
         </main>
       </div>
     </div>
