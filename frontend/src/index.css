@@ -234,19 +234,10 @@ textarea:focus-visible,
 .sidebar-nav-item:nth-child(5) { animation-delay: 160ms; }
 .sidebar-nav-item:nth-child(6) { animation-delay: 200ms; }
 
-@keyframes page-fade-rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
-}
-.page-transition {
-  animation: page-fade-rise 0.25s ease-out;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .float-loop,
   .weave-drift,
-  .sidebar-nav-item,
-  .page-transition {
+  .sidebar-nav-item {
     animation: none !important;
   }
   .nav-shrink {

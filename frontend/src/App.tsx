@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import PageTransition from './components/layout/PageTransition'
 import HomePage from './pages/public/HomePage'
 import NotFoundPage from './pages/public/NotFoundPage'
 import KeycloakProvider from './auth/KeycloakProvider'
@@ -24,13 +25,22 @@ import NotificationPreferencesPage from './pages/staff/NotificationPreferencesPa
 import AdminOverviewPage from './pages/staff/AdminOverviewPage'
 import SecurityEventsPage from './pages/staff/SecurityEventsPage'
 
+/**
+ * The transition wrapper for routes outside StaffLayout, which has no shared layout of its own to
+ * carry one. Keyed on the pathname so it remounts per route, the same way the staff outlet is.
+ */
+function PublicPage({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  return <PageTransition key={location.pathname}>{children}</PageTransition>
+}
+
 function App() {
   return (
     <ThemeProvider>
       <KeycloakProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<PublicPage><HomePage /></PublicPage>} />
             <Route
               element={
                 <ProtectedRoute>
@@ -72,7 +82,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="*" element={<NotFoundPage />} />
+            <Route path="*" element={<PublicPage><NotFoundPage /></PublicPage>} />
           </Routes>
         </BrowserRouter>
       </KeycloakProvider>
