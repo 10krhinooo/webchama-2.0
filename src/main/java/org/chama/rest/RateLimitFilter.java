@@ -45,7 +45,9 @@ public class RateLimitFilter implements ContainerRequestFilter {
         new Rule("card-verify", p -> p.endsWith("/pay/card/verify"), 30, Duration.ofMinutes(1).toMillis()),
         new Rule("mpesa-push", p -> p.endsWith("/pay/mpesa"), 10, Duration.ofMinutes(1).toMillis()),
         new Rule("card-init", p -> p.endsWith("/pay/card"), 15, Duration.ofMinutes(1).toMillis()),
-        new Rule("loan-disburse", p -> p.endsWith("/disburse"), 10, Duration.ofMinutes(1).toMillis()),
+        // Every disbursement endpoint, not only the loan one: the suffix covers loan payouts and
+        // welfare fund withdrawals alike, which is the behaviour wanted since both move real money.
+        new Rule("disburse", p -> p.endsWith("/disburse"), 10, Duration.ofMinutes(1).toMillis()),
         new Rule("mpesa-callback", p -> p.equals("/api/payments/mpesa-callback"), 60, Duration.ofMinutes(1).toMillis()),
         new Rule("card-callback", p -> p.equals("/api/payments/card/callback"), 60, Duration.ofMinutes(1).toMillis()),
         new Rule("b2c-callback", p -> p.equals("/api/payments/b2c-callback"), 60, Duration.ofMinutes(1).toMillis()),

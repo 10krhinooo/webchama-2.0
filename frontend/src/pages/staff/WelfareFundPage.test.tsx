@@ -12,6 +12,7 @@ vi.mock('../../api/welfareFund', () => ({
   payWelfareContributionWithMpesa: vi.fn(),
   getWelfareWithdrawals: vi.fn(),
   createWelfareWithdrawal: vi.fn(),
+  disburseWelfareWithdrawal: vi.fn(),
 }))
 vi.mock('../../api/members', () => ({
   getMembers: vi.fn(),
@@ -28,6 +29,8 @@ import {
   payWelfareContributionWithMpesa,
   getWelfareWithdrawals,
   createWelfareWithdrawal,
+  disburseWelfareWithdrawal,
+  type WelfareWithdrawal,
 } from '../../api/welfareFund'
 import { getMembers } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
@@ -39,8 +42,26 @@ const mockRecordWelfareContribution = recordWelfareContribution as ReturnType<ty
 const mockPayWelfareContributionWithMpesa = payWelfareContributionWithMpesa as ReturnType<typeof vi.fn>
 const mockGetWelfareWithdrawals = getWelfareWithdrawals as ReturnType<typeof vi.fn>
 const mockCreateWelfareWithdrawal = createWelfareWithdrawal as ReturnType<typeof vi.fn>
+const mockDisburseWelfareWithdrawal = disburseWelfareWithdrawal as ReturnType<typeof vi.fn>
 const mockGetMembers = getMembers as ReturnType<typeof vi.fn>
 const mockUseMyMembership = useMyMembership as ReturnType<typeof vi.fn>
+
+function aWithdrawal(overrides: Partial<WelfareWithdrawal> = {}): WelfareWithdrawal {
+  return {
+    id: 4,
+    chamaId: 3,
+    amount: 200,
+    reason: 'Medical emergency',
+    status: 'PENDING_APPROVAL',
+    requestedByMemberId: 6,
+    requestedByName: 'Treasurer One',
+    requestedAt: '2026-08-01T00:00:00Z',
+    disbursedByMemberId: null,
+    disbursedByName: null,
+    disbursedAt: null,
+    ...overrides,
+  }
+}
 
 const contribution = {
   id: 1,
@@ -146,7 +167,7 @@ describe('WelfareFundPage', () => {
     mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 1000 })
     mockGetWelfareContributions.mockResolvedValue([])
     mockGetWelfareWithdrawals.mockResolvedValue([])
-    mockCreateWelfareWithdrawal.mockResolvedValue({ id: 4, amount: 200, reason: 'Medical emergency' })
+    mockCreateWelfareWithdrawal.mockResolvedValue(aWithdrawal({ id: 4, amount: 200, reason: 'Medical emergency' }))
 
     renderPage()
 
@@ -157,6 +178,92 @@ describe('WelfareFundPage', () => {
     fireEvent.click(screen.getByText('Record Withdrawal', { selector: 'button[type="submit"]' }))
 
     await waitFor(() => expect(mockCreateWelfareWithdrawal).toHaveBeenCalledWith(3, { amount: 200, reason: 'Medical emergency' }))
+  })
+
+  it('says the money moved when a small withdrawal disburses in one step', async () => {
+    mockUseMyMembership.mockReturnValue({ isManager: true, member: { id: 6, phone: '254700000001' }, loading: false })
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 1000 })
+    mockGetWelfareContributions.mockResolvedValue([])
+    mockGetWelfareWithdrawals.mockResolvedValue([])
+    mockCreateWelfareWithdrawal.mockResolvedValue(aWithdrawal({ status: 'DISBURSED' }))
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('1,000')).toBeTruthy())
+    fireEvent.click(screen.getByText('+ Withdrawal'))
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '200' } })
+    fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: 'Medical emergency' } })
+    fireEvent.click(screen.getByText('Record Withdrawal', { selector: 'button[type="submit"]' }))
+
+    expect(await screen.findByText(/disbursed from the fund/i)).toBeTruthy()
+  })
+
+  it('says the money has not moved when a large withdrawal needs sign-off', async () => {
+    mockUseMyMembership.mockReturnValue({ isManager: true, member: { id: 6, phone: '254700000001' }, loading: false })
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 100000 })
+    mockGetWelfareContributions.mockResolvedValue([])
+    mockGetWelfareWithdrawals.mockResolvedValue([])
+    mockCreateWelfareWithdrawal.mockResolvedValue(aWithdrawal({ status: 'PENDING_APPROVAL' }))
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('100,000')).toBeTruthy())
+    fireEvent.click(screen.getByText('+ Withdrawal'))
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '50000' } })
+    fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: 'Medical emergency' } })
+    fireEvent.click(screen.getByText('Record Withdrawal', { selector: 'button[type="submit"]' }))
+
+    // Telling the treasurer the fund was debited when it was not is the failure that matters here.
+    expect(await screen.findByText(/needs two sign-offs/i)).toBeTruthy()
+  })
+
+  it('offers Disburse only on a withdrawal that is still awaiting sign-off', async () => {
+    mockUseMyMembership.mockReturnValue({ isManager: true, member: { id: 6, phone: '254700000001' }, loading: false })
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 1000 })
+    mockGetWelfareContributions.mockResolvedValue([])
+    mockGetWelfareWithdrawals.mockResolvedValue([
+      aWithdrawal({ id: 4, reason: 'Awaiting', status: 'PENDING_APPROVAL' }),
+      aWithdrawal({ id: 5, reason: 'Already out', status: 'DISBURSED', disbursedByName: 'Treasurer One' }),
+    ])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Awaiting')).toBeTruthy())
+
+    expect(screen.getAllByText('Disburse')).toHaveLength(1)
+    expect(screen.getByText('Awaiting sign-off')).toBeTruthy()
+    expect(screen.getByText('Disbursed')).toBeTruthy()
+  })
+
+  it('confirms before releasing the money, and reports a refusal on the page', async () => {
+    mockUseMyMembership.mockReturnValue({ isManager: true, member: { id: 6, phone: '254700000001' }, loading: false })
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 1000 })
+    mockGetWelfareContributions.mockResolvedValue([])
+    mockGetWelfareWithdrawals.mockResolvedValue([aWithdrawal({ id: 4, status: 'PENDING_APPROVAL' })])
+    mockDisburseWelfareWithdrawal.mockRejectedValue(new Error('Dual sign-off approval has not cleared yet'))
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Disburse')).toBeTruthy())
+    fireEvent.click(screen.getByText('Disburse'))
+
+    // The dialog names the amount and reason, since this debits the fund irreversibly.
+    expect(await screen.findByText(/cannot be undone/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Disburse' }))
+
+    await waitFor(() => expect(mockDisburseWelfareWithdrawal).toHaveBeenCalledWith(3, 4))
+    expect(await screen.findByText(/has not cleared yet/i)).toBeTruthy()
+  })
+
+  it('lets a manager cancel out of the disburse confirmation', async () => {
+    mockUseMyMembership.mockReturnValue({ isManager: true, member: { id: 6, phone: '254700000001' }, loading: false })
+    mockGetWelfareFund.mockResolvedValue({ chamaId: 3, balance: 1000 })
+    mockGetWelfareContributions.mockResolvedValue([])
+    mockGetWelfareWithdrawals.mockResolvedValue([aWithdrawal({ id: 4, status: 'PENDING_APPROVAL' })])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Disburse')).toBeTruthy())
+    fireEvent.click(screen.getByText('Disburse'))
+    fireEvent.click(await screen.findByRole('button', { name: /cancel/i }))
+
+    await waitFor(() => expect(screen.queryByText(/cannot be undone/i)).toBeNull())
+    expect(mockDisburseWelfareWithdrawal).not.toHaveBeenCalled()
   })
 
   it('lets a manager close the record-contribution and withdrawal modals, and change the payment method', async () => {

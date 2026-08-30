@@ -1,5 +1,6 @@
 package org.chama.dto;
 
+import org.chama.domain.enums.WelfareWithdrawalStatus;
 import org.chama.domain.model.WelfareWithdrawal;
 
 import java.math.BigDecimal;
@@ -10,6 +11,11 @@ public record WelfareWithdrawalDto(
     Long chamaId,
     BigDecimal amount,
     String reason,
+    WelfareWithdrawalStatus status,
+    Long requestedByMemberId,
+    String requestedByName,
+    Instant requestedAt,
+    /** All three disbursement fields are null while the withdrawal is still awaiting sign-off. */
     Long disbursedByMemberId,
     String disbursedByName,
     Instant disbursedAt) {
@@ -20,8 +26,12 @@ public record WelfareWithdrawalDto(
             withdrawal.chama.id,
             withdrawal.amount,
             withdrawal.reason,
-            withdrawal.disbursedBy.id,
-            withdrawal.disbursedBy.fullName,
+            withdrawal.status,
+            withdrawal.requestedBy.id,
+            withdrawal.requestedBy.fullName,
+            withdrawal.requestedAt,
+            withdrawal.disbursedBy == null ? null : withdrawal.disbursedBy.id,
+            withdrawal.disbursedBy == null ? null : withdrawal.disbursedBy.fullName,
             withdrawal.disbursedAt);
     }
 }

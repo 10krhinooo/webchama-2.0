@@ -8,6 +8,7 @@ import {
   payWelfareContributionWithMpesa,
   getWelfareWithdrawals,
   createWelfareWithdrawal,
+  disburseWelfareWithdrawal,
   type WelfareFund,
   type WelfareContribution,
   type WelfareWithdrawal,
@@ -22,6 +23,7 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import FormError from '../../components/ui/FormError'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
@@ -33,6 +35,11 @@ const EMPTY_WITHDRAWAL_FORM = { amount: '', reason: '' }
 
 function contributionStatusVariant(status: WelfareContribution['status']) {
   return status === 'PAID' ? ('success' as const) : ('warning' as const)
+}
+
+const WITHDRAWAL_STATUS_LABELS: Record<WelfareWithdrawal['status'], string> = {
+  PENDING_APPROVAL: 'Awaiting sign-off',
+  DISBURSED: 'Disbursed',
 }
 
 export default function WelfareFundPage() {
@@ -56,6 +63,9 @@ export default function WelfareFundPage() {
   const [recordForm, setRecordForm] = useState(EMPTY_RECORD_FORM)
   const [recordNotice, setRecordNotice] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
+
+  const [disbursing, setDisbursing] = useState<WelfareWithdrawal | null>(null)
+  const [disburseSaving, setDisburseSaving] = useState(false)
 
   const [showWithdrawModal, setShowWithdrawModal] = useState(false)
   const [withdrawForm, setWithdrawForm] = useState(EMPTY_WITHDRAWAL_FORM)
@@ -138,14 +148,43 @@ export default function WelfareFundPage() {
     setWithdrawing(true)
     setWithdrawNotice(null)
     try {
-      await createWelfareWithdrawal(chamaId, { amount: Number(withdrawForm.amount), reason: withdrawForm.reason })
-      setNotice({ variant: 'success', message: 'Withdrawal recorded.' })
+      const withdrawal = await createWelfareWithdrawal(chamaId, {
+        amount: Number(withdrawForm.amount),
+        reason: withdrawForm.reason,
+      })
+      // Whether the money moved depends on the chama's approval threshold, so the confirmation
+      // has to say which happened rather than always claiming the fund was debited.
+      setNotice(withdrawal.status === 'DISBURSED'
+        ? { variant: 'success', message: 'Withdrawal disbursed from the fund.' }
+        : {
+            variant: 'success',
+            message: 'Withdrawal requested. It needs two sign-offs on the approvals page before the money can leave the fund.',
+          })
       setShowWithdrawModal(false)
       refresh()
     } catch (err) {
       setWithdrawNotice(extractErrorMessage(err))
     } finally {
       setWithdrawing(false)
+    }
+  }
+
+  const handleDisburse = async () => {
+    if (!disbursing) return
+    setDisburseSaving(true)
+    try {
+      await disburseWelfareWithdrawal(chamaId, disbursing.id)
+      setNotice({ variant: 'success', message: 'Withdrawal disbursed from the fund.' })
+      setDisbursing(null)
+      refresh()
+    } catch (err) {
+      // Surfaced on the page rather than in the dialog: the two likeliest failures are that the
+      // sign-off has not cleared and that another withdrawal has since drained the fund, and
+      // neither is fixed by staying in the dialog.
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+      setDisbursing(null)
+    } finally {
+      setDisburseSaving(false)
     }
   }
 
@@ -203,24 +242,50 @@ export default function WelfareFundPage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Amount</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Requested by</TableHead>
                   <TableHead>Disbursed by</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {withdrawals.length === 0 && (
-                  <TableRow><TableCell colSpan={3} className="py-10 text-center text-sm text-muted">No withdrawals yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No withdrawals yet.</TableCell></TableRow>
                 )}
                 {withdrawals.map((w) => (
                   <TableRow key={w.id}>
                     <TableCell className="font-mono text-muted">{w.amount.toLocaleString()}</TableCell>
                     <TableCell className="text-muted">{w.reason}</TableCell>
-                    <TableCell className="text-muted">{w.disbursedByName}</TableCell>
+                    <TableCell>
+                      <Badge
+                        label={WITHDRAWAL_STATUS_LABELS[w.status]}
+                        variant={w.status === 'DISBURSED' ? 'success' : 'warning'}
+                      />
+                    </TableCell>
+                    <TableCell className="text-muted">{w.requestedByName}</TableCell>
+                    <TableCell className="text-muted">{w.disbursedByName ?? '\u2014'}</TableCell>
+                    <TableCell className="text-right">
+                      {w.status === 'PENDING_APPROVAL' && (
+                        <Button variant="secondary" onClick={() => setDisbursing(w)}>Disburse</Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
         </>
+      )}
+
+      {disbursing && (
+        <ConfirmDialog
+          title="Disburse from the welfare fund"
+          message={`Release ${disbursing.amount.toLocaleString()} for "${disbursing.reason}"? This debits the fund and cannot be undone.`}
+          confirmLabel="Disburse"
+          loading={disburseSaving}
+          onConfirm={handleDisburse}
+          onCancel={() => setDisbursing(null)}
+        />
       )}
 
       {showContributeModal && (

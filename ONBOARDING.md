@@ -150,6 +150,17 @@ transaction, so a rolled back action cannot leave someone told about something t
 happen. Preferences are per event family rather than per email, and a missing row means both
 channels are on.
 
+**Gate a new action behind dual sign-off.** Follow `WelfareFundService`: split the action into a
+`request` that records the intent without moving anything and a `markDisbursed` that releases it,
+add the target to `ApprovalTargetType` in its own Flyway migration (Postgres refuses to use an enum
+value in the transaction that added it), and have `request` open the approval itself rather than
+relying on someone raising it by hand, so the amount on the approval cannot disagree with the
+amount being disbursed. `ApprovalService` needs no change, it is target-type agnostic.
+
+Re-check every precondition in `markDisbursed`, not only in `request`. Time passes between the two,
+and whatever made the action affordable may no longer hold: a welfare withdrawal re-checks the fund
+balance because another withdrawal may have cleared while this one waited for a signature.
+
 **Add a theme-aware colour.** Add the RGB triple to both the `:root` and `.dark` blocks in
 `index.css`, then expose it in `tailwind.config.js` through the `withAlpha` helper so it composes
 with an alpha channel like any built-in colour.

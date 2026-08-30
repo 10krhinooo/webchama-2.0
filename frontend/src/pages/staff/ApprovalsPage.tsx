@@ -30,8 +30,16 @@ import Pagination from '../../components/ui/Pagination'
 
 const EMPTY_FORM = { targetType: 'LOAN_DISBURSEMENT' as ApprovalTargetType, targetId: '', memberId: '', amount: '', reason: '' }
 
+// A record rather than a ternary, so adding a target type is a compile error here instead of
+// silently labelling the new kind as whichever branch the ternary fell through to.
+const TARGET_TYPE_LABELS: Record<ApprovalTargetType, string> = {
+  LOAN_DISBURSEMENT: 'Loan disbursement',
+  PAYOUT_DISBURSEMENT: 'Payout disbursement',
+  WELFARE_WITHDRAWAL: 'Welfare fund withdrawal',
+}
+
 function targetTypeLabel(type: ApprovalTargetType) {
-  return type === 'LOAN_DISBURSEMENT' ? 'Loan disbursement' : 'Payout disbursement'
+  return TARGET_TYPE_LABELS[type]
 }
 
 export default function ApprovalsPage() {
@@ -209,6 +217,12 @@ export default function ApprovalsPage() {
                 onChange={(v) => setForm({ ...form, targetType: v as ApprovalTargetType, targetId: '' })}>
                 <option value="LOAN_DISBURSEMENT">Loan disbursement</option>
                 <option value="PAYOUT_DISBURSEMENT">Payout disbursement</option>
+                {/*
+                  No welfare withdrawal option. Requesting one opens its own approval, for the
+                  exact amount, at the moment the withdrawal is created. Offering it here would let
+                  someone raise a second approval against the same withdrawal, or one carrying an
+                  amount that does not match it.
+                */}
               </Select>
             </FormField>
             {form.targetType === 'LOAN_DISBURSEMENT' ? (
