@@ -1,0 +1,16 @@
+{
+  "name": "Daraja STK push",
+  "request": { "method": "POST", "urlPath": "/mpesa/stkpush/v1/processrequest" },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "MerchantRequestID": "e2e-merchant-{{randomValue type='UUID'}}",
+      "CheckoutRequestID": "ws_CO_E2E_{{randomValue type='UUID'}}",
+      "ResponseCode": "0",
+      "ResponseDescription": "Success. Request accepted for processing",
+      "CustomerMessage": "Success. Request accepted for processing"
+    },
+    "transformers": ["response-template"]
+  }
+}

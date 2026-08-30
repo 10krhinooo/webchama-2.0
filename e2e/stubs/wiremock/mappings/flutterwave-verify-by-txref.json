@@ -1,0 +1,26 @@
+{
+  "name": "Flutterwave verify by tx_ref search",
+  "request": {
+    "method": "GET",
+    "urlPath": "/v3/transactions",
+    "queryParameters": { "tx_ref": { "matches": ".+" } }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "status": "success",
+      "message": "Transactions fetched successfully",
+      "data": [
+        {
+          "id": 9900001,
+          "tx_ref": "{{request.query.tx_ref}}",
+          "status": "successful",
+          "currency": "KES",
+          "amount": 5000
+        }
+      ]
+    },
+    "transformers": ["response-template"]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Daraja STK query",
+  "request": { "method": "POST", "urlPath": "/mpesa/stkpushquery/v1/query" },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "ResponseCode": "0",
+      "ResponseDescription": "The service request has been accepted successsfully",
+      "MerchantRequestID": "e2e-merchant",
+      "CheckoutRequestID": "ws_CO_E2E",
+      "ResultCode": "0",
+      "ResultDesc": "The service request is processed successfully."
+    }
+  }
+}

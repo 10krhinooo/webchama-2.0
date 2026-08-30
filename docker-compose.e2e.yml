@@ -1,0 +1,167 @@
+# Full-stack environment for the end-to-end suite: Postgres, Keycloak, the real Quarkus backend,
+# and the production nginx-served SPA. Deliberately separate from docker-compose.yml, which is the
+# documented local-dev contract that README.md, ONBOARDING.md and the backend CI job depend on.
+#
+#   docker compose -f docker-compose.e2e.yml up -d --build
+#
+# Every published port differs from the dev stack, and the project name namespaces the volumes, so
+# this runs alongside `docker compose up` and a `npm run dev` server without colliding with either.
+# Services are spelled out rather than using `extends`, because `extends` concatenates port lists
+# rather than replacing them, which would republish the dev ports too.
+name: webchama-e2e
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: webchama-e2e-postgres
+    environment:
+      POSTGRES_DB: chama
+      POSTGRES_USER: chama
+      POSTGRES_PASSWORD: chama
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chama -d chama_e2e"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: webchama-e2e-keycloak
+    entrypoint: ["/bin/sh", "/opt/keycloak/dev-realm-entrypoint.sh"]
+    environment:
+      KC_DB: dev-file
+      KC_HTTP_PORT: 8180
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Fixed so the suite logs in as SUPER_ADMIN deterministically rather than scraping a
+      # generated password out of the container logs.
+      CHAMA_SUPERADMIN_PASSWORD: "Superadmin1!"
+    ports:
+      - "8181:8180"
+    volumes:
+      - ./keycloak/realm-chama.json:/opt/keycloak/config/realm-chama.json:ro
+      - ./keycloak/dev-realm-entrypoint.sh:/opt/keycloak/dev-realm-entrypoint.sh:ro
+      - ./keycloak/themes/chama:/opt/keycloak/themes/chama:ro
+      - keycloak_data:/opt/keycloak/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Stands in for Safaricom Daraja and Flutterwave. Requests still leave the backend over real
+  # HTTP and return through the same client code, so MpesaService, DarajaB2cClient and
+  # FlutterwaveService are genuinely exercised. Only the provider is fake.
+  payments-stub:
+    image: wiremock/wiremock:3.9.1-alpine
+    container_name: webchama-e2e-payments-stub
+    command: ["--port", "8080", "--global-response-templating", "--verbose"]
+    volumes:
+      - ./e2e/stubs/wiremock:/home/wiremock:ro
+    ports:
+      - "8090:8080"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webchama-e2e-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      payments-stub:
+        condition: service_started
+    environment:
+      QUARKUS_PROFILE: prod
+
+      # Its own database. The fixture truncates and reseeds the whole schema, so it must never
+      # point at `chama` (dev data) or `chama_test` (owned by @QuarkusTest).
+      # Only the URL is overridden. The username and password are not %prod-gated in
+      # application.properties, so the committed defaults already apply here.
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/chama_e2e
+
+      # Discovery and JWKS are fetched over the container network, but the issuer to validate is
+      # the browser-visible one, because the SPA obtains its tokens from http://localhost:8181.
+      # Keycloak derives `iss` from the request host and the realm sets no frontendUrl, so these
+      # two genuinely differ and both are required.
+      QUARKUS_OIDC_AUTH_SERVER_URL: http://keycloak:8180/realms/chama
+      QUARKUS_OIDC_TOKEN_ISSUER: http://localhost:8181/realms/chama
+      KEYCLOAK_URL: http://keycloak:8180
+      KEYCLOAK_CLIENT_SECRET: webchama-backend-secret
+      KEYCLOAK_ADMIN_CLIENT_ID: webchama-backend
+      KEYCLOAK_ADMIN_CLIENT_SECRET: webchama-backend-secret
+
+      # Member phone and national ID are stored as ciphertext and their unique indexes are on that
+      # ciphertext, so the fixture and the running app must agree on this value exactly.
+      #
+      # Deliberately 32 zero bytes, which is the weakest key the converter will accept and is
+      # self-evidently a placeholder. Any key with real entropy here would be indistinguishable
+      # from a leaked production one, both to a reader and to secret scanning, and this database
+      # holds nothing but fixture data that is truncated at the start of every run.
+      PII_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+      # Environment variables are config ordinal 300 and outrank the %prod entries in
+      # application.properties, which is what points both payment providers at the stub without
+      # editing any committed configuration.
+      MPESA_BASE_URL: http://payments-stub:8080
+      MPESA_B2C_BASE_URL: http://payments-stub:8080
+      FLUTTERWAVE_BASE_URL: http://payments-stub:8080
+
+      MPESA_CONSUMER_KEY: e2e-key
+      MPESA_CONSUMER_SECRET: e2e-secret
+      MPESA_SHORTCODE: "174379"
+      MPESA_TILL_NUMBER: "174379"
+      MPESA_PASSKEY: e2e-passkey
+      MPESA_CALLBACK_URL: http://backend:8080/api/payments/mpesa-callback
+
+      MPESA_B2C_CONSUMER_KEY: e2e-key
+      MPESA_B2C_CONSUMER_SECRET: e2e-secret
+      MPESA_B2C_SHORTCODE: "600000"
+      MPESA_B2C_INITIATOR_NAME: e2e-initiator
+      MPESA_B2C_SECURITY_CREDENTIAL: e2e-credential
+      MPESA_B2C_RESULT_URL: http://backend:8080/api/payments/b2c-callback
+      MPESA_B2C_QUEUE_TIMEOUT_URL: http://backend:8080/api/payments/b2c-timeout
+
+      FLUTTERWAVE_SECRET_KEY: e2e-secret
+      FLUTTERWAVE_SECRET_HASH: e2e-hash
+      FLUTTERWAVE_CALLBACK_URL: http://backend:8080/api/payments/card/callback
+      FLUTTERWAVE_REDIRECT_URL: http://localhost:5174/contribution-payment-result
+
+      # Mail is logged rather than sent. The SMTP settings still have to resolve because the
+      # %prod block references them.
+      QUARKUS_MAILER_MOCK: "true"
+      MAIL_HOST: localhost
+      MAIL_PORT: "1025"
+      MAIL_USERNAME: mailer-is-mocked
+      MAIL_PASSWORD: mailer-is-mocked
+
+      # Every background sweep is off. Specs drive state transitions explicitly, and a scheduler
+      # firing mid-spec is a flake source with no upside here.
+      CONTRIBUTION_AUTO_PUSH_ENABLED: "false"
+      PAYMENT_MPESA_RECONCILIATION_ENABLED: "false"
+    ports:
+      - "8081:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_KEYCLOAK_URL: http://localhost:8181
+    container_name: webchama-e2e-frontend
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:8080
+    # 5174 is whitelisted alongside the dev server's 5173 in the webchama-frontend client in
+    # keycloak/realm-chama.json. Without that entry the OIDC redirect is rejected.
+    ports:
+      - "5174:80"
+
+volumes:
+  postgres_data:
+  keycloak_data:

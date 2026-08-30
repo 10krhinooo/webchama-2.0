@@ -64,6 +64,12 @@ the same way if deploying anywhere the defaults in `application.properties` shou
 (`frontend/nginx.conf.template`), and proxies `/api/*` there. This is a deploy-time value, unlike
 `VITE_KEYCLOAK_URL`, so it does not require rebuilding the image to change.
 
+The template carries a dedicated `location` block for server-sent event streams, matched ahead of
+the general `/api/` block, which turns `proxy_buffering` off. Without it nginx holds each event in
+its buffer waiting for a response that never completes, and the live activity feed silently degrades
+to its 10-second polling fallback. Any reverse proxy placed in front of this one needs the same
+treatment for `/api/**/stream` paths.
+
 ## Minimal example
 
 ```bash
