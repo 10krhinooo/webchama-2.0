@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import ErrorScreen from './feedback/ErrorScreen'
 
 interface Props {
   children: ReactNode
@@ -28,19 +29,20 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper px-6 text-center">
-          <h1 className="font-display text-2xl font-semibold text-night">Something went wrong</h1>
-          <p className="max-w-md text-sm text-night/70">
-            An unexpected error occurred while loading this page. Try reloading, or go back and try again.
-          </p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="rounded-full bg-primary px-6 py-2 text-sm font-medium text-on-dark"
-          >
-            Reload page
-          </button>
-        </div>
+        <ErrorScreen
+          tone="danger"
+          title="Something went wrong"
+          description="An unexpected error stopped this page from loading. Reloading usually clears it. If it keeps happening, tell your chairperson what you were doing at the time."
+          actions={
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-on-dark transition hover:bg-primary-dark"
+            >
+              Reload the page
+            </button>
+          }
+        />
       )
     }
     return this.props.children

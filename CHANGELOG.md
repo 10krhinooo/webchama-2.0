@@ -38,6 +38,9 @@ All notable changes to this project will be documented in this file.
   creation, and the CSV export
 
 ### Changed
+- the full-screen dead ends, page not found, access denied, and a page that failed to render, now
+  share one themed screen with a way out, instead of four hand-rolled variations
+- a backend outage now shows a Webchama page rather than nginx's own default 502
 - quarkus-groovy-junit5 moved to test scope. It was shipping a test framework into the production
   image, with no Groovy sources anywhere in the tree
 - armed the Qodana severity thresholds, which were fully commented out, so the quality gate can
@@ -64,6 +67,8 @@ All notable changes to this project will be documented in this file.
   exercised reads Nairobi's, so it passed for twenty-one hours a day and failed for the other
   three on any UTC host. The zone is now stated once, in ChamaTime, rather than redeclared in
   seven services and restated in the tests
+- frontend: the crash screen drew its text with a fixed dark colour on a themed background, so it
+  was dark on dark once dark mode was on
 - a failed list request rendered as a confident empty state. A page that could not reach the server
   said "you are not part of any chama yet" and invited the reader to create one
 - every modal in the app was positioned off centre, because the open and close animations set the

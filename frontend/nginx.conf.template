@@ -40,4 +40,13 @@ server {
     location / {
         try_files $uri /index.html;
     }
+
+    # A backend outage otherwise surfaces nginx's own default 502, which is the one screen in the
+    # product that looks like nothing else in it. internal keeps the page from being reachable by
+    # URL, so it only ever appears when it is actually true.
+    error_page 502 503 504 /backend-unavailable.html;
+    location = /backend-unavailable.html {
+        internal;
+        root /usr/share/nginx/html;
+    }
 }

@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
+import ErrorScreen from '../components/feedback/ErrorScreen'
 import WeaveMark from '../components/marketing/WeaveMark'
 
 interface Props {
@@ -19,24 +21,37 @@ export default function ProtectedRoute({ children, roles }: Props) {
   if (!initialized || !keycloak.authenticated) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper text-muted">
-        <WeaveMark className="h-8 w-8 animate-pulse text-brand" />
-        <p>Loading…</p>
+        <WeaveMark className="h-9 w-9 animate-pulse text-brand" />
+        <p className="text-sm">Signing you in…</p>
       </div>
     )
   }
 
   if (roles && roles.length > 0 && !roles.some((r) => keycloak.hasRealmRole(r))) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper px-6 text-center">
-        <WeaveMark className="h-8 w-8 text-danger" />
-        <p className="font-semibold text-danger">Access denied: your account doesn&rsquo;t hold the role this page needs.</p>
-        <button
-          onClick={() => keycloak.logout()}
-          className="font-medium text-brand underline hover:text-primary-dark"
-        >
-          Log out
-        </button>
-      </div>
+      <ErrorScreen
+        code="403"
+        tone="danger"
+        title="You do not have access to this page"
+        description="Your account does not hold the role this page needs. If that is wrong, ask your chairperson, or sign in with a different account."
+        actions={
+          <>
+            <Link
+              to="/my-chamas"
+              className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-on-dark transition hover:bg-primary-dark"
+            >
+              Go to my chamas
+            </Link>
+            <button
+              type="button"
+              onClick={() => keycloak.logout()}
+              className="rounded-full border border-border-strong px-6 py-2.5 text-sm font-semibold text-ink transition hover:bg-paper-dim"
+            >
+              Sign out
+            </button>
+          </>
+        }
+      />
     )
   }
 
