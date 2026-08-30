@@ -31,3 +31,12 @@ VALUES
   (101, 6, 5, date_trunc('month', CURRENT_DATE)::date, 5000, 0, NULL, 'PENDING', NULL, 0),
   (102, 6, 6, date_trunc('month', CURRENT_DATE)::date, 5000, 0, NULL, 'PENDING', NULL, 0),
   (103, 6, 7, date_trunc('month', CURRENT_DATE)::date, 5000, 0, NULL, 'PENDING', NULL, 0);
+
+-- ---------------------------------------------------------------------------------------------
+-- Chama 3, owned by the members spec. One settled contribution against Daniel, so the spec has a
+-- member whose removal must be refused in favour of exiting them: deleting someone with financial
+-- history would cascade the record away.
+-- ---------------------------------------------------------------------------------------------
+INSERT INTO contribution (id, chama_id, member_id, period, amount_due, amount_paid, payment_method, status, paid_at, version)
+VALUES
+  (201, 3, 10, (date_trunc('month', CURRENT_DATE) - interval '1 month')::date, 3000, 3000, 'CASH', 'PAID', now() - interval '1 month', 0);

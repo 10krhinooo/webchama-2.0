@@ -31,6 +31,8 @@ All notable changes to this project will be documented in this file.
 - chama_e2e database, created by postgres-init/02-create-e2e-db.sql on first volume init
 - an end-to-end suite driving the deployed stack through a browser, including a real Keycloak
   login, tenant isolation checks, and the M-Pesa contribution path end to end
+- end-to-end coverage of member administration, the penalty lifecycle, and a loan from request
+  to money leaving the chama, including dual sign-off on an amount above the approval threshold
 - a cross-browser smoke suite in Chrome and Firefox, run with `mvn -Psmoke verify` against the
   same stack, covering the branded Keycloak login page, single-sign-on session survival, chama
   creation, and the CSV export
@@ -57,6 +59,12 @@ All notable changes to this project will be documented in this file.
   works in a deployed environment instead of silently falling back to polling
 - db: generate a join_code for each chama in the dev demo seed
 - frontend: surface errors when the loan repayment schedule fails to load
+- the reason an action was refused now reaches the person who tried it. Every deliberate refusal
+  the backend writes, such as why a member with history cannot be deleted or why the person who
+  requested an approval cannot also sign it, was answered with an empty body and shown as
+  "Request failed with status code 400"
+- frontend: a confirm dialog stayed open when the action behind it was refused, hiding the
+  explanation behind its own overlay, so the button read as having done nothing
 - frontend: the "Your phone" and "Phone" form labels pointed at no element, so clicking a label
   did not focus its field and a screen reader announced the input unlabelled
 

@@ -175,8 +175,12 @@ npm test              # or: npm run test:headed, npm run test:ui
 npm run report        # opens the last HTML report
 ```
 
-`globalSetup` waits for all three services, then truncates `chama_e2e` and applies
-`e2e/fixtures/seed.sql`. If a run is interrupted and leaves the data in an odd state, reapply the
+The suite covers authentication and role-scoped navigation, tenant isolation, member
+administration, the penalty lifecycle, a loan from request through M-Pesa disbursement, dual
+sign-off above the approval threshold, and the M-Pesa contribution path end to end.
+
+`globalSetup` waits for all three services, then truncates `chama_e2e` and applies the files in
+`e2e/fixtures/`. If a run is interrupted and leaves the data in an odd state, reapply the
 fixture by hand with `npm run db:reset`.
 
 Three things about the fixture are worth knowing before changing it:

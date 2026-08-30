@@ -245,12 +245,15 @@ export default function MembersPage() {
     try {
       await deleteMember(chamaId, removing.id)
       setNotice({ variant: 'success', message: `${removing.fullName} removed.` })
-      setRemoving(null)
       refresh()
     } catch (err) {
       setNotice({ variant: 'error', message: extractErrorMessage(err) })
     } finally {
       setRemoveLoading(false)
+      // Dismissed either way. A member with any history is refused by design, and leaving the
+      // dialog open on that answer hides the reason: the banner renders behind the overlay, in
+      // the subtree the dialog marks aria-hidden, so the click reads as having done nothing.
+      setRemoving(null)
     }
   }
 
