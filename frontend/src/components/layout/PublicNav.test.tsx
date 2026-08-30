@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import PublicNav from './PublicNav'
 import ThemeProvider from '../../theme/ThemeProvider'
@@ -68,5 +68,49 @@ describe('PublicNav', () => {
     fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
     fireEvent.click(screen.getAllByText('Start your chama')[1])
     expect(screen.getAllByText('Start your chama')).toHaveLength(1)
+  })
+
+  it('shrinks the nav once the page is scrolled past the threshold', async () => {
+    renderNav()
+    const nav = document.querySelector('nav')!
+    expect(nav.className).toContain('scale-100')
+
+    Object.defineProperty(window, 'scrollY', { value: 100, writable: true, configurable: true })
+    fireEvent.scroll(window)
+    await waitFor(() => expect(nav.className).toContain('scale-[0.97]'))
+  })
+
+  it('restores the nav when scrolled back to the top', async () => {
+    renderNav()
+    const nav = document.querySelector('nav')!
+
+    Object.defineProperty(window, 'scrollY', { value: 100, writable: true, configurable: true })
+    fireEvent.scroll(window)
+    await waitFor(() => expect(nav.className).toContain('scale-[0.97]'))
+
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true })
+    fireEvent.scroll(window)
+    await waitFor(() => expect(nav.className).toContain('scale-100'))
+  })
+
+  // The handler guards itself with a ticking flag so a burst of scroll events collapses into a
+  // single frame of work. Firing several in a row must still settle on the final position.
+  it('coalesces a burst of scroll events into one update', async () => {
+    renderNav()
+    const nav = document.querySelector('nav')!
+
+    Object.defineProperty(window, 'scrollY', { value: 200, writable: true, configurable: true })
+    fireEvent.scroll(window)
+    fireEvent.scroll(window)
+    fireEvent.scroll(window)
+    await waitFor(() => expect(nav.className).toContain('scale-[0.97]'))
+  })
+
+  it('removes the scroll listener on unmount', () => {
+    const remove = vi.spyOn(window, 'removeEventListener')
+    const { unmount } = renderNav()
+    unmount()
+    expect(remove).toHaveBeenCalledWith('scroll', expect.any(Function))
+    remove.mockRestore()
   })
 })

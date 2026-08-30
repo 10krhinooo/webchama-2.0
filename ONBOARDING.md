@@ -103,6 +103,38 @@ create/edit actions.
 cd frontend && npx vitest run path/to/File.test.tsx
 ```
 
+**Pick a colour.** Colour comes in two kinds, and choosing the wrong one is what breaks dark mode.
+
+*Semantic tokens* resolve through CSS custom properties defined in `frontend/src/index.css`, so
+the same class produces the right value in both themes. Use these in application code:
+
+| Token | Use for |
+|---|---|
+| `bg-paper`, `bg-paper-dim` | page background, sunken areas such as a table header |
+| `bg-surface`, `bg-surface-raised` | cards and anything sitting above the page |
+| `text-ink`, `text-muted`, `text-subtle` | body text, secondary text, de-emphasised text |
+| `text-brand` | brand-coloured text and links |
+| `bg-primary` | a brand-coloured fill sitting behind white text |
+| `border-border`, `border-border-strong` | dividers and outlines |
+| `text-success`, `text-warning`, `text-danger` | status, each a distinct hue from the brand |
+
+*Static ramps* (`primary-50` through `primary-950`, and the same for `accent` and `neutral`) are
+fixed values that mean the same thing in every theme. Reach for a numbered step only when a
+specific shade is required regardless of theme, such as a chart series that has to stay
+distinguishable in both.
+
+`primary` and `brand` are the same hue and are not interchangeable. `primary` is a fill, so it
+stays dark enough to carry white text in both themes. `brand` is a text colour, so it inverts and
+goes light in dark mode. Using `text-primary` produces brand-coloured text that disappears against
+a dark surface, which is why that class no longer exists.
+
+Never write `bg-white`, `border-black/10` or a literal hex value into a component. Each is correct
+in exactly one theme.
+
+**Add a theme-aware colour.** Add the RGB triple to both the `:root` and `.dark` blocks in
+`index.css`, then expose it in `tailwind.config.js` through the `withAlpha` helper so it composes
+with an alpha channel like any built-in colour.
+
 ## Debugging guide
 
 - **Postgres**: `localhost:5434`, database `chama` (dev) or `chama_test` (tests), user/password

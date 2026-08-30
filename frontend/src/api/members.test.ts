@@ -18,6 +18,7 @@ import {
   updateMember,
   updateMemberStatus,
   updateMyAutoPay,
+  resendInvite,
   deleteMember,
   getCreditScore,
   exportMyData,
@@ -109,5 +110,13 @@ describe('members api', () => {
     const result = await exportMyData(3)
     expect(mockGet).toHaveBeenCalledWith('/chamas/3/members/mine/export')
     expect(result).toEqual({ profile: { fullName: 'Jane Doe' } })
+  })
+
+  it('resends an invite and returns the reissued credentials', async () => {
+    const result = { memberId: 7, email: 'a@b.c', temporaryPassword: 'placeholder-not-a-credential' }
+    ;(client.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: result })
+
+    await expect(resendInvite(1, 7)).resolves.toEqual(result)
+    expect(client.post).toHaveBeenCalledWith('/chamas/1/members/7/resend-invite')
   })
 })
