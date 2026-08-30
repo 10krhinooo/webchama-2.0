@@ -33,15 +33,46 @@ export interface MemberInvitationResult {
   temporaryPassword: string | null
 }
 
+export type CreditScoreBand = 'INSUFFICIENT_HISTORY' | 'POOR' | 'FAIR' | 'GOOD' | 'EXCELLENT'
+
+/** One named component of a score, so the number can be explained rather than only shown. */
+export interface CreditScoreFactor {
+  code: string
+  label: string
+  rate: number
+  weight: number
+  observations: number
+}
+
 export interface CreditScore {
   memberId: number
-  score: number
-  contributionConsistency: number
-  meetingAttendanceRate: number
-  loanRepaymentRate: number
+  /** Null when the band is INSUFFICIENT_HISTORY. There is no honest number for a blank record. */
+  score: number | null
+  band: CreditScoreBand
+  /** How much evidence the score rests on, 0 to 1, independent of the score itself. */
+  confidence: number
+  /** Each rate is null where the chama records nothing for that component. */
+  contributionConsistency: number | null
+  contributionTimeliness: number | null
+  loanRepaymentRate: number | null
+  meetingAttendanceRate: number | null
+  penaltyDeduction: number
+  outstandingDebt: string
+  totalSavings: string
+  hasDefaultedLoan: boolean
   contributionsConsidered: number
   meetingsConsidered: number
   loanRepaymentsConsidered: number
+  strengths: CreditScoreFactor[]
+  weaknesses: CreditScoreFactor[]
+}
+
+export const CREDIT_SCORE_BAND_LABELS: Record<CreditScoreBand, string> = {
+  INSUFFICIENT_HISTORY: 'Not enough history',
+  POOR: 'Poor',
+  FAIR: 'Fair',
+  GOOD: 'Good',
+  EXCELLENT: 'Excellent',
 }
 
 export async function getMembers(chamaId: number): Promise<Member[]> {
@@ -99,5 +130,14 @@ export async function resendInvite(chamaId: number, id: number): Promise<MemberI
 
 export async function getCreditScore(chamaId: number, memberId: number): Promise<CreditScore> {
   const { data } = await client.get<CreditScore>(`/chamas/${chamaId}/members/${memberId}/credit-score`)
+  return data
+}
+
+/**
+ * Every member's score in one request. Tables that show a score per row must use this rather than
+ * calling getCreditScore per member, which is a request each and five queries behind every one.
+ */
+export async function getCreditScores(chamaId: number): Promise<CreditScore[]> {
+  const { data } = await client.get<CreditScore[]>(`/chamas/${chamaId}/members/credit-scores`)
   return data
 }

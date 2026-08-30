@@ -68,7 +68,11 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   sweep reconciles M-Pesa payments still stuck PENDING after a lost or delayed Daraja callback, and
   chairpersons/treasurers can tune or disable the scheduled auto-STK-push per chama.
 - **Loans**: request, chairperson/treasurer approval or rejection, repayment schedule and tracking,
-  member credit scoring derived from contribution consistency and repayment history.
+  and member credit scoring. A score weighs how completely and how promptly the member contributes
+  and repays, whether they attend, and whether they have attracted penalties, weighting recent
+  behaviour more heavily and reporting how much evidence it rests on. A component the chama does
+  not record is dropped rather than scored as a pass, and a member with no history is reported as
+  such rather than given a number.
 - **Payout rotation**: define the "merry-go-round" order, track whose turn it is, mark disbursed.
 - **Penalties**: configurable fine rules with an approval/waiver flow.
 - **Meetings**: agenda, minutes, attendance tracking.

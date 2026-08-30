@@ -26,4 +26,19 @@ describe('Badge', () => {
       expect(screen.getByText('X').className).toContain(textClassFor[variant])
     },
   )
+
+  it('carries a description to screen readers as well as the tooltip', () => {
+    const { container } = render(<Badge label="82" variant="success" description="Good, based on 12 contributions" />)
+
+    // A title attribute alone is announced inconsistently and needs a pointer to reach, so the
+    // same text is also rendered for assistive technology.
+    expect(container.querySelector('[title="Good, based on 12 contributions"]')).toBeTruthy()
+    expect(screen.getByText(/Good, based on 12 contributions/)).toBeTruthy()
+  })
+
+  it('renders nothing extra when there is no description', () => {
+    const { container } = render(<Badge label="ACTIVE" variant="success" />)
+    expect(container.querySelector('.sr-only')).toBeNull()
+    expect(container.querySelector('[title]')).toBeNull()
+  })
 })

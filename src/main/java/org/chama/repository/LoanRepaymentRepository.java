@@ -33,4 +33,14 @@ public class LoanRepaymentRepository implements PanacheRepository<LoanRepayment>
     public List<LoanRepayment> findByChamaAndMember(Long chamaId, Long memberId) {
         return list("loan.chama.id = ?1 and loan.member.id = ?2", chamaId, memberId);
     }
+
+    /**
+     * Every repayment in a chama, with its loan and that loan's member joined in. Credit scoring
+     * groups by member and reads the loan id, so leaving those lazy would turn one query into one
+     * per installment.
+     */
+    public List<LoanRepayment> findByChama(Long chamaId) {
+        return find("select r from LoanRepayment r join fetch r.loan l join fetch l.member where l.chama.id = ?1",
+            chamaId).list();
+    }
 }

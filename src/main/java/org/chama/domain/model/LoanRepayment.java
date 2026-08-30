@@ -17,6 +17,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -42,6 +43,14 @@ public class LoanRepayment extends PanacheEntityBase {
 
     @Column(name = "amount_paid", nullable = false)
     public BigDecimal amountPaid = BigDecimal.ZERO;
+
+    /**
+     * When the installment was fully settled, as opposed to when it fell due. Null while the
+     * installment is still outstanding, and also on rows that predate the column, so a reader
+     * cannot tell those two apart and must treat a null as "not known" rather than "not paid".
+     */
+    @Column(name = "paid_at")
+    public Instant paidAt;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

@@ -21,6 +21,7 @@ import {
   resendInvite,
   deleteMember,
   getCreditScore,
+  getCreditScores,
   exportMyData,
   type CreateMemberRequest,
 } from './members'
@@ -103,6 +104,13 @@ describe('members api', () => {
     const result = await getCreditScore(3, 4)
     expect(mockGet).toHaveBeenCalledWith('/chamas/3/members/4/credit-score')
     expect(result).toEqual({ memberId: 4, score: 82 })
+  })
+
+  it('getCreditScores fetches every score in the chama in one request', async () => {
+    mockGet.mockResolvedValue({ data: [{ memberId: 4, score: 82 }, { memberId: 5, score: null }] })
+    const result = await getCreditScores(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/members/credit-scores')
+    expect(result).toHaveLength(2)
   })
 
   it('exportMyData fetches the caller own data export and unwraps data', async () => {

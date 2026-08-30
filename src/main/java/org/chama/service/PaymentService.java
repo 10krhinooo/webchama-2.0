@@ -281,6 +281,9 @@ public class PaymentService {
             payment.loanRepayment.status = payment.loanRepayment.amountPaid.compareTo(payment.loanRepayment.amountDue) >= 0
                 ? org.chama.domain.enums.LoanRepaymentStatus.PAID
                 : org.chama.domain.enums.LoanRepaymentStatus.PARTIAL;
+            if (payment.loanRepayment.status == org.chama.domain.enums.LoanRepaymentStatus.PAID) {
+                payment.loanRepayment.paidAt = Instant.now();
+            }
         } else if (payment.penalty != null) {
             payment.penalty.status = org.chama.domain.enums.PenaltyStatus.PAID;
             payment.penalty.decidedAt = Instant.now();

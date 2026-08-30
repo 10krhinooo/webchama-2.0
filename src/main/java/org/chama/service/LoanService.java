@@ -172,6 +172,11 @@ public class LoanService {
         repayment.status = repayment.amountPaid.compareTo(repayment.amountDue) >= 0
             ? LoanRepaymentStatus.PAID
             : LoanRepaymentStatus.PARTIAL;
+        // Stamped only once the installment is fully settled, so it reads as "the date this was
+        // cleared" rather than the date of whichever part payment happened to arrive first.
+        if (repayment.status == LoanRepaymentStatus.PAID) {
+            repayment.paidAt = Instant.now();
+        }
 
         Payment payment = new Payment();
         payment.chama = repayment.loan.chama;
