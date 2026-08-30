@@ -113,6 +113,14 @@ export default {
           DEFAULT: "#12302B",
           deep: "#0B211D",
         },
+
+        // Foreground for surfaces that are dark in BOTH themes: the staff sidebar, the public
+        // footer, a saturated brand fill. Deliberately a fixed value rather than a var, because
+        // the whole point is that it does not invert.
+        //
+        // `paper` cannot serve here. It is a surface token, so it flips to near-black in dark
+        // mode, and `text-paper` on a fixed dark surface then renders dark on dark.
+        "on-dark": "#F7F9F8",
       },
       fontFamily: {
         display: ["Fraunces", "Georgia", "serif"],

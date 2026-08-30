@@ -12,6 +12,7 @@ import { getMeetings, type Meeting } from '../../api/meetings'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
+import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -140,7 +141,11 @@ export default function ResolutionsPage() {
           </TableHeader>
           <TableBody>
             {resolutions.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">No resolutions yet.</TableCell></TableRow>
+              <TableRow>
+                  <TableCell colSpan={5}>
+                    <EmptyState title="No resolutions yet" description="Open one against a meeting to put a decision to a vote." />
+                  </TableCell>
+                </TableRow>
             )}
             {pageItems.map((resolution) => (
               <TableRow key={resolution.id}>

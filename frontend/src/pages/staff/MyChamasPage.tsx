@@ -4,6 +4,7 @@ import { useKeycloak } from '@react-keycloak/web'
 import { getMyChamas, joinChama, type MyChama, type JoinChamaRequest } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import { roleBadgeText } from '../../utils/roleBadges'
+import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
 import FormError from '../../components/ui/FormError'
@@ -103,7 +104,7 @@ export default function MyChamasPage() {
       </div>
 
       {chamas.length === 0 ? (
-        <div className="bg-surface rounded-2xl shadow-card px-4 py-10 text-center text-muted text-sm">
+        <Card className="px-4 py-10 text-center text-muted text-sm">
           You are not part of any chama yet.{' '}
           <Link to="/chamas" className="font-semibold text-brand hover:underline">
             Start one
@@ -113,24 +114,30 @@ export default function MyChamasPage() {
             join an existing one
           </button>
           .
-        </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {chamas.map((c) => (
             <button
               key={c.id}
               onClick={() => navigate(`/chamas/${c.id}/dashboard`)}
-              className="text-left bg-surface rounded-2xl shadow-card hover:shadow-card-hover transition-shadow p-5 space-y-3"
+              className="rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="font-heading font-semibold text-ink">{c.name}</h2>
-                <Badge label={roleBadgeText(c.superAdmin, c.roles)} variant={c.superAdmin ? 'primary' : 'success'} />
-              </div>
-              {c.description && <p className="text-sm text-muted line-clamp-2">{c.description}</p>}
-              <p className="font-mono text-xs text-muted">
-                {c.type.replaceAll('_', ' ')} &middot; {c.currency} {c.contributionAmount.toLocaleString()} /{' '}
-                {c.contributionFrequency.toLowerCase()}
-              </p>
+              {/*
+                The surface is the Card's, not this button's. h-full keeps a row of cards level
+                when one chama carries a description and its neighbour does not.
+              */}
+              <Card className="h-full space-y-3 transition-shadow hover:shadow-card-hover">
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="font-heading font-semibold text-ink">{c.name}</h2>
+                  <Badge label={roleBadgeText(c.superAdmin, c.roles)} variant={c.superAdmin ? 'primary' : 'success'} />
+                </div>
+                {c.description && <p className="text-sm text-muted line-clamp-2">{c.description}</p>}
+                <p className="font-mono text-xs text-muted">
+                  {c.type.replaceAll('_', ' ')} &middot; {c.currency} {c.contributionAmount.toLocaleString()} /{' '}
+                  {c.contributionFrequency.toLowerCase()}
+                </p>
+              </Card>
             </button>
           ))}
         </div>

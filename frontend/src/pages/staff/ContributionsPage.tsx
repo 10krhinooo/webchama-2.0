@@ -20,6 +20,7 @@ import { getReminderSettings, updateReminderSettings, type ChamaReminderSettings
 import { extractErrorMessage } from '../../api/client'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -354,7 +355,11 @@ export default function ContributionsPage() {
             </TableHeader>
             <TableBody>
               {contributions.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted">No contributions yet.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <EmptyState title="No contributions yet" description="Contributions appear here once a cycle is billed." />
+                  </TableCell>
+                </TableRow>
               )}
               {pageItems.map((c) => {
                 const latestPayment = latestPaymentFor(payments, c.id)

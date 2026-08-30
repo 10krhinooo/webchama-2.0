@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getSecurityEvents, type SecurityEvent } from '../../api/securityEvents'
 import { extractErrorMessage } from '../../api/client'
+import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
@@ -96,7 +97,11 @@ export default function SecurityEventsPage() {
           </TableHeader>
           <TableBody>
             {events.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No security events found.</TableCell></TableRow>
+              <TableRow>
+                  <TableCell colSpan={6}>
+                    <EmptyState title="No security events found" description="Sign-ins and account changes from Keycloak appear here." />
+                  </TableCell>
+                </TableRow>
             )}
             {pageItems.map((event) => (
               <TableRow key={event.id} className={event.error === SUSPICIOUS_ERROR ? 'bg-danger/5 hover:bg-danger/5' : undefined}>

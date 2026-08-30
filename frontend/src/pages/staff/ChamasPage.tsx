@@ -10,6 +10,7 @@ import {
   type UpdateChamaRequest,
 } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
+import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -166,7 +167,11 @@ export default function ChamasPage() {
             </TableHeader>
             <TableBody>
               {chamas.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-10 text-center text-sm text-muted">You are not part of any chama yet.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <EmptyState title="You are not part of any chama yet" description="Create one, or join an existing chama with its code." />
+                  </TableCell>
+                </TableRow>
               )}
               {pageItems.map((c) => (
                 <TableRow key={c.id}>

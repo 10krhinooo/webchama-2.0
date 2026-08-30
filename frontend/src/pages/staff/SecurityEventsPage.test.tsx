@@ -60,7 +60,7 @@ describe('SecurityEventsPage', () => {
     mockGetSecurityEvents.mockResolvedValue([])
     renderPage()
 
-    await waitFor(() => expect(screen.getByText('No security events found.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('No security events found')).toBeTruthy())
   })
 
   it('shows the backend error message when the request fails', async () => {

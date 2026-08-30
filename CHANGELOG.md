@@ -38,6 +38,13 @@ All notable changes to this project will be documented in this file.
   creation, and the CSV export
 
 ### Changed
+- the staff pages now share the Card, StatTile and EmptyState primitives instead of writing the
+  same surface, the same figure and the same empty row out by hand on each page, so elevation,
+  spacing and type no longer drift between them
+- an empty table now says what would fill it, rather than only that it is empty
+- replaced the platform overview's two-slice pie charts with proportion bars. A pie of "active and
+  inactive" is a featureless disc whenever everything is active, which is the ordinary case, and
+  disappears entirely when the total is zero
 - welfare fund withdrawals above the chama's approval threshold now require the same maker-checker
   dual sign-off as loan disbursements and payouts, and move no money until it clears
 - rebuilt the member credit score: it measures amounts rather than counting statuses, weights
@@ -67,6 +74,13 @@ All notable changes to this project will be documented in this file.
   explanation behind its own overlay, so the button read as having done nothing
 - frontend: the "Your phone" and "Phone" form labels pointed at no element, so clicking a label
   did not focus its field and a screen reader announced the input unlabelled
+- frontend: text on the surfaces that stay dark in both themes, the staff sidebar, the public
+  footer and the marketing call to action, was drawn with a surface token that inverts, so it
+  turned dark on dark the moment dark mode was on. The sidebar navigation was close to unreadable
+- frontend: the savings pot on the dashboard drew its empty portion and its outline from hex
+  literals, so in dark mode it was a cream block with an invisible rim
+- frontend: chart tooltips kept a white background and near-black text in dark mode, and chart
+  legends listed every series against a black swatch
 
 ### Schema
 

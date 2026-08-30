@@ -17,6 +17,8 @@ import {
 import { getMembers, type Member } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
+import EmptyState from '../../components/ui/EmptyState'
+import Card from '../../components/ui/Card'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
@@ -206,10 +208,10 @@ export default function WelfareFundPage() {
       ) : (
         <>
           {isManager && fund && (
-            <div className="bg-surface rounded-2xl shadow-card p-6">
+            <Card>
               <p className="text-sm text-muted">Fund balance</p>
               <p className="font-mono text-3xl font-bold text-brand">{fund.balance.toLocaleString()}</p>
-            </div>
+            </Card>
           )}
 
           <Table>
@@ -223,7 +225,11 @@ export default function WelfareFundPage() {
             </TableHeader>
             <TableBody>
               {contributions.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted">No welfare contributions yet.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <EmptyState title="No welfare contributions yet" description="Contributions to the fund appear here once members pay in." />
+                  </TableCell>
+                </TableRow>
               )}
               {contributions.map((c) => (
                 <TableRow key={c.id}>
@@ -250,7 +256,11 @@ export default function WelfareFundPage() {
               </TableHeader>
               <TableBody>
                 {withdrawals.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sm text-muted">No withdrawals yet.</TableCell></TableRow>
+                  <TableRow>
+                  <TableCell colSpan={6}>
+                    <EmptyState title="No withdrawals yet" description="Requests to draw on the fund appear here." />
+                  </TableCell>
+                </TableRow>
                 )}
                 {withdrawals.map((w) => (
                   <TableRow key={w.id}>

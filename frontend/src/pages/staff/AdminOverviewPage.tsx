@@ -3,10 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,17 +11,14 @@ import {
 } from 'recharts'
 import { getPlatformOverview, type PlatformOverview } from '../../api/admin'
 import { extractErrorMessage } from '../../api/client'
+import Button from '../../components/ui/Button'
+import Card from '../../components/ui/Card'
+import StatTile from '../../components/ui/StatTile'
 import { SkeletonBlock, SkeletonLine } from '../../components/ui/Skeleton'
 import TransientAlert from '../../components/ui/TransientAlert'
+import { chartAxisProps, chartTooltipProps } from '../../lib/chartTheme'
+import { useChartColors } from '../../lib/useChartColors'
 import { downloadCsv } from '../../utils/csv'
-
-const CHART_COLORS = {
-  primary: '#1B4D45',
-  accent: '#E0A233',
-  success: '#3F7A3B',
-  danger: '#B84B2E',
-  muted: '#6E6759',
-}
 
 function formatMoney(amount: number) {
   return `KES ${amount.toLocaleString()}`
@@ -56,26 +50,56 @@ function exportOverviewCsv(overview: PlatformOverview) {
   ])
 }
 
-function Tile({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
+/**
+ * A two-way split, as a proportion bar rather than a two-slice pie.
+ *
+ * A pie of "active and inactive" is a featureless disc whenever everything is active, which is the
+ * ordinary case here, and disappears entirely when the total is zero. The bar keeps both counts
+ * legible at every ratio, and the numbers are stated outright rather than left to be read off an
+ * angle.
+ */
+function StatusSplit({ label, active, total, tone }: { label: string; active: number; total: number; tone: string }) {
+  const inactive = Math.max(total - active, 0)
+  const percent = total === 0 ? 0 : Math.round((active / total) * 100)
+
   return (
-    <div className="rounded-2xl bg-surface p-6 shadow-card">
-      <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">{label}</p>
-      <p className="mt-2 font-mono text-3xl font-bold text-ink">{value}</p>
-      {sublabel && <p className="mt-1 text-xs text-muted">{sublabel}</p>}
-    </div>
+    <Card className="space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">{label}</p>
+        <span className="font-mono text-sm text-muted">{total === 0 ? 'None yet' : `${percent}% active`}</span>
+      </div>
+      <div className="h-3 w-full overflow-hidden rounded-full bg-border">
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${percent}%` }} />
+      </div>
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-ink/80">
+          Active <span className="ml-1 font-mono text-ink">{active}</span>
+        </span>
+        <span className="text-muted">
+          Inactive <span className="ml-1 font-mono">{inactive}</span>
+        </span>
+      </div>
+    </Card>
   )
 }
 
-function ChartCard({ title, children }: { title: string; children: ReactNode }) {
+/**
+ * A chart with its heading.
+ *
+ * `text-muted` on the wrapper is what the axis ticks inherit through `currentColor`, so the chart
+ * follows the theme without naming a colour.
+ */
+function ChartCard({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <div className="rounded-2xl bg-surface p-6 shadow-card">
+    <Card className={className}>
       <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">{title}</p>
-      <div className="mt-4 h-64">{children}</div>
-    </div>
+      <div className="mt-4 h-64 text-muted">{children}</div>
+    </Card>
   )
 }
 
 export default function AdminOverviewPage() {
+  const colors = useChartColors(['success', 'danger'])
   const [overview, setOverview] = useState<PlatformOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -122,13 +146,9 @@ export default function AdminOverviewPage() {
           <p className="text-sm text-muted">Aggregated across every chama on Webchama</p>
         </div>
         {overview && (
-          <button
-            type="button"
-            onClick={() => exportOverviewCsv(overview)}
-            className="rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-brand transition hover:bg-primary-light"
-          >
+          <Button variant="secondary" onClick={() => exportOverviewCsv(overview)}>
             Export CSV
-          </button>
+          </Button>
         )}
       </div>
 
@@ -136,81 +156,70 @@ export default function AdminOverviewPage() {
 
       {overview && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Tile label="Total chamas" value={String(overview.totalChamas)} sublabel={`${overview.activeChamas} active`} />
-            <Tile label="New chamas this month" value={String(overview.newChamasThisMonth)} />
-            <Tile label="Total memberships" value={String(overview.totalMemberships)} sublabel={`${overview.activeMemberships} active`} />
-            <Tile label="Overdue contributions" value={String(overview.overdueContributions)} />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Tile label="Contributions collected" value={formatMoney(overview.totalContributionsCollected)} sublabel="All time" />
-            <Tile
+          {/*
+            One grid rather than three rows of four, so the last row is not a single tile stranded
+            beside three empty columns.
+          */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <StatTile
+              label="Total chamas"
+              value={overview.totalChamas}
+              detail={`${overview.activeChamas} active`}
+            />
+            <StatTile label="New chamas this month" value={overview.newChamasThisMonth} />
+            <StatTile
+              label="Total memberships"
+              value={overview.totalMemberships}
+              detail={`${overview.activeMemberships} active`}
+            />
+            <StatTile label="Overdue contributions" value={overview.overdueContributions} />
+            <StatTile
+              label="Contributions collected"
+              value={formatMoney(overview.totalContributionsCollected)}
+              detail="All time"
+            />
+            <StatTile
               label="Collected this month"
               value={formatMoney(overview.contributionsCollectedThisMonth)}
             />
-            <Tile label="Outstanding loans" value={String(overview.outstandingLoans)} sublabel={formatMoney(overview.outstandingLoanPrincipal)} />
-            <Tile
-              label="M-Pesa payments"
-              value={String(overview.mpesaPaymentsSucceeded + overview.mpesaPaymentsFailed)}
-              sublabel={successRate(overview.mpesaPaymentsSucceeded, overview.mpesaPaymentsFailed)}
+            <StatTile
+              label="Outstanding loans"
+              value={overview.outstandingLoans}
+              detail={formatMoney(overview.outstandingLoanPrincipal)}
             />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Tile
+            <StatTile
+              label="M-Pesa payments"
+              value={overview.mpesaPaymentsSucceeded + overview.mpesaPaymentsFailed}
+              detail={successRate(overview.mpesaPaymentsSucceeded, overview.mpesaPaymentsFailed)}
+            />
+            <StatTile
               label="Card payments"
-              value={String(overview.cardPaymentsSucceeded + overview.cardPaymentsFailed)}
-              sublabel={successRate(overview.cardPaymentsSucceeded, overview.cardPaymentsFailed)}
+              value={overview.cardPaymentsSucceeded + overview.cardPaymentsFailed}
+              detail={successRate(overview.cardPaymentsSucceeded, overview.cardPaymentsFailed)}
             />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <ChartCard title="Chamas by status">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Active', value: overview.activeChamas },
-                      { name: 'Inactive', value: overview.totalChamas - overview.activeChamas },
-                    ]}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={80}
-                    label
-                  >
-                    <Cell fill={CHART_COLORS.primary} />
-                    <Cell fill={CHART_COLORS.muted} />
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            {/*
+              The two splits are short and the chart is tall, so they share one column rather than
+              each stretching to the chart's height beside it.
+            */}
+            <div className="space-y-4">
+              <StatusSplit
+                label="Chamas by status"
+                active={overview.activeChamas}
+                total={overview.totalChamas}
+                tone="bg-primary"
+              />
+              <StatusSplit
+                label="Memberships by status"
+                active={overview.activeMemberships}
+                total={overview.totalMemberships}
+                tone="bg-accent"
+              />
+            </div>
 
-            <ChartCard title="Memberships by status">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Active', value: overview.activeMemberships },
-                      { name: 'Inactive', value: overview.totalMemberships - overview.activeMemberships },
-                    ]}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={80}
-                    label
-                  >
-                    <Cell fill={CHART_COLORS.accent} />
-                    <Cell fill={CHART_COLORS.muted} />
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title="Payments by rail">
+            <ChartCard title="Payments by rail" className="lg:col-span-2">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={[
@@ -218,13 +227,18 @@ export default function AdminOverviewPage() {
                     { rail: 'Card', Succeeded: overview.cardPaymentsSucceeded, Failed: overview.cardPaymentsFailed },
                   ]}
                 >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="rail" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                  <XAxis dataKey="rail" {...chartAxisProps} />
+                  <YAxis allowDecimals={false} {...chartAxisProps} />
+                  <Tooltip {...chartTooltipProps} cursor={{ className: 'fill-paper-dim' }} />
                   <Legend />
-                  <Bar dataKey="Succeeded" fill={CHART_COLORS.success} />
-                  <Bar dataKey="Failed" fill={CHART_COLORS.danger} />
+                  {/*
+                    Resolved colours rather than fill utilities. Recharts draws the legend swatch
+                    from the `fill` prop, so a series styled only by class is listed against a
+                    black square.
+                  */}
+                  <Bar dataKey="Succeeded" fill={colors.success} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Failed" fill={colors.danger} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>

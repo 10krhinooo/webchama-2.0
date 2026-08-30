@@ -168,7 +168,7 @@ function HomePage() {
                   with M-Pesa built in and two signatures required before any money moves.
                 </p>
                 <div className="mt-8 flex flex-wrap items-center gap-4">
-                  <StartChamaCta className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-paper transition hover:-translate-y-0.5 hover:bg-primary-dark">
+                  <StartChamaCta className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-on-dark transition hover:-translate-y-0.5 hover:bg-primary-dark">
                     Start your chama
                   </StartChamaCta>
                   <a href="#how-it-works" className="text-sm font-semibold text-ink/70 hover:text-ink">
@@ -208,16 +208,16 @@ function HomePage() {
         </section>
 
         {/* Trust / maker-checker */}
-        <section id="trust" className="bg-success text-paper">
+        <section id="trust" className="bg-success text-on-dark">
           <div className="mx-auto max-w-3xl px-6 py-20 text-center">
             <Reveal>
-              <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-paper/70">
+              <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-on-dark/70">
                 Why trust matters most
               </p>
               <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
                 One person should never hold your chama&rsquo;s money alone.
               </h2>
-              <p className="mx-auto mt-6 max-w-xl text-paper/80">
+              <p className="mx-auto mt-6 max-w-xl text-on-dark/80">
                 It is the reason good chamas fall apart: a single signatory, a missing receipt, a
                 disagreement nobody can settle. Webchama requires two separate approvals before any
                 loan or payout is released, and keeps a permanent record of who signed what.
@@ -263,13 +263,13 @@ function HomePage() {
         </section>
 
         {/* Final CTA */}
-        <section id="join" className="relative overflow-hidden bg-primary text-paper">
+        <section id="join" className="relative overflow-hidden bg-primary text-on-dark">
           <div className="layer depth-0 weave-drift" aria-hidden="true">
             <WovenBackdrop className="h-full w-full" tone="night" />
           </div>
           <Reveal className="relative mx-auto max-w-2xl px-6 py-20 text-center">
             <h2 className="text-3xl font-bold sm:text-4xl">Bring your chama&rsquo;s ledger online.</h2>
-            <p className="mt-4 text-paper/80">
+            <p className="mt-4 text-on-dark/80">
               Free for chamas under 20 members. Set up your rotation, invite your members, and
               take your first mchango by M-Pesa this week.
             </p>
@@ -279,7 +279,7 @@ function HomePage() {
               </StartChamaCta>
               <a
                 href="#join"
-                className="rounded-full border border-paper/40 px-6 py-3 text-sm font-semibold text-paper transition hover:bg-primary-dark"
+                className="rounded-full border border-on-dark/40 px-6 py-3 text-sm font-semibold text-on-dark transition hover:bg-primary-dark"
               >
                 Chat with us on WhatsApp
               </a>

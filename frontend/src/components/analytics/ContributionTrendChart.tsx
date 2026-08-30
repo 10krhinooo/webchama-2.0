@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts'
 import type { ContributionTrendPoint } from '../../api/analytics'
+import { chartAxisProps, chartTooltipProps } from '../../lib/chartTheme'
 import Card from '../ui/Card'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 
@@ -38,12 +39,9 @@ export default function ContributionTrendChart({ points }: { points: Contributio
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'currentColor' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 12, fill: 'currentColor' }} width={72} axisLine={false} tickLine={false} />
-            <Tooltip
-              formatter={(value) => Number(value ?? 0).toLocaleString()}
-              contentStyle={{ borderRadius: 12 }}
-            />
+            <XAxis dataKey="month" {...chartAxisProps} />
+            <YAxis width={72} {...chartAxisProps} />
+            <Tooltip {...chartTooltipProps} formatter={(value) => Number(value ?? 0).toLocaleString()} />
             <Legend />
             {/*
               Tailwind fill utilities and currentColor rather than hex literals, so the chart

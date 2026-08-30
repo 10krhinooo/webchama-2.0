@@ -11,7 +11,7 @@ import { roleBadgeText } from '../../utils/roleBadges'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `sidebar-nav-item flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-    isActive ? 'bg-primary text-white' : 'text-paper/70 hover:bg-surface/10 hover:text-paper'
+    isActive ? 'bg-primary text-white' : 'text-on-dark/70 hover:bg-on-dark/10 hover:text-on-dark'
   }`
 
 /** Explicit per-item stagger rather than CSS nth-child, since a heading (`This chama`) sits between
@@ -77,7 +77,7 @@ export default function StaffLayout() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto bg-night text-paper transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto bg-night text-on-dark transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           navOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -89,7 +89,7 @@ export default function StaffLayout() {
           <button
             type="button"
             onClick={() => setNavOpen(false)}
-            className="rounded-lg p-1 text-paper/70 hover:bg-surface/10 hover:text-paper lg:hidden"
+            className="rounded-lg p-1 text-on-dark/70 hover:bg-on-dark/10 hover:text-on-dark lg:hidden"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -120,9 +120,9 @@ export default function StaffLayout() {
           {chamaId && (
             <>
               <div className="px-3 pb-1 pt-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-paper/40">This chama</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-on-dark/40">This chama</p>
                 {!roleLoading && (
-                  <span className="mt-1 inline-block rounded-full bg-surface/10 px-2 py-0.5 text-[11px] font-medium text-paper/70">
+                  <span className="mt-1 inline-block rounded-full bg-on-dark/10 px-2 py-0.5 text-[11px] font-medium text-on-dark/70">
                     {roleBadgeText(isSuperAdmin, roles)}
                   </span>
                 )}
