@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
   covering both the inbox and email
 - a penalties page, making the existing issue, approve, waive and settle workflow reachable
 - loan disbursement from the loans page, making the M-Pesa B2C payout path reachable
+- a meetings page with minutes and an attendance register, which also unblocks opening a
+  resolution, since a resolution is raised against a meeting
 - dark mode, selectable per user and following the operating system by default
 - a semantic colour token layer, so a theme is defined in one place rather than written into
   each component

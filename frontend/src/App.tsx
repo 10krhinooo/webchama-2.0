@@ -15,6 +15,7 @@ import LoansPage from './pages/staff/LoansPage'
 import PenaltiesPage from './pages/staff/PenaltiesPage'
 import PayoutsPage from './pages/staff/PayoutsPage'
 import ApprovalsPage from './pages/staff/ApprovalsPage'
+import MeetingsPage from './pages/staff/MeetingsPage'
 import ResolutionsPage from './pages/staff/ResolutionsPage'
 import WelfareFundPage from './pages/staff/WelfareFundPage'
 import DocumentGeneratorPage from './pages/staff/DocumentGeneratorPage'
@@ -43,9 +44,10 @@ function App() {
               <Route path="/chamas/:chamaId/members" element={<MembersPage />} />
               <Route path="/chamas/:chamaId/contributions" element={<ContributionsPage />} />
               <Route path="/chamas/:chamaId/loans" element={<LoansPage />} />
-            <Route path="/chamas/:chamaId/penalties" element={<PenaltiesPage />} />
+              <Route path="/chamas/:chamaId/penalties" element={<PenaltiesPage />} />
               <Route path="/chamas/:chamaId/payouts" element={<PayoutsPage />} />
               <Route path="/chamas/:chamaId/approvals" element={<ApprovalsPage />} />
+              <Route path="/chamas/:chamaId/meetings" element={<MeetingsPage />} />
               <Route path="/chamas/:chamaId/resolutions" element={<ResolutionsPage />} />
               <Route path="/chamas/:chamaId/welfare-fund" element={<WelfareFundPage />} />
               <Route path="/chamas/:chamaId/documents" element={<DocumentGeneratorPage />} />
