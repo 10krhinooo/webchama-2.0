@@ -1,15 +1,28 @@
 import { Link } from 'react-router-dom'
-import WeaveMark from '../../components/marketing/WeaveMark'
+import ErrorScreen from '../../components/feedback/ErrorScreen'
 
 export default function NotFoundPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper px-6 text-center">
-      <WeaveMark className="h-8 w-8 text-brand" />
-      <p className="font-display text-3xl font-semibold text-ink">Page not found</p>
-      <p className="text-ink/70">The page you&rsquo;re looking for doesn&rsquo;t exist or has moved.</p>
-      <Link to="/" className="font-medium text-brand underline hover:text-primary-dark">
-        Back to the homepage
-      </Link>
-    </div>
+    <ErrorScreen
+      code="404"
+      title="Page not found"
+      description="The page you were looking for does not exist, or it has moved since the link was made."
+      actions={
+        <>
+          <Link
+            to="/"
+            className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-on-dark transition hover:bg-primary-dark"
+          >
+            Back to the homepage
+          </Link>
+          <Link
+            to="/my-chamas"
+            className="rounded-full border border-border-strong px-6 py-2.5 text-sm font-semibold text-ink transition hover:bg-paper-dim"
+          >
+            Go to my chamas
+          </Link>
+        </>
+      }
+    />
   )
 }

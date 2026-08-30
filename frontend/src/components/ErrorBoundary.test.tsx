@@ -26,7 +26,7 @@ describe('ErrorBoundary', () => {
     )
 
     expect(screen.getByText('Something went wrong')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Reload page' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reload the page' })).toBeTruthy()
 
     consoleError.mockRestore()
   })
@@ -42,7 +42,7 @@ describe('ErrorBoundary', () => {
         <Bomb />
       </ErrorBoundary>,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Reload page' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reload the page' }))
 
     expect(reload).toHaveBeenCalled()
 
