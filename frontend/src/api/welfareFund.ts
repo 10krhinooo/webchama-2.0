@@ -25,14 +25,21 @@ export interface WelfareContribution {
   createdAt: string
 }
 
+export type WelfareWithdrawalStatus = 'PENDING_APPROVAL' | 'DISBURSED'
+
 export interface WelfareWithdrawal {
   id: number
   chamaId: number
   amount: number
   reason: string
-  disbursedByMemberId: number
-  disbursedByName: string
-  disbursedAt: string
+  status: WelfareWithdrawalStatus
+  requestedByMemberId: number
+  requestedByName: string
+  requestedAt: string
+  /** All three are null until the money leaves the fund, which for a large withdrawal is a later step. */
+  disbursedByMemberId: number | null
+  disbursedByName: string | null
+  disbursedAt: string | null
 }
 
 export interface RecordWelfareContributionRequest {
@@ -86,10 +93,25 @@ export async function getWelfareWithdrawals(chamaId: number): Promise<WelfareWit
   return data
 }
 
+/**
+ * Opens a withdrawal. Below the chama's approval threshold it comes back DISBURSED and the money
+ * has moved; at or above it, it comes back PENDING_APPROVAL and nothing has left the fund yet.
+ */
 export async function createWelfareWithdrawal(
   chamaId: number,
   payload: CreateWelfareWithdrawalRequest,
 ): Promise<WelfareWithdrawal> {
   const { data } = await client.post<WelfareWithdrawal>(`/chamas/${chamaId}/welfare-fund/withdrawals`, payload)
+  return data
+}
+
+/** Releases a withdrawal whose dual sign-off has cleared. This is where the money moves. */
+export async function disburseWelfareWithdrawal(
+  chamaId: number,
+  withdrawalId: number,
+): Promise<WelfareWithdrawal> {
+  const { data } = await client.put<WelfareWithdrawal>(
+    `/chamas/${chamaId}/welfare-fund/withdrawals/${withdrawalId}/disburse`,
+  )
   return data
 }

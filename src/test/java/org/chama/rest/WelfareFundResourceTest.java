@@ -19,6 +19,10 @@ import org.chama.domain.model.MemberRole;
 import org.chama.domain.model.Payment;
 import org.chama.domain.model.WelfareContribution;
 import org.chama.repository.ActivityLogRepository;
+import jakarta.ws.rs.BadRequestException;
+import org.chama.domain.enums.ApprovalTargetType;
+import org.chama.repository.ApprovalRepository;
+import org.chama.service.ApprovalService;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
 import org.chama.repository.DocumentDeliveryAttemptRepository;
@@ -48,12 +52,19 @@ import java.math.BigDecimal;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @QuarkusTest
 class WelfareFundResourceTest {
 
     @Inject
     ActivityLogRepository activityLogRepository;
+
+    @Inject
+    ApprovalRepository approvalRepository;
+
+    @Inject
+    ApprovalService approvalService;
 
     @Inject
     ChamaRepository chamaRepository;
@@ -117,11 +128,15 @@ class WelfareFundResourceTest {
 
     private Long chamaId;
     private Long memberId;
+    private Long treasurerId;
+    private Long chairpersonId;
+    private Long secondTreasurerId;
 
     @BeforeEach
     void seed() {
         QuarkusTransaction.requiringNew().run(() -> {
             paymentRepository.deleteAll();
+            approvalRepository.deleteAll();
             welfareWithdrawalRepository.deleteAll();
             welfareContributionRepository.deleteAll();
             welfareFundRepository.deleteAll();
@@ -162,6 +177,7 @@ class WelfareFundResourceTest {
             treasurerRole.member = treasurer;
             treasurerRole.role = MemberRoleType.TREASURER;
             treasurerRole.persist();
+            treasurerId = treasurer.id;
 
             Member payer = new Member();
             payer.chama = chama;
@@ -187,6 +203,22 @@ class WelfareFundResourceTest {
             chairpersonRole.member = chairperson;
             chairpersonRole.role = MemberRoleType.CHAIRPERSON;
             chairpersonRole.persist();
+            chairpersonId = chairperson.id;
+
+            // Dual sign-off needs two signatories who are neither of them the requester, so the
+            // chama has to hold three managers for any of it to be exercisable.
+            Member secondTreasurer = new Member();
+            secondTreasurer.chama = chama;
+            secondTreasurer.keycloakUserId = "welfare-treasurer-2";
+            secondTreasurer.fullName = "Treasurer Two";
+            secondTreasurer.phone = "254700000004";
+            secondTreasurer.status = MemberStatus.ACTIVE;
+            memberRepository.persist(secondTreasurer);
+            MemberRole secondTreasurerRole = new MemberRole();
+            secondTreasurerRole.member = secondTreasurer;
+            secondTreasurerRole.role = MemberRoleType.TREASURER;
+            secondTreasurerRole.persist();
+            secondTreasurerId = secondTreasurer.id;
         });
     }
 
@@ -315,6 +347,10 @@ class WelfareFundResourceTest {
             .then()
                 .statusCode(201)
                 .body("amount", equalTo(200.0f))
+                // Below the chama's approval threshold, so request and disbursement collapse into
+                // the single step this has always been.
+                .body("status", equalTo("DISBURSED"))
+                .body("requestedByName", equalTo("Treasurer One"))
                 .body("disbursedByName", equalTo("Treasurer One"));
 
         given()
@@ -412,6 +448,170 @@ class WelfareFundResourceTest {
             .body("{\"amount\":10,\"reason\":\"x\"}")
             .when().post("/api/chamas/{chamaId}/welfare-fund/withdrawals", chamaId)
             .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-treasurer")
+    void aWithdrawalAtOrAboveTheThresholdMovesNoMoneyUntilItIsSignedOff() {
+        setApprovalThreshold("1000");
+        recordManualContribution(5000);
+
+        int withdrawalId = given()
+            .contentType("application/json")
+            .body("{\"amount\":2000,\"reason\":\"Funeral contribution for a member family\"}")
+            .when().post("/api/chamas/{chamaId}/welfare-fund/withdrawals", chamaId)
+            .then()
+                .statusCode(201)
+                .body("status", equalTo("PENDING_APPROVAL"))
+                .body("disbursedByName", nullValue())
+                .body("disbursedAt", nullValue())
+                .extract().path("id");
+
+        // The whole point: the fund is untouched while the request waits.
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaId)
+            .then().statusCode(200).body("balance", equalTo(5000.0f));
+
+        disbursing("pending")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/withdrawals/{id}/disburse", chamaId, withdrawalId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-treasurer")
+    void theMemberWhoRequestedAWithdrawalCannotSignOffOnIt() {
+        setApprovalThreshold("1000");
+        recordManualContribution(5000);
+        int withdrawalId = requestWithdrawal(2000, "Hospital bill for a member");
+        Long approvalId = approvalIdFor(withdrawalId);
+
+        // Otherwise a treasurer could request a withdrawal and immediately supply one of the two
+        // signatures themselves, leaving one person between them and the fund.
+        assertThrows(BadRequestException.class,
+            () -> approvalService.approve(chamaId, approvalId, treasurerId));
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-treasurer")
+    void twoSignaturesReleaseTheMoney() {
+        setApprovalThreshold("1000");
+        recordManualContribution(5000);
+        int withdrawalId = requestWithdrawal(2000, "Hospital bill for a member");
+        signOff(withdrawalId);
+
+        disbursing("two-signatures")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/withdrawals/{id}/disburse", chamaId, withdrawalId)
+            .then()
+                .statusCode(200)
+                .body("status", equalTo("DISBURSED"))
+                .body("requestedByName", equalTo("Treasurer One"))
+                .body("disbursedByName", equalTo("Treasurer One"));
+
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaId)
+            .then().statusCode(200).body("balance", equalTo(3000.0f));
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-treasurer")
+    void aWithdrawalCannotBeDisbursedTwice() {
+        setApprovalThreshold("1000");
+        recordManualContribution(5000);
+        int withdrawalId = requestWithdrawal(2000, "Hospital bill for a member");
+        signOff(withdrawalId);
+
+        disbursing("twice")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/withdrawals/{id}/disburse", chamaId, withdrawalId)
+            .then().statusCode(200);
+        disbursing("twice")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/withdrawals/{id}/disburse", chamaId, withdrawalId)
+            .then().statusCode(400);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaId)
+            .then().statusCode(200).body("balance", equalTo(3000.0f));
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-treasurer")
+    void aWithdrawalDrainedWhileItWaitedIsRefusedRatherThanOverdrawingTheFund() {
+        setApprovalThreshold("1000");
+        recordManualContribution(5000);
+        int first = requestWithdrawal(3000, "First emergency");
+        int second = requestWithdrawal(3000, "Second emergency");
+        signOff(first);
+        signOff(second);
+
+        disbursing("drained")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/withdrawals/{id}/disburse", chamaId, first)
+            .then().statusCode(200);
+
+        // Both were affordable when requested and both cleared sign-off, but the fund is a single
+        // draining pot and only one of them still fits. This is why disbursement re-checks the
+        // balance, which a payout does not have to.
+        disbursing("drained")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/withdrawals/{id}/disburse", chamaId, second)
+            .then().statusCode(400);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/welfare-fund", chamaId)
+            .then().statusCode(200).body("balance", equalTo(2000.0f));
+    }
+
+    @Test
+    @TestSecurity(user = "welfare-payer")
+    void aPlainMemberCannotDisburseAWithdrawal() {
+        disbursing("plain-member")
+            .when().put("/api/chamas/{chamaId}/welfare-fund/withdrawals/{id}/disburse", chamaId, 1)
+            .then().statusCode(403);
+    }
+
+    /**
+     * A caller identity unique to each test.
+     *
+     * <p>Disbursement endpoints are rate limited at ten a minute per client IP, and the whole suite
+     * shares one loopback address, so the bucket is long gone by the time these tests run. The
+     * filter honours X-Forwarded-For when the direct peer is loopback, which it is under
+     * @QuarkusTest, so giving each test its own forwarded address gives it its own bucket without
+     * weakening the limit itself.
+     */
+    private static String callerIp(String test) {
+        return "198.51.100." + (Math.abs(test.hashCode()) % 200 + 1);
+    }
+
+    private void setApprovalThreshold(String threshold) {
+        QuarkusTransaction.requiringNew().run(() ->
+            chamaRepository.findById(chamaId).approvalThreshold = new BigDecimal(threshold));
+    }
+
+    private int requestWithdrawal(int amount, String reason) {
+        return given()
+            .contentType("application/json")
+            .body(String.format("{\"amount\":%d,\"reason\":\"%s\"}", amount, reason))
+            .when().post("/api/chamas/{chamaId}/welfare-fund/withdrawals", chamaId)
+            .then().statusCode(201).extract().path("id");
+    }
+
+    /** A disburse call from an address of this test's own, see {@link #callerIp}. */
+    private io.restassured.specification.RequestSpecification disbursing(String test) {
+        return given().header("X-Forwarded-For", callerIp(test));
+    }
+
+    private Long approvalIdFor(int withdrawalId) {
+        return QuarkusTransaction.requiringNew().call(() -> approvalRepository
+            .findLatestByTarget(ApprovalTargetType.WELFARE_WITHDRAWAL, (long) withdrawalId)
+            .orElseThrow().id);
+    }
+
+    /**
+     * Both sign-offs, each from a different member. Driven through ApprovalService rather than the
+     * REST layer because @TestSecurity fixes one identity for the whole test method, and the point
+     * of dual sign-off is that two different people act.
+     */
+    private void signOff(int withdrawalId) {
+        Long approvalId = approvalIdFor(withdrawalId);
+        approvalService.approve(chamaId, approvalId, chairpersonId);
+        approvalService.approve(chamaId, approvalId, secondTreasurerId);
     }
 
     private void recordManualContribution(int amount) {

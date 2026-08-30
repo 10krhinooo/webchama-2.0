@@ -23,6 +23,10 @@ All notable changes to this project will be documented in this file.
 - an end-to-end suite driving the deployed stack through a browser, including a real Keycloak
   login, tenant isolation checks, and the M-Pesa contribution path end to end
 
+### Changed
+- welfare fund withdrawals above the chama's approval threshold now require the same maker-checker
+  dual sign-off as loan disbursements and payouts, and move no money until it clears
+
 ### Fixed
 - deleting a chama that had recorded any activity failed on a foreign key, because activity_log
   was missing from the ordered cleanup
@@ -40,8 +44,8 @@ not collide on a version:
 |---|---|
 | V41 | notification and notification_preference tables (applied) |
 | V42 | chama_reminder_settings and reminder_dispatch tables |
-| V43 | WELFARE_WITHDRAWAL approval target type |
-| V44 | welfare_withdrawal status, requested_by, requested_at |
+| V43 | WELFARE_WITHDRAWAL approval target type (applied) |
+| V44 | welfare_withdrawal status, requested_by, requested_at (applied) |
 | V45 | REMINDER_SENT and MEMBERS_IMPORTED activity event types |
 | V46 | analytics aggregation indexes |
 | V47 | loan_repayment.paid_at |

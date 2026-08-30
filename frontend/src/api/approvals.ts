@@ -1,6 +1,6 @@
 import { client } from './client'
 
-export type ApprovalTargetType = 'LOAN_DISBURSEMENT' | 'PAYOUT_DISBURSEMENT'
+export type ApprovalTargetType = 'LOAN_DISBURSEMENT' | 'PAYOUT_DISBURSEMENT' | 'WELFARE_WITHDRAWAL'
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export interface Approval {

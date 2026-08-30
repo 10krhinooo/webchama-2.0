@@ -109,13 +109,28 @@ public class WelfareFundResource {
         return welfareFundService.listWithdrawals(chamaId).stream().map(WelfareWithdrawalDto::from).toList();
     }
 
-    /** Chairperson/treasurer marks an emergency payout disbursed from the fund. */
+    /**
+     * Chairperson/treasurer opens an emergency payout from the fund.
+     *
+     * <p>Below the chama's approval threshold this disburses immediately. At or above it, the
+     * response comes back PENDING_APPROVAL and no money has moved: it needs dual sign-off through
+     * the approvals page, then a call to the endpoint below.
+     */
     @POST
     @Path("/withdrawals")
     public Response createWithdrawal(@PathParam("chamaId") Long chamaId, @Valid CreateWelfareWithdrawalDto dto) {
         tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
         var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
-        var withdrawal = welfareFundService.withdraw(chamaId, dto.amount(), dto.reason(), member);
+        var withdrawal = welfareFundService.request(chamaId, dto.amount(), dto.reason(), member);
         return Response.status(Response.Status.CREATED).entity(WelfareWithdrawalDto.from(withdrawal)).build();
+    }
+
+    /** Releases a withdrawal whose dual sign-off has cleared. This is where the money moves. */
+    @PUT
+    @Path("/withdrawals/{id}/disburse")
+    public WelfareWithdrawalDto disburseWithdrawal(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        var member = tenantAccessService.currentMember(currentUser, chamaId).orElseThrow(ForbiddenException::new);
+        return WelfareWithdrawalDto.from(welfareFundService.markDisbursed(chamaId, id, member));
     }
 }

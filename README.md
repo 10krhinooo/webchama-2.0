@@ -72,7 +72,9 @@ users; the SUPER_ADMIN password is substituted in at container start, see
 - **Payout rotation**: define the "merry-go-round" order, track whose turn it is, mark disbursed.
 - **Penalties**: configurable fine rules with an approval/waiver flow.
 - **Meetings**: agenda, minutes, attendance tracking.
-- **Welfare/emergency fund**: tracked as a distinct fund type alongside regular contributions.
+- **Welfare/emergency fund**: tracked as a distinct fund type alongside regular contributions. A
+  withdrawal above the chama's approval threshold needs dual sign-off before any money leaves the
+  fund, and the balance is re-checked at that point in case another withdrawal has since drained it.
 - **Governance**: maker-checker dual approval for disbursements above a configurable threshold, and
   in-app voting/resolutions to digitize meeting decisions.
 - **Documents**: PDF statement and receipt generation, plus a freeform document generator, delivered
