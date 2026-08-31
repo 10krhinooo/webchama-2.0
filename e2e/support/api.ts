@@ -37,11 +37,15 @@ async function send(
   method: 'get' | 'post' | 'put' | 'delete',
   path: string,
   data?: unknown,
+  // Endpoints that take something other than JSON, such as the raw image bytes of a chama logo,
+  // have to say so: Playwright would otherwise infer application/json and the resource would
+  // answer 415 before any of the logic under test ran.
+  contentType?: string,
 ): Promise<APIResponse> {
   const url = path.startsWith('http') ? path : `${BACKEND_URL}${path}`
   const call = (token: string) =>
     page.request[method](url, {
-      headers: { Authorization: token },
+      headers: { Authorization: token, ...(contentType ? { 'Content-Type': contentType } : {}) },
       ...(data === undefined ? {} : { data: data as Record<string, unknown> }),
     })
 
@@ -56,6 +60,7 @@ async function send(
 export const api = {
   get: (page: Page, path: string) => send(page, 'get', path),
   post: (page: Page, path: string, data?: unknown) => send(page, 'post', path, data),
-  put: (page: Page, path: string, data?: unknown) => send(page, 'put', path, data),
+  put: (page: Page, path: string, data?: unknown, contentType?: string) =>
+    send(page, 'put', path, data, contentType),
   delete: (page: Page, path: string) => send(page, 'delete', path),
 }

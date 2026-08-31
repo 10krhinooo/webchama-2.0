@@ -40,3 +40,12 @@ VALUES
 INSERT INTO contribution (id, chama_id, member_id, period, amount_due, amount_paid, payment_method, status, paid_at, version)
 VALUES
   (201, 3, 10, (date_trunc('month', CURRENT_DATE) - interval '1 month')::date, 3000, 3000, 'CASH', 'PAID', now() - interval '1 month', 0);
+
+-- ---------------------------------------------------------------------------------------------
+-- Chama 11, owned by the documents spec. One settled contribution per member, so a member has
+-- something of their own to produce a receipt for.
+-- ---------------------------------------------------------------------------------------------
+INSERT INTO contribution (id, chama_id, member_id, period, amount_due, amount_paid, payment_method, status, paid_at, version)
+VALUES
+  (301, 11, 28, (date_trunc('month', CURRENT_DATE) - interval '1 month')::date, 5500, 5500, 'CASH', 'PAID', now() - interval '1 month', 0),
+  (302, 11, 30, (date_trunc('month', CURRENT_DATE) - interval '1 month')::date, 5500, 5500, 'CASH', 'PAID', now() - interval '1 month', 0);

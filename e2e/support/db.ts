@@ -111,6 +111,7 @@ export const FIXTURE = {
     faraja: 9,
     neema: 10,
     mwanzo: 11,
+    hazina: 12,
   },
   member: {
     chairperson: 1,
@@ -123,5 +124,9 @@ export const FIXTURE = {
     nuruBorrower: 14,
     // Chama 5, the penalties spec.
     barakaMember: 17,
+    // Chama 8, the welfare spec.
+    salamaMember: 24,
+    // Chama 11, the documents spec.
+    mwanzoMember: 30,
   },
 } as const

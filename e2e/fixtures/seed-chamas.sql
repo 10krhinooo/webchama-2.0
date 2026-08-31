@@ -35,7 +35,8 @@ VALUES
   (8, 'Salama Welfare',   'Owned by the welfare spec',        'TABLE_BANKING',   'KES', 'MONTHLY', 3500,  'SATURDAY', 'ACTIVE', now() - interval '5 months',  10000, 250000, false, 24, 'SALAMA'),
   (9, 'Faraja Assembly',  'Owned by the meetings spec',       'TABLE_BANKING',   'KES', 'MONTHLY', 4500,  'SUNDAY',   'ACTIVE', now() - interval '11 months', 50000, 350000, false, 24, 'FARAJA'),
   (10,'Neema Council',    'Owned by the resolutions spec',    'TABLE_BANKING',   'KES', 'MONTHLY', 4000,  'FRIDAY',   'ACTIVE', now() - interval '4 months',  50000, 300000, false, 24, 'NEEMAC'),
-  (11,'Mwanzo Registry',  'Owned by the documents spec',      'TABLE_BANKING',   'KES', 'MONTHLY', 5500,  'MONDAY',   'ACTIVE', now() - interval '13 months', 50000, 450000, false, 24, 'MWANZO');
+  (11,'Mwanzo Registry',  'Owned by the documents spec',      'TABLE_BANKING',   'KES', 'MONTHLY', 5500,  'MONDAY',   'ACTIVE', now() - interval '13 months', 50000, 450000, false, 24, 'MWANZO'),
+  (12,'Hazina Trust',     'Owned by the dual sign-off spec',   'TABLE_BANKING',   'KES', 'MONTHLY', 4000,  'THURSDAY', 'ACTIVE', now() - interval '14 months', 50000, 400000, false, 24, 'HAZINA');
 
 SELECT setval('chama_id_seq', 100, false);
 

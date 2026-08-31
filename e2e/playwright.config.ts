@@ -10,7 +10,11 @@ export default defineConfig({
   // backend and one Keycloak, and a runner that oversubscribes them produces timeouts that look
   // like product failures.
   fullyParallel: false,
-  workers: process.env.CI ? 1 : 4,
+  // One worker everywhere, not just in CI. The suite drives a single backend and a single
+  // Keycloak, and oversubscribing them produces timeouts that read as product failures: at four
+  // local workers, specs that pass alone and pass in CI fail here for no reason anyone can act on.
+  // The whole suite runs in about ninety seconds serially, which is not worth trading for that.
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
 
