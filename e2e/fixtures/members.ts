@@ -66,4 +66,27 @@ export const FIXTURE_MEMBERS: FixtureMember[] = [
   { id: 15, chamaId: 5, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 200, roles: ['CHAIRPERSON', 'MEMBER'] },
   { id: 16, chamaId: 5, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 195, roles: ['TREASURER', 'MEMBER'] },
   { id: 17, chamaId: 5, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 190, roles: ['MEMBER'] },
+
+  // Chama 7, owned by the payouts spec. Three members, because a rotation with one person in it
+  // does not demonstrate an order.
+  { id: 18, chamaId: 7, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 300, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 19, chamaId: 7, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 290, roles: ['TREASURER', 'MEMBER'] },
+  { id: 20, chamaId: 7, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 280, roles: ['MEMBER'] },
+
+  // Chama 8, owned by the welfare spec.
+  { id: 21, chamaId: 8, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 150, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 22, chamaId: 8, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 145, roles: ['TREASURER', 'MEMBER'] },
+  { id: 23, chamaId: 8, keycloakUserId: SECRETARY,   fullName: 'Carol Secretary',   phone: '+254700000003', nationalId: null, nextOfKin: 'Next Of Kin C', joinedDaysAgo: 140, roles: ['TREASURER', 'MEMBER'] },
+  { id: 24, chamaId: 8, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 135, roles: ['MEMBER'] },
+
+  // Chama 9, owned by the meetings spec. Carol is its secretary, which is who schedules meetings
+  // and records attendance.
+  { id: 25, chamaId: 9, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 330, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 26, chamaId: 9, keycloakUserId: SECRETARY,   fullName: 'Carol Secretary',   phone: '+254700000003', nationalId: null, nextOfKin: 'Next Of Kin C', joinedDaysAgo: 325, roles: ['SECRETARY', 'MEMBER'] },
+  { id: 27, chamaId: 9, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 320, roles: ['MEMBER'] },
+
+  // Chama 11, owned by the documents spec.
+  { id: 28, chamaId: 11, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 390, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 29, chamaId: 11, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 385, roles: ['TREASURER', 'MEMBER'] },
+  { id: 30, chamaId: 11, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 380, roles: ['MEMBER'] },
 ]
