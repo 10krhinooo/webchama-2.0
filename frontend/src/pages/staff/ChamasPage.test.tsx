@@ -9,14 +9,19 @@ vi.mock('../../api/chamas', () => ({
   createChama: vi.fn(),
   updateChama: vi.fn(),
   deleteChama: vi.fn(),
+  uploadChamaLogo: vi.fn(),
+  deleteChamaLogo: vi.fn(),
+  chamaLogoUrl: (id: number) => `/api/chamas/${id}/logo`,
 }))
 
-import { getChamas, createChama, updateChama, deleteChama } from '../../api/chamas'
+import { getChamas, createChama, updateChama, deleteChama, uploadChamaLogo, deleteChamaLogo } from '../../api/chamas'
 
 const mockGetChamas = getChamas as ReturnType<typeof vi.fn>
 const mockCreateChama = createChama as ReturnType<typeof vi.fn>
 const mockUpdateChama = updateChama as ReturnType<typeof vi.fn>
 const mockDeleteChama = deleteChama as ReturnType<typeof vi.fn>
+const mockUploadLogo = uploadChamaLogo as ReturnType<typeof vi.fn>
+const mockDeleteLogo = deleteChamaLogo as ReturnType<typeof vi.fn>
 
 const chama = {
   id: 1,
@@ -33,6 +38,12 @@ const chama = {
   joinCode: 'AB12CD34',
   autoPushEnabled: true,
   autoPushRetryHours: 24,
+  postalAddress: null,
+  physicalAddress: null,
+  contactPhone: null,
+  contactEmail: null,
+  registrationNumber: null,
+  hasLogo: false,
 }
 
 function renderPage() {
@@ -205,5 +216,73 @@ describe('ChamasPage', () => {
     // A request that failed is not an account with nothing in it. Saying the second when the first
     // happened states something false and then invites the reader to act on it.
     expect(screen.queryByTestId('empty-state')).toBeNull()
+  })
+
+  it('sends the chama details along with the money settings', async () => {
+    mockUpdateChama.mockResolvedValue(chama)
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+    fireEvent.click(screen.getByText('Edit'))
+
+    fireEvent.change(screen.getByLabelText(/postal address/i), {
+      target: { value: 'P.O. Box 4021-00100, Nairobi' },
+    })
+    fireEvent.change(screen.getByLabelText(/registration number/i), {
+      target: { value: 'CBO/2019/4021' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() => expect(mockUpdateChama).toHaveBeenCalled())
+    expect(mockUpdateChama.mock.calls[0][1]).toMatchObject({
+      postalAddress: 'P.O. Box 4021-00100, Nairobi',
+      registrationNumber: 'CBO/2019/4021',
+    })
+  })
+
+  it('offers no logo upload while creating, since there is nothing to attach one to yet', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+    fireEvent.click(screen.getByText('+ New Chama'))
+
+    expect(screen.queryByLabelText(/^logo$/i)).toBeNull()
+  })
+
+  it('uploads a logo and shows it once it is set', async () => {
+    mockUploadLogo.mockResolvedValue({ ...chama, hasLogo: true })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+    fireEvent.click(screen.getByText('Edit'))
+
+    const input = screen.getByLabelText(/^logo$/i) as HTMLInputElement
+    const file = new File(['x'], 'logo.png', { type: 'image/png' })
+    fireEvent.change(input, { target: { files: [file] } })
+
+    await waitFor(() => expect(mockUploadLogo).toHaveBeenCalledWith(1, file))
+    expect(await screen.findByAltText('Tumaini logo')).toBeTruthy()
+  })
+
+  it('shows the backend error message when the logo is rejected', async () => {
+    mockUploadLogo.mockRejectedValue(new Error('That file is not a PNG or a JPEG.'))
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+    fireEvent.click(screen.getByText('Edit'))
+
+    fireEvent.change(screen.getByLabelText(/^logo$/i), {
+      target: { files: [new File(['x'], 'not-an-image.txt', { type: 'image/png' })] },
+    })
+
+    expect(await screen.findByText('That file is not a PNG or a JPEG.')).toBeTruthy()
+  })
+
+  it('removes a logo that is already set', async () => {
+    mockGetChamas.mockResolvedValue([{ ...chama, hasLogo: true }])
+    mockDeleteLogo.mockResolvedValue({ ...chama, hasLogo: false })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Tumaini')).toBeTruthy())
+    fireEvent.click(screen.getByText('Edit'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+
+    await waitFor(() => expect(mockDeleteLogo).toHaveBeenCalledWith(1))
   })
 })

@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [unreleased] - 2026-08-07
 
 ### Added
+- a chama now carries its own identity: postal address, physical address, contact phone, contact
+  email, registration number, and a logo. All of it appears in the letterhead of the receipts and
+  statements the chama issues, so a document says who it came from
 - automatic contribution reminders: a nudge some days before the due date, one on the day, and a
   repeating one while a contribution stays outstanding, in the app and by email. Off until a
   chairperson turns them on, and configurable per chama
@@ -71,6 +74,8 @@ All notable changes to this project will be documented in this file.
 - the loans table reads every credit score in one request instead of one request per member
 
 ### Fixed
+- generated PDFs were printed in the indigo brand colour the product stopped using when the
+  palette moved to kanga teal
 - the home page hero headline never appeared. It reveals itself with a clip-path wipe once an
   IntersectionObserver reports it on screen, but the observer measures the element after its clip
   is applied and the starting clip has zero area, so it reported the headline as never visible and
@@ -135,6 +140,7 @@ not collide on a version:
 | V45 | MEMBERS_IMPORTED activity event type (applied) |
 | V46 | analytics aggregation indexes (applied) |
 | V47 | loan_repayment.paid_at (applied) |
+| V48 | chama profile fields and logo | applied |
 
 V28 has never existed and is a permanent hole in the sequence. Flyway does not care, but it is
 worth knowing before someone tries to fill it.

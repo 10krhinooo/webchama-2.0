@@ -23,7 +23,15 @@ public record ChamaDto(
     boolean autoPushEnabled,
     int autoPushRetryHours,
     Instant createdAt,
-    String joinCode) {
+    String joinCode,
+
+    String postalAddress,
+    String physicalAddress,
+    String contactPhone,
+    String contactEmail,
+    String registrationNumber,
+    /** Whether a logo has been uploaded. The bytes come from GET /api/chamas/{id}/logo. */
+    boolean hasLogo) {
 
     public static ChamaDto from(Chama chama) {
         return new ChamaDto(
@@ -41,6 +49,12 @@ public record ChamaDto(
             chama.autoPushEnabled,
             chama.autoPushRetryHours,
             chama.createdAt,
-            chama.joinCode);
+            chama.joinCode,
+            chama.postalAddress,
+            chama.physicalAddress,
+            chama.contactPhone,
+            chama.contactEmail,
+            chama.registrationNumber,
+            chama.logoBytes != null && chama.logoBytes.length > 0);
     }
 }

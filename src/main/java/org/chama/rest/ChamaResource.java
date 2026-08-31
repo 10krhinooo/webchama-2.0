@@ -3,9 +3,12 @@ package org.chama.rest;
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -148,6 +151,69 @@ public class ChamaResource {
         var chama = chamaService.get(id);
         chamaInvitationEmailService.sendJoinInvite(dto.email(), chama.name, chama.joinCode);
         return Response.accepted().build();
+    }
+
+    /**
+     * The chama's logo, used on the documents it issues.
+     *
+     * <p>Uploaded as raw bytes rather than multipart: the frontend already reads a file into memory
+     * to preview it, and multipart would add a binding and a config flag for no gain.
+     *
+     * <p>The declared content type is not trusted. A PNG or JPEG is identified by its own leading
+     * bytes, so a file that says image/png and is not one is rejected here rather than served back
+     * to every member with that content type on it.
+     */
+    private static final int MAX_LOGO_BYTES = 256 * 1024;
+
+    @PUT
+    @Path("/{id}/logo")
+    @Consumes({"image/png", "image/jpeg"})
+    public ChamaDto uploadLogo(@PathParam("id") Long id, @HeaderParam("Content-Type") String contentType, byte[] body) {
+        tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON);
+        if (body == null || body.length == 0) {
+            throw new BadRequestException("No image was uploaded.");
+        }
+        if (body.length > MAX_LOGO_BYTES) {
+            throw new BadRequestException("A logo must be 256KB or smaller. Try a smaller image.");
+        }
+        String detected = detectImageType(body);
+        if (detected == null) {
+            throw new BadRequestException("That file is not a PNG or a JPEG.");
+        }
+        return ChamaDto.from(chamaService.setLogo(id, body, detected));
+    }
+
+    @GET
+    @Path("/{id}/logo")
+    @Produces({"image/png", "image/jpeg"})
+    public Response logo(@PathParam("id") Long id) {
+        tenantAccessService.requireMembership(currentUser, id);
+        var chama = chamaService.get(id);
+        if (chama.logoBytes == null || chama.logoBytes.length == 0) {
+            throw new NotFoundException();
+        }
+        return Response.ok(chama.logoBytes, chama.logoContentType)
+            // Short and private: a logo changes rarely, but it is only for this chama's members.
+            .header("Cache-Control", "private, max-age=300")
+            .build();
+    }
+
+    @DELETE
+    @Path("/{id}/logo")
+    public ChamaDto deleteLogo(@PathParam("id") Long id) {
+        tenantAccessService.requireRole(currentUser, id, MemberRoleType.CHAIRPERSON);
+        return ChamaDto.from(chamaService.clearLogo(id));
+    }
+
+    /** The image's own leading bytes, which is the only thing about its type that cannot be faked. */
+    private static String detectImageType(byte[] body) {
+        if (body.length >= 8 && (body[0] & 0xFF) == 0x89 && body[1] == 'P' && body[2] == 'N' && body[3] == 'G') {
+            return "image/png";
+        }
+        if (body.length >= 3 && (body[0] & 0xFF) == 0xFF && (body[1] & 0xFF) == 0xD8 && (body[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+        return null;
     }
 
     @DELETE

@@ -44,6 +44,7 @@ import java.util.List;
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -634,5 +635,128 @@ class ChamaResourceTest {
             .body("{\"email\":\"prospect@example.com\"}")
             .when().post("/api/chamas/{id}/join-code/invite", chamaId)
             .then().statusCode(403);
+    }
+
+    // A one-pixel PNG and a one-pixel JPEG, as their own leading bytes. The upload identifies an
+    // image by these rather than by what the request claims, so the tests need real ones.
+    private static final byte[] PNG = java.util.Base64.getDecoder().decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
+
+    private int createChama() {
+        return given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("id");
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void aChamaCarriesTheDetailsItPutsOnTheDocumentsItIssues() {
+        int chamaId = createChama();
+
+        given()
+            .contentType("application/json")
+            .body("""
+                {"name":"Tumaini Chama","type":"MERRY_GO_ROUND","contributionFrequency":"MONTHLY",
+                 "contributionAmount":1000,"postalAddress":"P.O. Box 4021-00100, Nairobi",
+                 "physicalAddress":"Kenyatta Avenue, Nairobi","contactPhone":"+254700111222",
+                 "contactEmail":"tumaini@example.com","registrationNumber":"CBO/2019/4021"}
+                """)
+            .when().put("/api/chamas/{id}", chamaId)
+            .then()
+                .statusCode(200)
+                .body("postalAddress", equalTo("P.O. Box 4021-00100, Nairobi"))
+                .body("physicalAddress", equalTo("Kenyatta Avenue, Nairobi"))
+                .body("contactPhone", equalTo("+254700111222"))
+                .body("contactEmail", equalTo("tumaini@example.com"))
+                .body("registrationNumber", equalTo("CBO/2019/4021"));
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void anEmptyDetailFieldIsStoredAsAbsentRatherThanAsBlank() {
+        int chamaId = createChama();
+
+        // An empty form field and an absent one mean the same thing, so the letterhead has one
+        // case to collapse around rather than two.
+        given()
+            .contentType("application/json")
+            .body("""
+                {"name":"Tumaini Chama","type":"MERRY_GO_ROUND","contributionFrequency":"MONTHLY",
+                 "contributionAmount":1000,"postalAddress":"   ","contactEmail":""}
+                """)
+            .when().put("/api/chamas/{id}", chamaId)
+            .then()
+                .statusCode(200)
+                .body("postalAddress", nullValue())
+                .body("contactEmail", nullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void aChairpersonUploadsAndRemovesALogo() {
+        int chamaId = createChama();
+
+        given().when().get("/api/chamas/{id}", chamaId).then().body("hasLogo", equalTo(false));
+        given().when().get("/api/chamas/{id}/logo", chamaId).then().statusCode(404);
+
+        given()
+            .contentType("image/png")
+            .body(PNG)
+            .when().put("/api/chamas/{id}/logo", chamaId)
+            .then().statusCode(200).body("hasLogo", equalTo(true));
+
+        given()
+            .when().get("/api/chamas/{id}/logo", chamaId)
+            .then()
+                .statusCode(200)
+                .contentType("image/png")
+                .header("Cache-Control", "private, max-age=300");
+
+        given().when().delete("/api/chamas/{id}/logo", chamaId).then().statusCode(200).body("hasLogo", equalTo(false));
+        given().when().get("/api/chamas/{id}/logo", chamaId).then().statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void aFileThatClaimsToBeAnImageAndIsNotIsRejected() {
+        int chamaId = createChama();
+
+        // Otherwise it would be served straight back to every member of the chama with an
+        // image content type on it.
+        given()
+            .contentType("image/png")
+            .body("<html><script>alert(1)</script></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .when().put("/api/chamas/{id}/logo", chamaId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void anOversizedLogoIsRejected() {
+        int chamaId = createChama();
+
+        byte[] tooBig = new byte[256 * 1024 + 1];
+        System.arraycopy(PNG, 0, tooBig, 0, PNG.length);
+
+        given()
+            .contentType("image/png")
+            .body(tooBig)
+            .when().put("/api/chamas/{id}/logo", chamaId)
+            .then().statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "founder")
+    void anEmptyLogoUploadIsRejected() {
+        int chamaId = createChama();
+
+        given()
+            .contentType("image/png")
+            .body(new byte[0])
+            .when().put("/api/chamas/{id}/logo", chamaId)
+            .then().statusCode(400);
     }
 }

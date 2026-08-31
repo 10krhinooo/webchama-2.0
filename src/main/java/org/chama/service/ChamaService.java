@@ -131,6 +131,8 @@ public class ChamaService {
         chama.contributionAmount = dto.contributionAmount();
         chama.meetingDay = dto.meetingDay();
         chama.savingsTarget = dto.savingsTarget();
+        applyProfile(chama, dto.postalAddress(), dto.physicalAddress(), dto.contactPhone(),
+            dto.contactEmail(), dto.registrationNumber());
         chama.joinCode = generateUniqueJoinCode();
         chamaRepository.persist(chama);
 
@@ -163,6 +165,43 @@ public class ChamaService {
         chama.meetingDay = dto.meetingDay();
         chama.approvalThreshold = dto.approvalThreshold();
         chama.savingsTarget = dto.savingsTarget();
+        applyProfile(chama, dto.postalAddress(), dto.physicalAddress(), dto.contactPhone(),
+            dto.contactEmail(), dto.registrationNumber());
+        return chama;
+    }
+
+    /**
+     * How the chama identifies itself on a document it issues. Blank is stored as null so an empty
+     * form field and an absent one mean the same thing, and the PDF letterhead has one case to
+     * collapse around rather than two.
+     */
+    private static void applyProfile(Chama chama, String postalAddress, String physicalAddress,
+                                     String contactPhone, String contactEmail, String registrationNumber) {
+        chama.postalAddress = blankToNull(postalAddress);
+        chama.physicalAddress = blankToNull(physicalAddress);
+        chama.contactPhone = blankToNull(contactPhone);
+        chama.contactEmail = blankToNull(contactEmail);
+        chama.registrationNumber = blankToNull(registrationNumber);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** Replaces the chama's logo. Callers validate the bytes; this only stores them. */
+    @Transactional
+    public Chama setLogo(Long id, byte[] bytes, String contentType) {
+        Chama chama = get(id);
+        chama.logoBytes = bytes;
+        chama.logoContentType = contentType;
+        return chama;
+    }
+
+    @Transactional
+    public Chama clearLogo(Long id) {
+        Chama chama = get(id);
+        chama.logoBytes = null;
+        chama.logoContentType = null;
         return chama;
     }
 

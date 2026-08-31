@@ -5,6 +5,7 @@ import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
+import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.pdf.PdfPCell;
@@ -21,6 +22,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Renders a GeneratedDocument's PDF bytes with OpenPDF. One shared layout covers all three
@@ -33,11 +37,13 @@ public class PdfDocumentService {
     private static final Logger LOG = Logger.getLogger(PdfDocumentService.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy");
 
-    // Mirrors frontend/tailwind.config.js, keep these in sync with the design tokens.
-    private static final Color PRIMARY = new Color(0x3D, 0x3A, 0x6B);
-    private static final Color INK = new Color(0x1C, 0x1A, 0x17);
-    private static final Color MUTED = new Color(0x6E, 0x67, 0x59);
-    private static final Color PAPER_DIM = new Color(0xF2, 0xEB, 0xD9);
+    // The light-theme values of the tokens in frontend/index.css, since a PDF has one appearance.
+    // These had drifted: PRIMARY was still the indigo from before the palette moved to kanga teal,
+    // so every generated document was printed in a brand colour the product no longer uses.
+    private static final Color PRIMARY = new Color(0x1B, 0x4D, 0x45);
+    private static final Color INK = new Color(0x1C, 0x24, 0x22);
+    private static final Color MUTED = new Color(0x55, 0x65, 0x5F);
+    private static final Color PAPER_DIM = new Color(0xEE, 0xF2, 0xF1);
 
     private static final Font TITLE_FONT = new Font(Font.HELVETICA, 20, Font.BOLD, PRIMARY);
     private static final Font BRAND_FONT = new Font(Font.HELVETICA, 14, Font.BOLD, INK);
@@ -48,7 +54,23 @@ public class PdfDocumentService {
     private static final Font TOTAL_FONT = new Font(Font.HELVETICA, 13, Font.BOLD, PRIMARY);
     private static final Font FOOTER_FONT = new Font(Font.HELVETICA, 8, Font.ITALIC, MUTED);
 
-    public byte[] render(DocumentType type, String documentNumber, String chamaName, String memberName,
+    /**
+     * How the issuing chama identifies itself at the top of the document.
+     *
+     * <p>Every field but the name is optional, and the block collapses around whatever is absent:
+     * most chamas that predate these fields have none of them, and plenty of real ones never will.
+     */
+    public record Letterhead(
+        String chamaName,
+        String postalAddress,
+        String physicalAddress,
+        String contactPhone,
+        String contactEmail,
+        String registrationNumber,
+        byte[] logoBytes) {
+    }
+
+    public byte[] render(DocumentType type, String documentNumber, Letterhead letterhead, String memberName,
             LocalDate issueDate, List<DocumentLineItemDto> lineItems, BigDecimal totalAmount,
             String billingPeriod, String notes) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -57,7 +79,7 @@ public class PdfDocumentService {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            document.add(header(chamaName, title(type)));
+            document.add(header(letterhead, title(type)));
             document.add(Chunk.NEWLINE);
             document.add(metaTable(documentNumber, issueDate, billingPeriod));
             document.add(Chunk.NEWLINE);
@@ -97,14 +119,24 @@ public class PdfDocumentService {
         };
     }
 
-    private PdfPTable header(String chamaName, String title) throws DocumentException {
+    private PdfPTable header(Letterhead letterhead, String title) throws DocumentException {
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{1, 1});
+        table.setWidths(new float[]{1.4f, 1});
 
-        PdfPCell brandCell = new PdfPCell(new Paragraph(chamaName, BRAND_FONT));
+        PdfPCell brandCell = new PdfPCell();
         brandCell.setBorder(0);
-        brandCell.setPaddingBottom(4);
+        brandCell.setPaddingBottom(6);
+
+        logo(letterhead.logoBytes()).ifPresent(brandCell::addElement);
+
+        Paragraph name = new Paragraph(letterhead.chamaName(), BRAND_FONT);
+        name.setSpacingBefore(letterhead.logoBytes() != null ? 4 : 0);
+        brandCell.addElement(name);
+
+        for (String line : addressLines(letterhead)) {
+            brandCell.addElement(new Paragraph(line, LABEL_FONT));
+        }
         table.addCell(brandCell);
 
         PdfPCell titleCell = new PdfPCell(new Paragraph(title, TITLE_FONT));
@@ -120,6 +152,51 @@ public class PdfDocumentService {
         table.addCell(ruleCell);
 
         return table;
+    }
+
+    /**
+     * The address block, in the order someone would write it on an envelope. Absent fields are
+     * skipped rather than rendered blank, so a chama with only a phone number gets one line.
+     */
+    private static List<String> addressLines(Letterhead letterhead) {
+        List<String> lines = new java.util.ArrayList<>();
+        addIfPresent(lines, letterhead.postalAddress());
+        addIfPresent(lines, letterhead.physicalAddress());
+
+        String contact = Stream.of(letterhead.contactPhone(), letterhead.contactEmail())
+            .filter(value -> value != null && !value.isBlank())
+            .collect(Collectors.joining("  |  "));
+        addIfPresent(lines, contact);
+
+        if (letterhead.registrationNumber() != null && !letterhead.registrationNumber().isBlank()) {
+            lines.add("Reg. " + letterhead.registrationNumber());
+        }
+        return lines;
+    }
+
+    private static void addIfPresent(List<String> lines, String value) {
+        if (value != null && !value.isBlank()) {
+            lines.add(value);
+        }
+    }
+
+    /**
+     * The chama's logo, bounded so a large upload cannot push the rest of the letterhead off the
+     * page. A logo that cannot be decoded is dropped rather than failing the whole document: a
+     * receipt without a picture is still a receipt.
+     */
+    private Optional<Image> logo(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) {
+            return Optional.empty();
+        }
+        try {
+            Image image = Image.getInstance(bytes);
+            image.scaleToFit(120f, 44f);
+            return Optional.of(image);
+        } catch (Exception e) {
+            LOG.warnf(e, "Could not render the chama logo onto a document, continuing without it");
+            return Optional.empty();
+        }
     }
 
     private PdfPTable metaTable(String documentNumber, LocalDate issueDate, String billingPeriod) {
