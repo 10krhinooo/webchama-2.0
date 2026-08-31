@@ -57,3 +57,7 @@ src/main/resources/application.properties
 /node_modules/
 /package.json
 /package-lock.json
+
+# Local scratch directories, intentionally not tracked
+/.docbuild/
+/.claude/

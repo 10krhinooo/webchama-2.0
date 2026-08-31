@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased] - 2026-08-07
+## [unreleased] - 2026-08-31
 
 ### Added
 - a profile page: who you are signed in as, every chama you belong to with the role you hold in
@@ -42,6 +42,8 @@ All notable changes to this project will be documented in this file.
   login, tenant isolation checks, and the M-Pesa contribution path end to end
 - end-to-end coverage of member administration, the penalty lifecycle, and a loan from request
   to money leaving the chama, including dual sign-off on an amount above the approval threshold
+- end-to-end coverage of the payout rotation, meeting scheduling and minutes, self-service receipts
+  and their idempotency, and the chama profile and logo
 - a cross-browser smoke suite in Chrome and Firefox, run with `mvn -Psmoke verify` against the
   same stack, covering the branded Keycloak login page, single-sign-on session survival, chama
   creation, and the CSV export

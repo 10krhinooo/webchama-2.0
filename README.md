@@ -15,12 +15,12 @@ For a deeper walkthrough of the architecture, key files, common tasks, and debug
 
 | Layer | Tech |
 |---|---|
-| Backend | Quarkus 3.37.3, Java 21, Maven |
+| Backend | Quarkus 3.38.0, Java 21, Maven |
 | Frontend | React 19 + Vite + TypeScript + Tailwind CSS 3, shadcn/ui primitives (`frontend/`) |
 | Database | PostgreSQL 16 via Flyway migrations |
 | Auth | Keycloak 24 OIDC, realm `chama`. `SUPER_ADMIN` is a platform-wide Keycloak realm role; `CHAIRPERSON`, `TREASURER`, `SECRETARY`, `MEMBER` are per-chama roles stored in the `member_role` table, not the JWT, since a member can hold different roles in different chamas |
 | Payments | M-Pesa Daraja STK Push (contributions) and B2C (loan disbursement), Flutterwave card payments, both with webhook signature verification and idempotent crediting |
-| Documents | PDF statement/receipt generation with email delivery |
+| Documents | PDF statements and receipts on the issuing chama's own letterhead, downloadable by the member they belong to or delivered by email |
 | CI | GitHub Actions, backend (JaCoCo) and frontend (Vitest) each gated at 90 percent test coverage |
 
 ## Getting started
@@ -64,7 +64,9 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   silently lost.
 - **Member self-service**: a My Money page gathering a member's own contributions, loans, payouts,
   penalties and welfare contributions into one mobile-first summary, so they can see where they
-  stand without visiting five pages and doing the arithmetic themselves.
+  stand without visiting five pages and doing the arithmetic themselves, and a profile page showing
+  their identity, every chama they belong to with the role they hold in each, and the way out to
+  their own data export and to Keycloak for password and 2FA.
 - **Contributions**: due dates, partial payments, overdue flagging, on-time streak tracking, and
   opt-in scheduled auto-STK-push so a member's contribution can be charged automatically when due.
   A chama can also switch on automatic reminders, a nudge some days before the due date, one on the
@@ -88,8 +90,15 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   fund, and the balance is re-checked at that point in case another withdrawal has since drained it.
 - **Governance**: maker-checker dual approval for disbursements above a configurable threshold, and
   in-app voting/resolutions to digitize meeting decisions.
-- **Documents**: PDF statement and receipt generation, plus a freeform document generator, delivered
-  by email.
+- **Chama identity**: a chama carries a postal address, a physical address, contact phone and
+  email, a registration number and an uploaded logo, so a document it issues is recognisably from
+  that chama rather than from the software. The logo is stored in Postgres and served by its own
+  endpoint, never inlined into a list response.
+- **Documents**: PDF statements and receipts, drawn on a letterhead carrying the issuing chama's
+  logo and address block, plus a freeform document generator. A member can pull a receipt for their
+  own contribution, payout or loan without asking a treasurer, and repeating that request returns
+  the document already on file rather than filing a second one against the same record. Everything
+  issued to a member is gathered on their My Money page, and any document can also be emailed.
 - **Notifications**: an in-app notification centre, reached from the bell in the header, with a live
   stream and a per-user inbox spanning every chama the user belongs to. The same events are also sent
   by email: approval requests, loan status changes (approved, disbursed, failed), payment receipts,
@@ -107,7 +116,13 @@ users; the SUPER_ADMIN password is substituted in at container start, see
   account lockouts.
 - **Security**: per-IP rate limiting on payment and webhook endpoints, fail-closed Flutterwave webhook
   signature verification, idempotent M-Pesa callback handling, hardened Keycloak realm settings
-  (enforced SSL, ROPC disabled on the SPA client), and a branded, custom Keycloak login theme.
+  (enforced SSL, ROPC disabled on the SPA client), and a branded, custom Keycloak login theme
+  covering sign-in and password reset.
+- **Interface**: light and dark themes throughout, driven by semantic tokens rather than per-page
+  colours. A list that fails to load says so instead of rendering a confident empty state, the four
+  full-screen dead ends (not found, forbidden, a render that threw, and nginx's own 502 when the
+  backend is down) are one themed screen rather than four browser defaults, and route changes
+  animate in, including the hand-off out to Keycloak and back.
 
 ## Testing and coverage
 
@@ -177,7 +192,9 @@ npm run report        # opens the last HTML report
 
 The suite covers authentication and role-scoped navigation, tenant isolation, member
 administration, the penalty lifecycle, a loan from request through M-Pesa disbursement, dual
-sign-off above the approval threshold, and the M-Pesa contribution path end to end.
+sign-off above the approval threshold, the M-Pesa contribution path end to end, the payout
+rotation, meeting scheduling and minutes, self-service receipts and their idempotency, and the
+chama profile and logo.
 
 `globalSetup` waits for all three services, then truncates `chama_e2e` and applies the files in
 `e2e/fixtures/`. If a run is interrupted and leaves the data in an odd state, reapply the
