@@ -8,6 +8,9 @@ import {
   type Chama,
   type CreateChamaRequest,
   type UpdateChamaRequest,
+  chamaLogoUrl,
+  uploadChamaLogo,
+  deleteChamaLogo,
 } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
 import LoadFailed from '../../components/ui/LoadFailed'
@@ -41,6 +44,11 @@ const EMPTY_FORM = {
   savingsTarget: '',
   creatorFullName: '',
   creatorPhone: '',
+  postalAddress: '',
+  physicalAddress: '',
+  contactPhone: '',
+  contactEmail: '',
+  registrationNumber: '',
 }
 
 export default function ChamasPage() {
@@ -53,6 +61,9 @@ export default function ChamasPage() {
   const [editing, setEditing] = useState<Chama | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleting, setDeleting] = useState<Chama | null>(null)
+  const [logoBusy, setLogoBusy] = useState(false)
+  // Bumped after every logo change so the browser refetches an image it is otherwise caching.
+  const [logoVersion, setLogoVersion] = useState(0)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(chamas)
@@ -88,9 +99,49 @@ export default function ChamasPage() {
       savingsTarget: chama.savingsTarget != null ? String(chama.savingsTarget) : '',
       creatorFullName: '',
       creatorPhone: '',
+      postalAddress: chama.postalAddress ?? '',
+      physicalAddress: chama.physicalAddress ?? '',
+      contactPhone: chama.contactPhone ?? '',
+      contactEmail: chama.contactEmail ?? '',
+      registrationNumber: chama.registrationNumber ?? '',
     })
     setModalNotice(null)
     setShowModal(true)
+  }
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    // Clearing the input means a second attempt at the same file still fires a change event.
+    e.target.value = ''
+    if (!file || !editing) return
+
+    setLogoBusy(true)
+    setModalNotice(null)
+    try {
+      const updated = await uploadChamaLogo(editing.id, file)
+      setEditing(updated)
+      setLogoVersion((v) => v + 1)
+      refresh()
+    } catch (err) {
+      setModalNotice(extractErrorMessage(err))
+    } finally {
+      setLogoBusy(false)
+    }
+  }
+
+  const handleLogoRemove = async () => {
+    if (!editing) return
+    setLogoBusy(true)
+    setModalNotice(null)
+    try {
+      setEditing(await deleteChamaLogo(editing.id))
+      setLogoVersion((v) => v + 1)
+      refresh()
+    } catch (err) {
+      setModalNotice(extractErrorMessage(err))
+    } finally {
+      setLogoBusy(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,6 +158,11 @@ export default function ChamasPage() {
         contributionAmount: Number(form.contributionAmount),
         meetingDay: form.meetingDay || undefined,
         savingsTarget: form.savingsTarget ? Number(form.savingsTarget) : undefined,
+        postalAddress: form.postalAddress || undefined,
+        physicalAddress: form.physicalAddress || undefined,
+        contactPhone: form.contactPhone || undefined,
+        contactEmail: form.contactEmail || undefined,
+        registrationNumber: form.registrationNumber || undefined,
       }
       if (editing) {
         await updateChama(editing.id, base)
@@ -278,6 +334,100 @@ export default function ChamasPage() {
                 placeholder="e.g. 500000"
               />
             </FormField>
+
+            {/*
+              Edit only. A chama that does not exist yet has nothing to attach a logo to, and
+              holding the file in memory until the create succeeds would be a second upload path
+              for one rare case.
+            */}
+            {editing && (
+              <FormField label="Logo" htmlFor="chama-logo" hint="PNG or JPEG, up to 256KB. Appears on the documents this chama issues.">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-paper-dim">
+                    {editing.hasLogo ? (
+                      <img
+                        src={`${chamaLogoUrl(editing.id)}?v=${logoVersion}`}
+                        alt={`${editing.name} logo`}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted">None</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      id="chama-logo"
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      disabled={logoBusy}
+                      onChange={handleLogoChange}
+                      className="text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-on-dark hover:file:bg-primary-dark"
+                    />
+                    {editing.hasLogo && (
+                      <Button type="button" variant="secondary" onClick={handleLogoRemove} disabled={logoBusy}>
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </FormField>
+            )}
+
+            {/*
+              These are what the chama puts at the top of the documents it issues, so a receipt
+              says who it came from. Grouped and labelled rather than appended to the list above,
+              because they answer a different question from the money settings.
+            */}
+            <fieldset className="space-y-4 border-t border-border pt-4">
+              <legend className="font-heading text-xs font-semibold uppercase tracking-widest text-muted">
+                Chama details
+              </legend>
+              <p className="-mt-1 text-xs text-muted">
+                Optional. Whatever you fill in appears on the receipts and statements this chama
+                issues.
+              </p>
+              <FormField label="Postal address" htmlFor="chama-postal-address">
+                <Input
+                  id="chama-postal-address"
+                  placeholder="e.g. P.O. Box 4021-00100, Nairobi"
+                  value={form.postalAddress}
+                  onChange={(e) => setForm({ ...form, postalAddress: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Physical address" htmlFor="chama-physical-address">
+                <Input
+                  id="chama-physical-address"
+                  placeholder="e.g. Kenyatta Avenue, Nairobi"
+                  value={form.physicalAddress}
+                  onChange={(e) => setForm({ ...form, physicalAddress: e.target.value })}
+                />
+              </FormField>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label="Contact phone" htmlFor="chama-contact-phone">
+                  <Input
+                    id="chama-contact-phone"
+                    value={form.contactPhone}
+                    onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+                  />
+                </FormField>
+                <FormField label="Contact email" htmlFor="chama-contact-email">
+                  <Input
+                    id="chama-contact-email"
+                    type="email"
+                    value={form.contactEmail}
+                    onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+                  />
+                </FormField>
+              </div>
+              <FormField label="Registration number" htmlFor="chama-registration-number">
+                <Input
+                  id="chama-registration-number"
+                  placeholder="e.g. CBO/2019/4021"
+                  value={form.registrationNumber}
+                  onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })}
+                />
+              </FormField>
+            </fieldset>
 
             {!editing && (
               <>

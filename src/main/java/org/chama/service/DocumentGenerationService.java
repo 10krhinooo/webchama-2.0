@@ -71,6 +71,18 @@ public class DocumentGenerationService {
     @Inject
     ActivityLogService activityLogService;
 
+    /** The issuing chama's own identity, so a receipt says who it came from. */
+    private static PdfDocumentService.Letterhead letterheadFor(org.chama.domain.model.Chama chama) {
+        return new PdfDocumentService.Letterhead(
+            chama.name,
+            chama.postalAddress,
+            chama.physicalAddress,
+            chama.contactPhone,
+            chama.contactEmail,
+            chama.registrationNumber,
+            chama.logoBytes);
+    }
+
     @Transactional
     public GeneratedDocument generateContributionReceipt(Long chamaId, Long contributionId) {
         Contribution contribution = contributionService.get(chamaId, contributionId);
@@ -215,7 +227,7 @@ public class DocumentGenerationService {
         doc.documentNumber = doc.documentType.prefix() + "-" + issueDate.format(DOC_NUMBER_MONTH) + "-" + String.format("%04d", doc.id);
 
         doc.pdfBytes = pdfDocumentService.render(
-            doc.documentType, doc.documentNumber, doc.chama.name, doc.memberName,
+            doc.documentType, doc.documentNumber, letterheadFor(doc.chama), doc.memberName,
             issueDate, lineItems, totalAmount, doc.billingPeriod, doc.notes);
 
         if (doc.documentType == DocumentType.AGM_STATEMENT) {

@@ -24,6 +24,11 @@ import {
   getSavingsProgress,
   type CreateChamaRequest,
   type JoinChamaRequest,
+  chamaLogoUrl,
+  uploadChamaLogo,
+  deleteChamaLogo,
+  getReminderSettings,
+  updateReminderSettings,
 } from './chamas'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
@@ -123,5 +128,48 @@ describe('chamas api', () => {
     mockPost.mockResolvedValue({})
     await inviteToChama(9, { email: 'prospect@example.com' })
     expect(mockPost).toHaveBeenCalledWith('/chamas/9/join-code/invite', { email: 'prospect@example.com' })
+  })
+
+  it('chamaLogoUrl points at the member-scoped logo endpoint', () => {
+    expect(chamaLogoUrl(9)).toBe('/api/chamas/9/logo')
+  })
+
+  it('uploadChamaLogo sends the file as raw bytes with its own content type', async () => {
+    const file = new File(['x'], 'logo.png', { type: 'image/png' })
+    mockPut.mockResolvedValue({ data: { id: 9, hasLogo: true } })
+
+    const result = await uploadChamaLogo(9, file)
+
+    expect(mockPut).toHaveBeenCalledWith('/chamas/9/logo', file, {
+      headers: { 'Content-Type': 'image/png' },
+    })
+    expect(result).toEqual({ id: 9, hasLogo: true })
+  })
+
+  it('deleteChamaLogo deletes and unwraps the updated chama', async () => {
+    mockDelete.mockResolvedValue({ data: { id: 9, hasLogo: false } })
+
+    const result = await deleteChamaLogo(9)
+
+    expect(mockDelete).toHaveBeenCalledWith('/chamas/9/logo')
+    expect(result).toEqual({ id: 9, hasLogo: false })
+  })
+
+  it('getReminderSettings and updateReminderSettings address the chama by id', async () => {
+    mockGet.mockResolvedValue({ data: { chamaId: 9, enabled: false, daysBeforeDue: 3, overdueEveryDays: 7, sendHour: 8 } })
+    await getReminderSettings(9)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/9/reminder-settings')
+
+    const settings = { enabled: true, daysBeforeDue: 5, overdueEveryDays: 7, sendHour: 9 }
+    mockPut.mockResolvedValue({ data: { chamaId: 9, ...settings } })
+    await updateReminderSettings(9, settings)
+    expect(mockPut).toHaveBeenCalledWith('/chamas/9/reminder-settings', settings)
+  })
+
+  it('getSavingsProgress reads the chama savings progress', async () => {
+    mockGet.mockResolvedValue({ data: { collected: 1000, target: 5000 } })
+    const result = await getSavingsProgress(9)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/9/savings-progress')
+    expect(result).toEqual({ collected: 1000, target: 5000 })
   })
 })

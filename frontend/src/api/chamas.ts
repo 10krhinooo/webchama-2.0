@@ -22,6 +22,26 @@ export interface Chama {
   autoPushRetryHours: number
   createdAt: string
   joinCode: string
+
+  /** How the chama identifies itself on the documents it issues. All optional. */
+  postalAddress: string | null
+  physicalAddress: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  registrationNumber: string | null
+  /** The bytes come from `chamaLogoUrl`, never from this response. */
+  hasLogo: boolean
+}
+
+/**
+ * Where a chama's logo is served from.
+ *
+ * A plain URL rather than a fetched blob so the browser caches it and an `<img>` can point
+ * straight at it. The endpoint is member-scoped, so the request carries the session like any
+ * other, and answers 404 when no logo is set.
+ */
+export function chamaLogoUrl(chamaId: number): string {
+  return `/api/chamas/${chamaId}/logo`
 }
 
 export interface JoinChamaRequest {
@@ -50,6 +70,11 @@ export interface UpdateChamaRequest {
   contributionAmount: number
   meetingDay?: string
   savingsTarget?: number
+  postalAddress?: string
+  physicalAddress?: string
+  contactPhone?: string
+  contactEmail?: string
+  registrationNumber?: string
 }
 
 export interface CreateChamaRequest extends UpdateChamaRequest {
@@ -154,4 +179,17 @@ export async function regenerateJoinCode(id: number): Promise<Chama> {
 
 export async function inviteToChama(id: number, payload: InviteToChamaRequest): Promise<void> {
   await client.post(`/chamas/${id}/join-code/invite`, payload)
+}
+
+/** Replaces the chama's logo. The file is sent as raw bytes with its own content type. */
+export async function uploadChamaLogo(chamaId: number, file: File): Promise<Chama> {
+  const { data } = await client.put<Chama>(`/chamas/${chamaId}/logo`, file, {
+    headers: { 'Content-Type': file.type },
+  })
+  return data
+}
+
+export async function deleteChamaLogo(chamaId: number): Promise<Chama> {
+  const { data } = await client.delete<Chama>(`/chamas/${chamaId}/logo`)
+  return data
 }

@@ -90,6 +90,36 @@ public class Chama extends PanacheEntityBase {
     @Column(name = "join_code", nullable = false, unique = true)
     public String joinCode;
 
+    /**
+     * How the chama identifies itself on a document it issues. All optional: a chama with no
+     * postal address is ordinary, and the letterhead collapses cleanly around whatever is absent.
+     */
+    @Column(name = "postal_address")
+    public String postalAddress;
+
+    @Column(name = "physical_address")
+    public String physicalAddress;
+
+    @Column(name = "contact_phone")
+    public String contactPhone;
+
+    @Column(name = "contact_email")
+    public String contactEmail;
+
+    @Column(name = "registration_number")
+    public String registrationNumber;
+
+    /**
+     * Stored beside the row rather than in object storage, which this deployment does not have,
+     * and consistent with how generated PDFs are already kept. Never serialized into a DTO: ChamaDto
+     * is returned by list endpoints, and an image per row would bloat every response.
+     */
+    @Column(name = "logo_bytes")
+    public byte[] logoBytes;
+
+    @Column(name = "logo_content_type")
+    public String logoContentType;
+
     private static final String JOIN_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private static final SecureRandom JOIN_CODE_RANDOM = new SecureRandom();
 
