@@ -7,7 +7,7 @@ interface WovenBackdropProps {
 /**
  * The ContributionPot's weave pattern, tiled and scaled up into a full-bleed atmospheric backdrop
  * (depth-0 in the hero/CTA sections) rather than a literal basket. Same cross-hatch language as
- * WeaveMark, used here as texture instead of an icon, so the kiondo motif reads at every scale
+ * ChamaMark, used here as texture instead of an icon, so the kiondo motif reads at every scale
  * without introducing a second, unrelated pattern into the brand system.
  */
 export default function WovenBackdrop({ className, tone = 'primary' }: WovenBackdropProps) {

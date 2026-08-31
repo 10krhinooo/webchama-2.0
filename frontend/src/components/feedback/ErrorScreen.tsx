@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import WeaveMark from '../marketing/WeaveMark'
+import ChamaMark from '../marketing/ChamaMark'
 
 interface Props {
   /** The HTTP status, where there is one. Drawn large, as the fastest thing to recognise. */
@@ -25,7 +25,7 @@ export default function ErrorScreen({ code, title, description, actions, tone = 
       role="alert"
       className="flex min-h-screen flex-col items-center justify-center gap-5 bg-paper px-6 py-16 text-center"
     >
-      <WeaveMark className={`h-9 w-9 ${tone === 'danger' ? 'text-danger' : 'text-brand'}`} />
+      <ChamaMark className={`h-9 w-9 ${tone === 'danger' ? 'text-danger' : 'text-brand'}`} />
 
       {code && (
         <p className="font-mono text-6xl font-bold leading-none text-ink/15 sm:text-7xl">{code}</p>

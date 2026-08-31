@@ -38,6 +38,14 @@ All notable changes to this project will be documented in this file.
   creation, and the CSV export
 
 ### Changed
+- adopted a new Webchama mark: two ticks, the second confirming the first, drawing the
+  maker-checker rule the product is built on. It replaces the woven-cross-hatch swatch in the
+  favicon, the Keycloak sign-in page, the sidebar, the footer and the error screens. The concepts
+  it was chosen from are kept in design/logos
+- the home page fills a wide screen instead of sitting in a narrow column, and the hero drops its
+  background glow in dark mode, where the saffron one read as a yellow smear rather than as light
+- route changes now animate in, staggering what sits at the top of a page so a dashboard of cards
+  assembles rather than blinking into existence. The public pages had no transition at all
 - the full-screen dead ends, page not found, access denied, and a page that failed to render, now
   share one themed screen with a way out, instead of four hand-rolled variations
 - a backend outage now shows a Webchama page rather than nginx's own default 502
@@ -63,6 +71,10 @@ All notable changes to this project will be documented in this file.
 - the loans table reads every credit score in one request instead of one request per member
 
 ### Fixed
+- the home page hero headline never appeared. It reveals itself with a clip-path wipe once an
+  IntersectionObserver reports it on screen, but the observer measures the element after its clip
+  is applied and the starting clip has zero area, so it reported the headline as never visible and
+  the wipe never played
 - the contribution streak test built its fixture on the server's calendar while the service it
   exercised reads Nairobi's, so it passed for twenty-one hours a day and failed for the other
   three on any UTC host. The zone is now stated once, in ChamaTime, rather than redeclared in

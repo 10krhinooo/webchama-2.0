@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
+import PageTransition from './PageTransition'
 import { useKeycloak } from '@react-keycloak/web'
 import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel, CalendarDays, PiggyBank } from 'lucide-react'
-import WeaveMark from '../marketing/WeaveMark'
+import ChamaMark from '../marketing/ChamaMark'
 import ThemeToggle from '../ui/ThemeToggle'
 import NotificationBell from './NotificationBell'
 import { getChama, type Chama } from '../../api/chamas'
@@ -83,7 +84,7 @@ export default function StaffLayout() {
       >
         <div className="flex items-center justify-between gap-2 border-b border-white/10 px-5 py-5">
           <div className="flex items-center gap-2">
-            <WeaveMark className="h-6 w-6 text-accent" />
+            <ChamaMark className="h-6 w-6 text-accent" />
             <span className="font-heading text-lg font-bold">Webchama</span>
           </div>
           <button
@@ -244,9 +245,9 @@ export default function StaffLayout() {
         </header>
 
         <main className="flex-1 overflow-x-auto p-6 lg:p-8">
-          <div key={location.pathname} className="page-transition">
+          <PageTransition key={location.pathname}>
             <Outlet />
-          </div>
+          </PageTransition>
         </main>
       </div>
     </div>

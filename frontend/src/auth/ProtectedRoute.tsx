@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useKeycloak } from '@react-keycloak/web'
 import ErrorScreen from '../components/feedback/ErrorScreen'
-import WeaveMark from '../components/marketing/WeaveMark'
+import ChamaMark from '../components/marketing/ChamaMark'
 
 interface Props {
   children: React.ReactNode
@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children, roles }: Props) {
   if (!initialized || !keycloak.authenticated) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper text-muted">
-        <WeaveMark className="h-9 w-9 animate-pulse text-brand" />
+        <ChamaMark className="h-9 w-9 animate-pulse text-brand" />
         <p className="text-sm">Signing you in…</p>
       </div>
     )

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Menu, X } from "lucide-react"
-import WeaveMark from "../marketing/WeaveMark"
+import ChamaMark from "../marketing/ChamaMark"
 import StartChamaCta from "../marketing/StartChamaCta"
 import ThemeToggle from "../ui/ThemeToggle"
 
@@ -41,7 +41,7 @@ export default function PublicNav() {
         }`}
       >
         <a href="/" className="flex items-center gap-2 font-heading text-lg font-bold text-ink">
-          <WeaveMark className="h-6 w-6 text-brand" />
+          <ChamaMark className="h-6 w-6 text-brand" />
           Webchama
         </a>
         <div className="hidden items-center gap-8 text-sm font-medium text-ink/70 sm:flex">
