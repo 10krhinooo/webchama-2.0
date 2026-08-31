@@ -94,7 +94,6 @@ function Headline({ text, className }: { text: string; className?: string }) {
 
 function HomePage() {
   const heroRef = useRef<HTMLDivElement>(null)
-  const glowRef = useRef<HTMLDivElement>(null)
   const roleGridRef = useRef<HTMLDivElement>(null)
   const [roleGridInView, setRoleGridInView] = useState(false)
   const reduceMotion = useReducedMotion()
@@ -107,11 +106,6 @@ function HomePage() {
     const isTouchDevice = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches
     if (reduceMotion || isTouchDevice || typeof ResizeObserver === "undefined") return
     const ctx = gsap.context(() => {
-      gsap.to(glowRef.current, {
-        yPercent: 35,
-        ease: "none",
-        scrollTrigger: { trigger: heroRef.current, start: "top top", end: "bottom top", scrub: true },
-      })
       // A subtle Ken Burns zoom on the whole hero (background + content together) as it scrolls
       // past — GSAP owns the transform directly rather than juggling it against React's style prop.
       gsap.to(heroRef.current, {
@@ -150,17 +144,8 @@ function HomePage() {
           <div className="layer depth-0 weave-drift" aria-hidden="true">
             <WovenBackdrop className="h-full w-full" />
           </div>
-          {/*
-            Light only. These two blurred bubbles were tuned against cream paper; over a dark
-            surface the saffron one reads as a yellow smear rather than as light. Dark mode gets
-            the plain ground, which is what the palette is already doing well there.
-          */}
-          <div ref={glowRef} className="layer depth-1 dark:hidden" aria-hidden="true">
-            <div className="absolute -top-24 left-1/2 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-accent/20 blur-3xl" />
-            <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-          </div>
 
-          <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 sm:py-28 lg:grid-cols-2 lg:items-center lg:gap-20 lg:px-10">
+          <div className="shell relative grid gap-12 py-20 sm:py-28 lg:grid-cols-2 lg:items-center lg:gap-20">
             <div data-depth="4">
               <Reveal eager>
                 <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
@@ -196,7 +181,7 @@ function HomePage() {
 
         {/* Ledger strip */}
         <section id="how-it-works" className="border-y border-border bg-paper-dim">
-          <div className="mx-auto max-w-6xl px-6 py-16 lg:px-10">
+          <div className="shell py-16">
             <Reveal>
               <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
                 What&rsquo;s in the book
@@ -218,7 +203,7 @@ function HomePage() {
 
         {/* Trust / maker-checker */}
         <section id="trust" className="bg-success text-on-dark">
-          <div className="mx-auto max-w-4xl px-6 py-20 text-center lg:px-10">
+          <div className="shell py-20 text-center">
             <Reveal>
               <p className="font-heading text-xs font-semibold uppercase tracking-[0.2em] text-on-dark/70">
                 Why trust matters most
@@ -226,7 +211,7 @@ function HomePage() {
               <h2 className="mt-4 text-3xl font-bold sm:text-4xl">
                 One person should never hold your chama&rsquo;s money alone.
               </h2>
-              <p className="mx-auto mt-6 max-w-xl text-on-dark/80">
+              <p className="mx-auto mt-6 max-w-2xl text-on-dark/80">
                 It is the reason good chamas fall apart: a single signatory, a missing receipt, a
                 disagreement nobody can settle. Webchama requires two separate approvals before any
                 loan or payout is released, and keeps a permanent record of who signed what.
@@ -239,7 +224,7 @@ function HomePage() {
         </section>
 
         {/* Roles — cascading card stack, staggered via CSS nth-child delay once the grid scrolls into view */}
-        <section id="roles" className="mx-auto max-w-7xl px-6 py-20 lg:px-10">
+        <section id="roles" className="shell py-20">
           <Reveal variant="fade">
             <p className="text-center font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
               Everyone has a seat
@@ -261,7 +246,7 @@ function HomePage() {
         </section>
 
         {/* Testimonial */}
-        <section className="bg-paper-dim px-6 py-20 lg:px-10">
+        <section className="bg-paper-dim py-20">
           <Reveal variant="scale">
             <WhatsAppQuote
               quote="We used to get confused about who had paid what. Sasa, everyone can see it on their phone before the meeting even starts."
@@ -276,7 +261,7 @@ function HomePage() {
           <div className="layer depth-0 weave-drift" aria-hidden="true">
             <WovenBackdrop className="h-full w-full" tone="night" />
           </div>
-          <Reveal className="relative mx-auto max-w-3xl px-6 py-20 text-center lg:px-10">
+          <Reveal className="shell relative py-20 text-center">
             <h2 className="text-3xl font-bold sm:text-4xl">Bring your chama&rsquo;s ledger online.</h2>
             <p className="mt-4 text-on-dark/80">
               Free for chamas under 20 members. Set up your rotation, invite your members, and

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import ChamaMark from "../marketing/ChamaMark"
 import StartChamaCta from "../marketing/StartChamaCta"
 import ThemeToggle from "../ui/ThemeToggle"
+import { useReducedMotion } from "../../hooks/useReducedMotion"
+import { leaveThen } from "../../lib/leaveTransition"
 
 const sectionLinks = [
   { href: "#how-it-works", label: "How it works" },
@@ -12,6 +14,8 @@ const sectionLinks = [
 ]
 
 export default function PublicNav() {
+  const navigate = useNavigate()
+  const reducedMotion = useReducedMotion()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -36,7 +40,7 @@ export default function PublicNav() {
       }`}
     >
       <nav
-        className={`nav-shrink mx-auto flex max-w-6xl origin-top items-center justify-between px-6 py-4 transition-transform duration-300 ${
+        className={`nav-shrink shell flex origin-top items-center justify-between py-4 transition-transform duration-300 ${
           scrolled ? "scale-[0.97]" : "scale-100"
         }`}
       >
@@ -53,9 +57,13 @@ export default function PublicNav() {
         </div>
         <div className="hidden items-center gap-4 sm:flex">
           <ThemeToggle />
-          <Link to="/my-chamas" className="text-sm font-semibold text-ink/70 hover:text-ink">
+          <button
+            type="button"
+            onClick={() => leaveThen(() => navigate('/my-chamas'), reducedMotion)}
+            className="text-sm font-semibold text-ink/70 hover:text-ink"
+          >
             Sign In
-          </Link>
+          </button>
           <StartChamaCta className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark">
             Start your chama
           </StartChamaCta>
@@ -82,9 +90,16 @@ export default function PublicNav() {
                 {link.label}
               </a>
             ))}
-            <Link to="/my-chamas" className="font-semibold text-ink/70 hover:text-ink" onClick={() => setMenuOpen(false)}>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false)
+                leaveThen(() => navigate('/my-chamas'), reducedMotion)
+              }}
+              className="text-left font-semibold text-ink/70 hover:text-ink"
+            >
               Sign In
-            </Link>
+            </button>
             <StartChamaCta
               className="rounded-full bg-primary px-4 py-2 text-center font-semibold text-white transition hover:bg-primary-dark"
               onClick={() => setMenuOpen(false)}

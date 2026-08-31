@@ -254,3 +254,14 @@ textarea:focus-visible,
     transition: none !important;
   }
 }
+
+@layer components {
+  /*
+    The public site's one content width. Wide enough to fill a laptop screen rather than sitting
+    in a centred column with empty margins either side, and capped so the lines do not run away on
+    a very large monitor. Every section, the nav and the footer use it, so they align.
+  */
+  .shell {
+    @apply mx-auto w-full max-w-[96rem] px-6 lg:px-12;
+  }
+}
