@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [unreleased] - 2026-08-07
 
 ### Added
+- a profile page: who you are signed in as, every chama you belong to with the role you hold in
+  each, your own data export per chama, and the way to your notification preferences and to
+  changing your password
 - a member can now produce their own receipt. A paid contribution carries a Receipt action, and My
   Money lists every document the member has, each downloadable as a PDF. Generation was previously
   treasurer-only, so there was no way for a member to get a receipt for their own payment at all

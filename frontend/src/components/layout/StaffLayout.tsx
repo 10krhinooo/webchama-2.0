@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import PageTransition from './PageTransition'
 import { useKeycloak } from '@react-keycloak/web'
-import { Users, Wallet, Building2, LogOut, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel, CalendarDays, PiggyBank } from 'lucide-react'
+import { Users, Wallet, Building2, LogOut, UserRound, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel, CalendarDays, PiggyBank } from 'lucide-react'
 import ChamaMark from '../marketing/ChamaMark'
 import ThemeToggle from '../ui/ThemeToggle'
 import NotificationBell from './NotificationBell'
@@ -232,6 +232,13 @@ export default function StaffLayout() {
                 {tokenParsed?.email && (
                   <p className="truncate px-3 py-2 text-xs text-muted">{tokenParsed.email}</p>
                 )}
+                <Link
+                  to="/profile"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-paper-dim"
+                >
+                  <UserRound className="h-4 w-4" />
+                  Your profile
+                </Link>
                 <button
                   onClick={() => keycloak.logout()}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-paper-dim"
