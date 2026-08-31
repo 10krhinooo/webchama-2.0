@@ -89,4 +89,15 @@ export const FIXTURE_MEMBERS: FixtureMember[] = [
   { id: 28, chamaId: 11, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 390, roles: ['CHAIRPERSON', 'MEMBER'] },
   { id: 29, chamaId: 11, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 385, roles: ['TREASURER', 'MEMBER'] },
   { id: 30, chamaId: 11, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 380, roles: ['MEMBER'] },
+
+  // Chama 12, owned by the dual sign-off spec, which used to share chama 4 with the loan lifecycle
+  // spec. Two files mutating one chama is exactly what the one-chama-per-file rule exists to
+  // prevent, and it only showed up once there were enough spec files to schedule them together.
+  //
+  // Carol holds TREASURER here as well, giving the three distinct signatories a dual sign-off
+  // needs: only a chairperson or treasurer may sign, and the maker may not sign their own request.
+  { id: 31, chamaId: 12, keycloakUserId: CHAIRPERSON, fullName: 'Amina Chairperson', phone: '+254700000001', nationalId: null, nextOfKin: 'Next Of Kin A', joinedDaysAgo: 420, roles: ['CHAIRPERSON', 'MEMBER'] },
+  { id: 32, chamaId: 12, keycloakUserId: TREASURER,   fullName: 'Brian Treasurer',   phone: '+254700000002', nationalId: null, nextOfKin: 'Next Of Kin B', joinedDaysAgo: 415, roles: ['TREASURER', 'MEMBER'] },
+  { id: 33, chamaId: 12, keycloakUserId: SECRETARY,   fullName: 'Carol Secretary',   phone: '+254700000003', nationalId: null, nextOfKin: 'Next Of Kin C', joinedDaysAgo: 410, roles: ['TREASURER', 'MEMBER'] },
+  { id: 34, chamaId: 12, keycloakUserId: MEMBER,      fullName: 'Daniel Member',     phone: '+254700000004', nationalId: null, nextOfKin: 'Next Of Kin D', joinedDaysAgo: 405, roles: ['MEMBER'] },
 ]

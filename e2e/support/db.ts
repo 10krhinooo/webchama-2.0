@@ -111,6 +111,7 @@ export const FIXTURE = {
     faraja: 9,
     neema: 10,
     mwanzo: 11,
+    hazina: 12,
   },
   member: {
     chairperson: 1,

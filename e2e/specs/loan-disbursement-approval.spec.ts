@@ -4,16 +4,16 @@ import { api } from '../support/api'
 import { chooseOption, expectNotice } from '../support/actions'
 
 /**
- * Dual sign-off on a loan above the chama's approval threshold, in chama 4.
+ * Dual sign-off on a loan above the chama's approval threshold, in chama 12, which this file owns.
  *
- * Chama 4 has three members holding a signing role, which is the minimum this can be tested with:
+ * It has three members holding a signing role, which is the minimum this can be tested with:
  * only a chairperson or a treasurer may sign, and the member who raised the request may not sign
  * it themselves. Carol holds TREASURER here and SECRETARY in chama 1, which is the same point the
  * isolation spec makes from the other side, that a chama role is read from member_role for the
  * chama in the path and never from the token.
  */
 test.describe('loan disbursement above the approval threshold', () => {
-  const chama = FIXTURE.chama.nuru
+  const chama = FIXTURE.chama.hazina
   const principal = '61000'
 
   test('a large loan cannot be paid out until two different people have signed', async ({

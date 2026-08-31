@@ -19,7 +19,7 @@ test.describe('meetings', () => {
     await asSecretary.getByRole('button', { name: /schedule meeting/i }).click()
     await asSecretary.locator('#meeting-date').fill('2026-09-12')
     await asSecretary.locator('#meeting-agenda').fill(agenda)
-    await asSecretary.getByRole('dialog').getByRole('button', { name: /schedule/i }).click()
+    await asSecretary.getByRole('dialog').getByRole('button', { name: 'Schedule' }).click()
     await expectNotice(asSecretary, /meeting scheduled/i)
 
     const meeting = await queryOne<{ id: string; meeting_date: string }>(
@@ -28,10 +28,10 @@ test.describe('meetings', () => {
     )
     expect(meeting).toBeTruthy()
 
-    await asSecretary.getByRole('row').filter({ hasText: agenda }).getByRole('button', { name: /minutes/i }).click()
+    await asSecretary.getByRole('row').filter({ hasText: agenda }).getByRole('button', { name: 'Record minutes' }).click()
     await asSecretary.locator('#meeting-minutes').fill('Agreed to raise the monthly contribution.')
-    await asSecretary.getByRole('dialog').getByRole('button', { name: /save/i }).click()
-    await expectNotice(asSecretary, /minutes saved/i)
+    await asSecretary.getByRole('dialog').getByRole('button', { name: 'Save minutes' }).click()
+    await expectNotice(asSecretary, /minutes recorded/i)
 
     const withMinutes = await queryOne<{ minutes: string }>('SELECT minutes FROM meeting WHERE id = $1', [
       meeting!.id,

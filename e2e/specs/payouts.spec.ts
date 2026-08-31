@@ -16,7 +16,7 @@ test.describe('payouts', () => {
     await asChairperson.goto(`/chamas/${chama}/payouts`)
     await asChairperson.getByRole('button', { name: 'Generate Schedule' }).click()
     await chooseOption(asChairperson, 'payout-rotation-type', /seniority/i)
-    await asChairperson.getByRole('dialog').getByRole('button', { name: /generate/i }).click()
+    await asChairperson.getByRole('dialog').getByRole('button', { name: 'Generate Schedule' }).click()
     await expectNotice(asChairperson, /schedule generated/i)
 
     const rotation = await query<{ sequence_position: number; member_id: string }>(
@@ -28,7 +28,9 @@ test.describe('payouts', () => {
     expect(rotation.map((r) => r.sequence_position)).toEqual([1, 2, 3])
 
     await asChairperson.getByRole('button', { name: 'Create Next Payout' }).click()
-    await asChairperson.getByRole('dialog').getByRole('button', { name: /create/i }).click()
+    // Required, and the round's beneficiary is resolved from the rotation rather than picked.
+    await asChairperson.locator('#payout-scheduled-date').fill('2026-09-30')
+    await asChairperson.getByRole('dialog').getByRole('button', { name: 'Create Payout' }).click()
     await expectNotice(asChairperson, /payout created/i)
 
     const payout = await queryOne<{ round_number: number; status: string }>(
