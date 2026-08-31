@@ -12,6 +12,7 @@ import org.openpdf.text.Font;
 import org.openpdf.text.Image;
 import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
+import org.openpdf.text.pdf.BaseFont;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
 import org.openpdf.text.pdf.PdfWriter;
@@ -37,6 +38,21 @@ public class PdfDocumentService {
     private static final Logger LOG = Logger.getLogger(PdfDocumentService.class);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy");
 
+    private static final float SIDE_MARGIN = 48f;
+    private static final float VERTICAL_MARGIN = 56f;
+
+    // The letterhead splits evenly: the chama identifies itself on the left, the document says what
+    // it is on the right. Stated here rather than only in header() because the title has to be
+    // measured against this width before it can be drawn at a size that fits it.
+    private static final float CONTENT_WIDTH = PageSize.A4.getWidth() - 2 * SIDE_MARGIN;
+    private static final float TITLE_COLUMN_WIDTH = CONTENT_WIDTH / 2f;
+
+    // Enough slack that a title landing within a hair of the column edge still gets the next size
+    // down, rather than fitting on paper and wrapping in a viewer that rounds differently.
+    private static final float TITLE_FIT_TOLERANCE = 2f;
+    private static final int TITLE_MAX_POINTS = 20;
+    private static final int TITLE_MIN_POINTS = 12;
+
     // The light-theme values of the tokens in frontend/index.css, since a PDF has one appearance.
     // These had drifted: PRIMARY was still the indigo from before the palette moved to kanga teal,
     // so every generated document was printed in a brand colour the product no longer uses.
@@ -45,7 +61,13 @@ public class PdfDocumentService {
     private static final Color MUTED = new Color(0x55, 0x65, 0x5F);
     private static final Color PAPER_DIM = new Color(0xEE, 0xF2, 0xF1);
 
-    private static final Font TITLE_FONT = new Font(Font.HELVETICA, 20, Font.BOLD, PRIMARY);
+    /**
+     * Only ever measured against, never drawn with: the drawn size comes from
+     * {@link #titlePointSize}. Deliberately carries no colour, both because metrics do not depend
+     * on one and because a static initialiser reading PRIMARY from above would read it as null.
+     */
+    private static final BaseFont TITLE_BASE_FONT =
+        new Font(Font.HELVETICA, TITLE_MAX_POINTS, Font.BOLD).getCalculatedBaseFont(false);
     private static final Font BRAND_FONT = new Font(Font.HELVETICA, 14, Font.BOLD, INK);
     private static final Font LABEL_FONT = new Font(Font.HELVETICA, 9, Font.NORMAL, MUTED);
     private static final Font VALUE_FONT = new Font(Font.HELVETICA, 11, Font.NORMAL, INK);
@@ -75,7 +97,8 @@ public class PdfDocumentService {
             String billingPeriod, String notes) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
-            Document document = new Document(PageSize.A4, 48, 48, 56, 56);
+            Document document = new Document(PageSize.A4, SIDE_MARGIN, SIDE_MARGIN,
+                VERTICAL_MARGIN, VERTICAL_MARGIN);
             PdfWriter.getInstance(document, out);
             document.open();
 
@@ -122,7 +145,7 @@ public class PdfDocumentService {
     private PdfPTable header(Letterhead letterhead, String title) throws DocumentException {
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{1.4f, 1});
+        table.setWidths(new float[]{1, 1});
 
         PdfPCell brandCell = new PdfPCell();
         brandCell.setBorder(0);
@@ -139,8 +162,10 @@ public class PdfDocumentService {
         }
         table.addCell(brandCell);
 
-        PdfPCell titleCell = new PdfPCell(new Paragraph(title, TITLE_FONT));
+        PdfPCell titleCell = new PdfPCell(new Paragraph(title, titleFont(title)));
         titleCell.setBorder(0);
+        // The fitter measures against the bare column, so the cell must not then eat into it.
+        titleCell.setPadding(0);
         titleCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
         table.addCell(titleCell);
 
@@ -152,6 +177,35 @@ public class PdfDocumentService {
         table.addCell(ruleCell);
 
         return table;
+    }
+
+    /**
+     * The title at the largest size that still sets it on one line.
+     *
+     * <p>The titles differ in length by a factor of four, from "RECEIPT" to "ANNUAL FINANCIAL
+     * STATEMENT", and a fixed size cannot serve both: at a size the longest one fits, the short
+     * ones stop reading as a heading. Every title but the longest sets at the full size here, so
+     * the shrinking is the exception rather than the rule.
+     *
+     * <p>Wrapping was the previous behaviour, and it broke "CONTRIBUTION RECEIPT" across two lines
+     * on every contribution receipt the product had ever issued.
+     */
+    static int titlePointSize(String title) {
+        float available = TITLE_COLUMN_WIDTH - TITLE_FIT_TOLERANCE;
+        for (int points = TITLE_MAX_POINTS; points > TITLE_MIN_POINTS; points--) {
+            if (TITLE_BASE_FONT.getWidthPoint(title, points) <= available) {
+                return points;
+            }
+        }
+        // Nothing in DocumentType reaches this, and a title long enough to would be unreadable
+        // shrunk any further, so it wraps rather than dwindling.
+        LOG.warnf("Document title \"%s\" does not fit the letterhead above %dpt, it will wrap",
+            title, TITLE_MIN_POINTS);
+        return TITLE_MIN_POINTS;
+    }
+
+    private static Font titleFont(String title) {
+        return new Font(Font.HELVETICA, titlePointSize(title), Font.BOLD, PRIMARY);
     }
 
     /**

@@ -56,17 +56,9 @@ class PdfDocumentServiceTest {
             "March 2026", "Thank you for keeping your contributions current.");
     }
 
-    /**
-     * The extracted text with every run of whitespace collapsed to one space.
-     *
-     * <p>The title sits in the narrow right-hand column of the letterhead, so anything longer than
-     * "INVOICE" wraps and comes back with a line break inside it. That wrapping is identical on
-     * openpdf 1.3.35 and 3.0.5, so it is the layout's own behaviour rather than anything the
-     * upgrade changed, and these assertions are about which words are on the page rather than
-     * where the lines break.
-     */
-    private static String normalised(byte[] pdf) throws IOException {
-        return textOf(pdf).replaceAll("\\s+", " ");
+    /** Whether the title occupies one whole line of the page, rather than being broken across two. */
+    private static boolean setsOnOneLine(byte[] pdf, String title) throws IOException {
+        return textOf(pdf).lines().map(String::trim).anyMatch(line -> line.equals(title));
     }
 
     private static String textOf(byte[] pdf) throws IOException {
@@ -105,7 +97,7 @@ class PdfDocumentServiceTest {
 
     @Test
     void drawsTheRecordTheDocumentIsAbout() throws IOException {
-        String text = normalised(render(UMOJA));
+        String text = textOf(render(UMOJA));
 
         assertTrue(text.contains("CONTRIBUTION RECEIPT"), text);
         assertTrue(text.contains("CR-2026-03-0007"), text);
@@ -163,7 +155,33 @@ class PdfDocumentServiceTest {
         byte[] pdf = service.render(type, "X-0001", UMOJA, "Jane Wanjiku",
             LocalDate.of(2026, 3, 14), LINE_ITEMS, new BigDecimal("2620.50"), null, null);
 
-        assertTrue(normalised(pdf).contains(expectedTitle), expectedTitle);
+        // On one line, not merely present. "CONTRIBUTION RECEIPT" used to break after the first
+        // word on every contribution receipt the product issued, and a contains() check on the
+        // whole page reads as green either way.
+        assertTrue(setsOnOneLine(pdf, expectedTitle),
+            expectedTitle + " should set on one line, page was:\n" + textOf(pdf));
+    }
+
+    @Test
+    void keepsTheLongestTitleOnOneLineByShrinkingOnlyThatOne() {
+        // The titles differ in length by a factor of four. Sizing them all for the longest would
+        // leave "RECEIPT" too small to read as a heading, so only what does not fit gives way.
+        assertEquals(20, PdfDocumentService.titlePointSize("RECEIPT"));
+        assertEquals(20, PdfDocumentService.titlePointSize("INVOICE"));
+        assertEquals(20, PdfDocumentService.titlePointSize("LOAN STATEMENT"));
+        assertEquals(20, PdfDocumentService.titlePointSize("PAYOUT RECEIPT"));
+        assertEquals(20, PdfDocumentService.titlePointSize("CONTRIBUTION RECEIPT"));
+
+        int agm = PdfDocumentService.titlePointSize("ANNUAL FINANCIAL STATEMENT");
+        assertTrue(agm < 20 && agm >= 12, "the longest title should shrink, not wrap: " + agm);
+    }
+
+    @Test
+    void stopsShrinkingRatherThanDwindlingToNothing() {
+        // A title nothing in DocumentType can produce. It wraps, which is the better of two bad
+        // outcomes: the alternative is a heading too small to read.
+        assertEquals(12, PdfDocumentService.titlePointSize("ANNUAL FINANCIAL STATEMENT AND "
+            + "REPORT OF THE MANAGEMENT COMMITTEE TO THE MEMBERS IN GENERAL MEETING"));
     }
 
     @Test
