@@ -73,8 +73,9 @@ Three architectural decisions are worth understanding before you change anything
 | `src/main/java/org/chama/config/` | `@ConfigMapping` interfaces for the M-Pesa/Flutterwave/B2C credential groups |
 | `src/main/resources/db/migration/` | Flyway migrations, `V1` through the current head |
 | `frontend/src/pages/public/` | Marketing site (unauthenticated) |
-| `frontend/src/pages/staff/` | Authenticated dashboard: Chamas, Members, Contributions, Loans, Payouts, Approvals, Resolutions, WelfareFund, DocumentGenerator, SecurityEvents, AdminOverview, MyChamas |
-| `frontend/src/components/{layout,marketing,ui}/` | Layout chrome, marketing-specific components, generic UI primitives |
+| `frontend/src/pages/staff/` | Authenticated dashboard: Chamas, Members, Contributions, Loans, Payouts, Approvals, Meetings, Resolutions, WelfareFund, DocumentGenerator, SecurityEvents, AdminOverview, MyChamas, MyMoney, Profile, NotificationPreferences |
+| `frontend/src/components/{layout,marketing,ui,feedback}/` | Layout chrome, marketing-specific components, generic UI primitives, and the whole-screen failure states (`ErrorScreen`) |
+| `frontend/src/lib/`, `frontend/src/utils/` | Cross-cutting helpers with no UI of their own: the leaving-page transition, CSV and PDF downloads |
 | `frontend/src/api/` | One thin fetch-wrapper module per backend REST resource |
 | `frontend/src/auth/` | `KeycloakProvider`, `ProtectedRoute` |
 | `docker-compose.yml` | Local Postgres + Keycloak |
@@ -96,12 +97,52 @@ repository, map entities to a DTO record, gate with `@Authenticated` plus an exp
 follow: fetch on mount depending on role, a loading skeleton, a table, and one or more modals for
 create/edit actions.
 
+**Say that a list failed to load.** Render `ui/LoadFailed`, never the page's `EmptyState`. A
+rejected fetch that falls through to the empty state produces "You are not part of any chama yet.
+Create one, or join an existing chama with its code" when the truth is that the request failed,
+which states something false and then invites the reader to act on it. A banner that dismisses
+itself has the same effect a moment later, leaving the confident empty list behind. Keep the
+server's own sentence in `detail` where there is one, and offer the retry.
+
+**Add a full-screen dead end.** Use `components/feedback/ErrorScreen`, which backs not-found,
+forbidden and the `ErrorBoundary` crash screen. Always pass `actions`: a dead end with no way
+forward is the thing it exists to avoid. The one failure it cannot cover is the backend being
+down, because then no bundle loads at all: that is `frontend/public/backend-unavailable.html`,
+wired up by `error_page 502 503 504` in `nginx.conf.template`. It carries its own inline copy of
+the palette on purpose, and says so in a comment, since it cannot import from the bundle.
+
+**Animate a route change.** `components/layout/PageTransition` wraps both the staff outlet and the
+public routes, keyed on `location.pathname` so it remounts per route. Two rules keep it from
+turning into a blank page. The starting `opacity: 0` is set in the effect and never in CSS, so
+content that never gets its script still renders; and it short-circuits to a no-op under
+`useReducedMotion()`. React 19's StrictMode double-invokes the effect, so it has to be idempotent.
+
+Leaving the app is different, because Keycloak is a separate document on a separate origin and
+nothing can animate across that navigation. `lib/leaveTransition.leaveThen` does the half on this
+side: fade out, then hand over. It restores the body on a timer afterwards, because a sign-in the
+person abandons never navigates at all and would otherwise leave them staring at a blank tab.
+
+**Set the width of a page.** Use the `.shell` class from `index.css`, not a per-section
+`max-w-*`. The home page previously ran the nav at `max-w-6xl` and the hero at `max-w-7xl`, so the
+two did not even line up with each other, and three sections sat at `max-w-3xl` and read as a
+narrow column on a wide screen. One class means there is nothing to drift. Widening prose alone is
+not the fix: a wide container holding one text column gives an unreadable line length, so a
+section fills the width by holding more, not by stretching each line.
+
 **Run a single test.**
 
 ```bash
 ./mvnw test -Dtest=ClassName
 cd frontend && npx vitest run path/to/File.test.tsx
 ```
+
+**Ask what day it is.** `ChamaTime.ZONE` and `ChamaTime.today()`, never a bare `LocalDate.now()`.
+Every due date, streak, arrears bucket and reminder window in this product is a Nairobi calendar
+date. On a UTC host, "today" is a day behind Nairobi's for the first three hours of every Nairobi
+morning, which is long enough for a contribution due today to read as overdue and a streak to
+break. This applies to tests as much as to services: the zone used to be a private constant in
+seven services, and a test that built its fixture on the host's calendar against a service reading
+Nairobi's passed for twenty-one hours a day and failed for the other three.
 
 **Pick a colour.** Colour comes in two kinds, and choosing the wrong one is what breaks dark mode.
 
@@ -223,6 +264,40 @@ Anything 500 is replaced with a fixed line and logged instead, so an internal de
 echoed back. If a confirm dialog fronts the action, dismiss it in `finally` rather than only on
 success: while a dialog is open the rest of the page is `aria-hidden`, and an alert rendered behind
 it is invisible to a reader and to a test.
+**Let a member reach a record-derived document.** Two rules, both of which the obvious version
+gets wrong.
+
+*Check access before generating, not after.* `DocumentResource.requireTreasuryRoleOrOwnRecord`
+resolves the underlying contribution, loan or payout and compares its owner against
+`tenantAccessService.currentMember` before anything is rendered. Generating first and refusing
+afterwards still files a numbered document against someone else's record and still writes the
+activity-log row; the caller sees a 403 and the chama's document register quietly disagrees with
+it.
+
+*Generation is not idempotent unless you make it so.* Each generator asks
+`GeneratedDocumentRepository.findByContribution`/`findByLoan`/`findByPayout` first and returns the
+existing document with 200, creating one with 201 only when there is none. Without that, a member
+tapping "Get receipt" three times files three receipts with three document numbers against one
+contribution.
+
+The custom generator and the AGM statement stay treasury-only: those are issued *to* someone
+rather than *by* them. `GET .../documents/mine` resolves the member from the session and never
+takes a member id.
+
+**Put a chama's identity on a document.** `PdfDocumentService.render` takes a `Letterhead` record
+carrying the name, both addresses, phone, email, registration number and logo bytes, and every
+field on it is optional because most existing chamas have none of them; the block collapses rather
+than leaving a gap. `GeneratedDocument.pdfBytes` freezes what was rendered, so a chama that later
+changes its address does not retroactively rewrite receipts it has already issued, and none of
+this needs snapshotting onto columns of its own.
+
+**Serve a binary an endpoint owns.** The chama logo is the template: bytes live in a `bytea`
+column, are returned by `GET /api/chamas/{id}/logo` with the stored content type and a private
+`Cache-Control`, and never enter `ChamaDto`, which carries only `hasLogo`. A DTO returned by a list
+endpoint that inlines base64 image data bloats every response that was only ever asking for names.
+On upload, cap the size and verify the PNG or JPEG magic bytes rather than trusting the declared
+`Content-Type`, which the caller writes.
+
 **Add a cross-browser smoke journey.** Only if a Chromium-only Playwright spec genuinely cannot
 see the thing. `src/test/java/org/chama/smoke` exists for behaviour that is known to diverge between
 engines: third-party cookie policy, a download written to disk, an EventSource, a Keycloak-rendered
