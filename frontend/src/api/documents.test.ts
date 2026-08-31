@@ -14,6 +14,11 @@ import {
   generateAgmStatement,
   sendDocumentEmail,
   type GenerateCustomDocumentRequest,
+  getMyDocuments,
+  getDocumentWithPdf,
+  receiptForContribution,
+  statementForLoan,
+  receiptForPayout,
 } from './documents'
 
 const mockGet = client.get as ReturnType<typeof vi.fn>
@@ -65,5 +70,32 @@ describe('documents api', () => {
       { params: { from: '2026-01-01', to: '2026-12-31' } },
     )
     expect(result).toEqual({ id: 42, documentNumber: 'AGM-2026-07-0042' })
+  })
+
+  it('getMyDocuments reads the member-scoped list', async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 7 }] })
+    const result = await getMyDocuments(3)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/documents/mine')
+    expect(result).toEqual([{ id: 7 }])
+  })
+
+  it('getDocumentWithPdf asks for the bytes the list omits', async () => {
+    mockGet.mockResolvedValue({ data: { id: 7, pdfBase64: 'JVBERi0=' } })
+    const result = await getDocumentWithPdf(3, 7)
+    expect(mockGet).toHaveBeenCalledWith('/chamas/3/documents/7', { params: { pdf: true } })
+    expect(result).toEqual({ id: 7, pdfBase64: 'JVBERi0=' })
+  })
+
+  it('the record-derived generators post to their own record', async () => {
+    mockPost.mockResolvedValue({ data: { id: 7 } })
+
+    await receiptForContribution(3, 11)
+    expect(mockPost).toHaveBeenCalledWith('/chamas/3/contributions/11/documents/receipt', {})
+
+    await statementForLoan(3, 12)
+    expect(mockPost).toHaveBeenCalledWith('/chamas/3/loans/12/documents/statement', {})
+
+    await receiptForPayout(3, 13)
+    expect(mockPost).toHaveBeenCalledWith('/chamas/3/payouts/13/documents/receipt', {})
   })
 })

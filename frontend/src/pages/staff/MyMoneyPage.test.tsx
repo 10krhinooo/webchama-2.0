@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import MyMoneyPage from './MyMoneyPage'
+
+vi.mock('../../api/documents', () => ({
+  // Resolves empty by default: the documents panel is supplementary and every other test in this
+  // file is about the money above it.
+  getMyDocuments: vi.fn(() => Promise.resolve([])),
+  getDocumentWithPdf: vi.fn(),
+}))
+
+vi.mock('../../utils/download', () => ({ downloadBase64Pdf: vi.fn() }))
 
 vi.mock('../../api/members', async () => {
   const actual = await vi.importActual<typeof import('../../api/members')>('../../api/members')
@@ -49,8 +58,10 @@ function renderPage() {
   )
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
+  const { getMyDocuments } = await import('../../api/documents')
+  ;(getMyDocuments as ReturnType<typeof vi.fn>).mockResolvedValue([])
   mockGetMySummary.mockResolvedValue(aSummary())
 })
 
@@ -202,5 +213,37 @@ describe('MyMoneyPage', () => {
 
     expect(screen.getAllByText('View all')).toHaveLength(2)
     expect(screen.getByText('View payouts')).toBeTruthy()
+  })
+
+  it('lists the member\'s own documents and downloads one on request', async () => {
+    const { getMyDocuments, getDocumentWithPdf } = await import('../../api/documents')
+    const { downloadBase64Pdf } = await import('../../utils/download')
+    const list = getMyDocuments as ReturnType<typeof vi.fn>
+    const withPdf = getDocumentWithPdf as ReturnType<typeof vi.fn>
+    const download = downloadBase64Pdf as ReturnType<typeof vi.fn>
+
+    list.mockResolvedValue([
+      { id: 7, documentNumber: 'CR-2026-08-0007', documentType: 'CONTRIBUTION_RECEIPT', createdAt: '2026-08-01T00:00:00Z' },
+    ])
+    withPdf.mockResolvedValue({ id: 7, documentNumber: 'CR-2026-08-0007', pdfBase64: 'JVBERi0=' })
+
+    renderPage()
+
+    expect(await screen.findByText('CR-2026-08-0007')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }))
+
+    // The list omits the bytes, so they are fetched only for the document being saved.
+    await waitFor(() => expect(withPdf).toHaveBeenCalledWith(3, 7))
+    expect(download).toHaveBeenCalledWith('CR-2026-08-0007.pdf', 'JVBERi0=')
+  })
+
+  it('still shows the money when the documents cannot be loaded', async () => {
+    const { getMyDocuments } = await import('../../api/documents')
+    ;(getMyDocuments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('offline'))
+
+    renderPage()
+
+    // The documents are supplementary; failing to load them must not take the page down.
+    expect(await screen.findByText(/Receipts and statements you ask for/i)).toBeTruthy()
   })
 })

@@ -303,10 +303,85 @@ class DocumentResourceTest {
 
     @Test
     @TestSecurity(user = "doc-member-1")
-    void memberCannotGenerateAContributionReceipt() {
+    void aMemberCanReceiptTheirOwnContribution() {
+        given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then()
+                .statusCode(201)
+                .body("memberName", equalTo("Member One"))
+                .body("pdfBase64", notNullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "doc-other-1")
+    void aMemberCannotReceiptSomebodyElsesContribution() {
         given()
             .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
             .then().statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "doc-other-1")
+    void arefusedReceiptRequestFilesNothing() {
+        given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then().statusCode(403);
+
+        // The gate is on the record and runs before anything is generated, so a refused request
+        // must not have left a receipt against someone else's contribution.
+        QuarkusTransaction.requiringNew().run(() ->
+            org.junit.jupiter.api.Assertions.assertEquals(
+                0, generatedDocumentRepository.count("contribution.id", paidContributionId)));
+    }
+
+    @Test
+    @TestSecurity(user = "doc-member-1")
+    void receiptingTheSameContributionTwiceReturnsTheSameDocument() {
+        String first = given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then().statusCode(201)
+            .extract().path("documentNumber");
+
+        // 200 rather than 201, and the same number: tapping "Receipt" twice must not file two
+        // receipts, with two numbers, against one contribution.
+        String second = given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then().statusCode(200)
+            .extract().path("documentNumber");
+
+        org.junit.jupiter.api.Assertions.assertEquals(first, second);
+        QuarkusTransaction.requiringNew().run(() ->
+            org.junit.jupiter.api.Assertions.assertEquals(
+                1, generatedDocumentRepository.count("contribution.id", paidContributionId)));
+    }
+
+    @Test
+    @TestSecurity(user = "doc-member-1")
+    void aMemberSeesOnlyTheirOwnDocuments() {
+        given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then().statusCode(201);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/documents/mine", chamaId)
+            .then()
+                .statusCode(200)
+                .body("$", hasSize(1))
+                .body("[0].memberName", equalTo("Member One"))
+                // The list is a summary; the bytes come from the single-document endpoint.
+                .body("[0].pdfBase64", nullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "doc-other-1")
+    void anotherMembersDocumentsAreNotInMyList() {
+        given()
+            .when().post("/api/chamas/{chamaId}/contributions/{id}/documents/receipt", chamaId, paidContributionId)
+            .then().statusCode(403);
+
+        given()
+            .when().get("/api/chamas/{chamaId}/documents/mine", chamaId)
+            .then().statusCode(200).body("$", hasSize(0));
     }
 
     @Test

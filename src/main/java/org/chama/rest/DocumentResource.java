@@ -23,7 +23,10 @@ import org.chama.dto.GeneratedDocumentDto;
 import org.chama.repository.GeneratedDocumentRepository;
 import org.chama.security.CurrentUser;
 import org.chama.security.TenantAccessService;
+import org.chama.service.ContributionService;
 import org.chama.service.DocumentGenerationService;
+import org.chama.service.LoanService;
+import org.chama.service.PayoutService;
 import org.chama.service.notification.DocumentEmailService;
 
 import java.time.LocalDate;
@@ -54,6 +57,15 @@ public class DocumentResource {
     GeneratedDocumentRepository generatedDocumentRepository;
 
     @Inject
+    ContributionService contributionService;
+
+    @Inject
+    LoanService loanService;
+
+    @Inject
+    PayoutService payoutService;
+
+    @Inject
     TenantAccessService tenantAccessService;
 
     @Inject
@@ -62,25 +74,40 @@ public class DocumentResource {
     @POST
     @Path("/contributions/{contributionId}/documents/receipt")
     public Response generateContributionReceipt(@PathParam("chamaId") Long chamaId, @PathParam("contributionId") Long contributionId) {
-        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        // Gated on the record, before anything is generated. Checking the document afterwards
+        // would let a refused request still file a receipt against someone else's contribution.
+        requireTreasuryRoleOrOwnRecord(chamaId, contributionService.get(chamaId, contributionId).member.id);
+        boolean existed = generatedDocumentRepository.findByContribution(contributionId).isPresent();
         GeneratedDocument doc = documentGenerationService.generateContributionReceipt(chamaId, contributionId);
-        return Response.status(Response.Status.CREATED).entity(GeneratedDocumentDto.from(doc, true)).build();
+        // 200 when the document was already on file, 201 only when this call created it.
+        return Response.status(existed ? Response.Status.OK : Response.Status.CREATED)
+            .entity(GeneratedDocumentDto.from(doc, true)).build();
     }
 
     @POST
     @Path("/loans/{loanId}/documents/statement")
     public Response generateLoanStatement(@PathParam("chamaId") Long chamaId, @PathParam("loanId") Long loanId) {
-        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        // Gated on the record, before anything is generated. Checking the document afterwards
+        // would let a refused request still file a receipt against someone else's contribution.
+        requireTreasuryRoleOrOwnRecord(chamaId, loanService.get(chamaId, loanId).member.id);
+        boolean existed = generatedDocumentRepository.findByLoan(loanId).isPresent();
         GeneratedDocument doc = documentGenerationService.generateLoanStatement(chamaId, loanId);
-        return Response.status(Response.Status.CREATED).entity(GeneratedDocumentDto.from(doc, true)).build();
+        // 200 when the document was already on file, 201 only when this call created it.
+        return Response.status(existed ? Response.Status.OK : Response.Status.CREATED)
+            .entity(GeneratedDocumentDto.from(doc, true)).build();
     }
 
     @POST
     @Path("/payouts/{payoutId}/documents/receipt")
     public Response generatePayoutReceipt(@PathParam("chamaId") Long chamaId, @PathParam("payoutId") Long payoutId) {
-        tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        // Gated on the record, before anything is generated. Checking the document afterwards
+        // would let a refused request still file a receipt against someone else's contribution.
+        requireTreasuryRoleOrOwnRecord(chamaId, payoutService.get(chamaId, payoutId).member.id);
+        boolean existed = generatedDocumentRepository.findByPayout(payoutId).isPresent();
         GeneratedDocument doc = documentGenerationService.generatePayoutReceipt(chamaId, payoutId);
-        return Response.status(Response.Status.CREATED).entity(GeneratedDocumentDto.from(doc, true)).build();
+        // 200 when the document was already on file, 201 only when this call created it.
+        return Response.status(existed ? Response.Status.OK : Response.Status.CREATED)
+            .entity(GeneratedDocumentDto.from(doc, true)).build();
     }
 
     @POST
@@ -116,6 +143,16 @@ public class DocumentResource {
     }
 
     @GET
+    @Path("/documents/mine")
+    public List<GeneratedDocumentDto> mine(@PathParam("chamaId") Long chamaId) {
+        Member self = tenantAccessService.currentMember(currentUser, chamaId)
+            .orElseThrow(ForbiddenException::new);
+        return generatedDocumentRepository.findForMember(chamaId, self.id).stream()
+            .map(doc -> GeneratedDocumentDto.from(doc, false))
+            .toList();
+    }
+
+    @GET
     @Path("/documents/{id}")
     public GeneratedDocumentDto get(@PathParam("chamaId") Long chamaId, @PathParam("id") Long id,
             @QueryParam("pdf") @DefaultValue("false") boolean includePdf) {
@@ -138,6 +175,18 @@ public class DocumentResource {
             throw new NotFoundException();
         }
         return doc;
+    }
+
+    /**
+     * A member may produce a document for their own contribution, loan or payout, and for nobody
+     * else's. The custom invoice and the AGM statement stay treasury-only: those are issued *to*
+     * someone rather than *by* them.
+     */
+    private void requireTreasuryRoleOrOwnRecord(Long chamaId, Long ownerMemberId) {
+        var self = tenantAccessService.currentMember(currentUser, chamaId);
+        if (self.isEmpty() || !self.get().id.equals(ownerMemberId)) {
+            tenantAccessService.requireRole(currentUser, chamaId, MemberRoleType.TREASURER, MemberRoleType.CHAIRPERSON);
+        }
     }
 
     private void requireTreasuryRoleOrOwnDocument(Long chamaId, GeneratedDocument doc) {
