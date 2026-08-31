@@ -18,6 +18,8 @@ import {
 import { getMembers, updateMyAutoPay, exportMyData, type Member } from '../../api/members'
 import { getReminderSettings, updateReminderSettings, type ChamaReminderSettings } from '../../api/chamas'
 import { extractErrorMessage } from '../../api/client'
+import { getDocumentWithPdf, receiptForContribution } from '../../api/documents'
+import { downloadBase64Pdf } from '../../utils/download'
 import { savePendingCardPayment } from '../../lib/cardPaymentSession'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import LoadFailed from '../../components/ui/LoadFailed'
@@ -73,6 +75,7 @@ export default function ContributionsPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [receiptingId, setReceiptingId] = useState<number | null>(null)
   const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
   const [modalNotice, setModalNotice] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -283,6 +286,20 @@ export default function ContributionsPage() {
     }
   }
 
+  const handleReceipt = async (contribution: Contribution) => {
+    setReceiptingId(contribution.id)
+    try {
+      const doc = await receiptForContribution(chamaId, contribution.id)
+      const full = doc.pdfBase64 ? doc : await getDocumentWithPdf(chamaId, doc.id)
+      if (!full.pdfBase64) throw new Error('That receipt has no file attached.')
+      downloadBase64Pdf(`${full.documentNumber}.pdf`, full.pdfBase64)
+    } catch (err) {
+      setNotice({ variant: 'error', message: extractErrorMessage(err) })
+    } finally {
+      setReceiptingId(null)
+    }
+  }
+
   const handleDelete = async () => {
     if (!deleting) return
     setDeleteLoading(true)
@@ -396,16 +413,25 @@ export default function ContributionsPage() {
                             )}
                             <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
                           </>
+                        ) : c.status === 'PAID' ? (
+                          // Their own contribution, so they can produce their own receipt. Safe to
+                          // press twice: the backend returns the document already on file rather
+                          // than filing a second one.
+                          <button
+                            onClick={() => handleReceipt(c)}
+                            disabled={receiptingId === c.id}
+                            className="text-brand text-xs hover:underline disabled:opacity-50"
+                          >
+                            {receiptingId === c.id ? 'Preparing…' : 'Receipt'}
+                          </button>
                         ) : (
-                          c.status !== 'PAID' && (
-                            mpesaPending ? (
-                              <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
-                            ) : (
-                              <>
-                                <button onClick={() => openMpesaConfirm(c)} className="text-brand text-xs hover:underline">Pay via M-Pesa</button>
-                                <button onClick={() => openCardPayment(c)} className="text-brand text-xs hover:underline">Pay by Card</button>
-                              </>
-                            )
+                          mpesaPending ? (
+                            <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
+                          ) : (
+                            <>
+                              <button onClick={() => openMpesaConfirm(c)} className="text-brand text-xs hover:underline">Pay via M-Pesa</button>
+                              <button onClick={() => openCardPayment(c)} className="text-brand text-xs hover:underline">Pay by Card</button>
+                            </>
                           )
                         )}
                       </div>

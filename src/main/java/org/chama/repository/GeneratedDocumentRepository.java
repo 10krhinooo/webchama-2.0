@@ -26,6 +26,25 @@ public class GeneratedDocumentRepository implements PanacheRepository<GeneratedD
         return count("chama.id = ?1 and (emailStatus = ?2 or whatsappStatus = ?2)", chamaId, DeliveryStatus.PENDING);
     }
 
+    /**
+     * The document already on file for a record, if there is one.
+     *
+     * <p>Generation is otherwise unconditional: calling it twice files two receipts, with two
+     * document numbers, against one contribution. That was tolerable while only a treasurer could
+     * generate anything; it is not once a member can tap "Receipt" as often as they like.
+     */
+    public Optional<GeneratedDocument> findByContribution(Long contributionId) {
+        return find("contribution.id", contributionId).firstResultOptional();
+    }
+
+    public Optional<GeneratedDocument> findByLoan(Long loanId) {
+        return find("loan.id", loanId).firstResultOptional();
+    }
+
+    public Optional<GeneratedDocument> findByPayout(Long payoutId) {
+        return find("payout.id", payoutId).firstResultOptional();
+    }
+
     public Optional<GeneratedDocument> findByDocumentNumber(String documentNumber) {
         return find("documentNumber", documentNumber).firstResultOptional();
     }

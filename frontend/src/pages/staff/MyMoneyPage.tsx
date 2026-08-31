@@ -1,4 +1,20 @@
 import { useEffect, useState } from 'react'
+import {
+  getDocumentWithPdf,
+  getMyDocuments,
+  type GeneratedDocument,
+} from '../../api/documents'
+import LoadingButton from '../../components/ui/LoadingButton'
+import { downloadBase64Pdf } from '../../utils/download'
+
+const DOCUMENT_TYPE_LABELS: Record<GeneratedDocument['documentType'], string> = {
+  CONTRIBUTION_RECEIPT: 'Contribution receipt',
+  LOAN_STATEMENT: 'Loan statement',
+  PAYOUT_RECEIPT: 'Payout receipt',
+  CUSTOM_INVOICE: 'Invoice',
+  CUSTOM_RECEIPT: 'Receipt',
+  AGM_STATEMENT: 'Annual statement',
+}
 import { Link, useParams } from 'react-router-dom'
 import { getMySummary, CREDIT_SCORE_BAND_LABELS, type MemberSummary } from '../../api/members'
 import { extractErrorMessage } from '../../api/client'
@@ -35,6 +51,9 @@ export default function MyMoneyPage() {
   const [summary, setSummary] = useState<MemberSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [documents, setDocuments] = useState<GeneratedDocument[]>([])
+  const [downloadingId, setDownloadingId] = useState<number | null>(null)
+  const [documentError, setDocumentError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -53,6 +72,35 @@ export default function MyMoneyPage() {
       cancelled = true
     }
   }, [chamaId])
+
+  // Its own request, with its own swallowing catch. The documents are supplementary: a member who
+  // cannot load them should still see what they owe.
+  useEffect(() => {
+    let cancelled = false
+    getMyDocuments(chamaId)
+      .then((data) => {
+        if (!cancelled) setDocuments(data)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [chamaId])
+
+  const handleDownload = async (doc: GeneratedDocument) => {
+    setDownloadingId(doc.id)
+    setDocumentError(null)
+    try {
+      // The list omits the bytes on purpose, so they are fetched only for the one being saved.
+      const full = await getDocumentWithPdf(chamaId, doc.id)
+      if (!full.pdfBase64) throw new Error('That document has no file attached.')
+      downloadBase64Pdf(`${full.documentNumber}.pdf`, full.pdfBase64)
+    } catch (err) {
+      setDocumentError(extractErrorMessage(err))
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -181,6 +229,39 @@ export default function MyMoneyPage() {
         The member's own standing, shown to them rather than only to the treasurer reviewing a loan
         request. A thin record says so instead of presenting a number as settled.
       */}
+      <Card className="space-y-3">
+        <h2 className="font-heading text-lg font-semibold text-ink">Your documents</h2>
+        {documentError && <FormError message={documentError} />}
+        {documents.length === 0 ? (
+          <p className="text-sm text-muted">
+            Receipts and statements you ask for appear here. You can get one from any contribution,
+            loan or payout of your own.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {documents.map((doc) => (
+              <li key={doc.id} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-sm text-ink">{doc.documentNumber}</p>
+                  <p className="text-xs text-muted">
+                    {DOCUMENT_TYPE_LABELS[doc.documentType]} &middot;{' '}
+                    {new Date(doc.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <LoadingButton
+                  variant="secondary"
+                  loading={downloadingId === doc.id}
+                  loadingText="Preparing…"
+                  onClick={() => handleDownload(doc)}
+                >
+                  Download
+                </LoadingButton>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <Card className="space-y-2">
         <h2 className="font-heading text-lg font-semibold text-ink">Your standing</h2>
         {summary.creditScore === null ? (

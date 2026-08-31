@@ -27,6 +27,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Generates the three record-derived document types (contribution receipt, loan statement, payout
@@ -85,6 +86,10 @@ public class DocumentGenerationService {
 
     @Transactional
     public GeneratedDocument generateContributionReceipt(Long chamaId, Long contributionId) {
+        Optional<GeneratedDocument> existing = generatedDocumentRepository.findByContribution(contributionId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
         Contribution contribution = contributionService.get(chamaId, contributionId);
         if (contribution.amountPaid == null || contribution.amountPaid.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Contribution has no recorded payment to receipt");
@@ -102,6 +107,10 @@ public class DocumentGenerationService {
 
     @Transactional
     public GeneratedDocument generateLoanStatement(Long chamaId, Long loanId) {
+        Optional<GeneratedDocument> existing = generatedDocumentRepository.findByLoan(loanId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
         Loan loan = loanService.get(chamaId, loanId);
         if (loan.status == LoanStatus.REQUESTED) {
             throw new BadRequestException("Loan has not been approved yet, nothing to state");
@@ -118,6 +127,10 @@ public class DocumentGenerationService {
 
     @Transactional
     public GeneratedDocument generatePayoutReceipt(Long chamaId, Long payoutId) {
+        Optional<GeneratedDocument> existing = generatedDocumentRepository.findByPayout(payoutId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
         Payout payout = payoutService.get(chamaId, payoutId);
         if (payout.status != PayoutStatus.DISBURSED) {
             throw new BadRequestException("Payout has not been disbursed yet, nothing to receipt");

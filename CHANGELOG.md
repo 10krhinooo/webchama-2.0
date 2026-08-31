@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [unreleased] - 2026-08-07
 
 ### Added
+- a member can now produce their own receipt. A paid contribution carries a Receipt action, and My
+  Money lists every document the member has, each downloadable as a PDF. Generation was previously
+  treasurer-only, so there was no way for a member to get a receipt for their own payment at all
 - a chama now carries its own identity: postal address, physical address, contact phone, contact
   email, registration number, and a logo. All of it appears in the letterhead of the receipts and
   statements the chama issues, so a document says who it came from
@@ -74,6 +77,8 @@ All notable changes to this project will be documented in this file.
 - the loans table reads every credit score in one request instead of one request per member
 
 ### Fixed
+- asking for the same receipt twice filed two documents, with two document numbers, against one
+  contribution
 - generated PDFs were printed in the indigo brand colour the product stopped using when the
   palette moved to kanga teal
 - the home page hero headline never appeared. It reveals itself with a clip-path wipe once an

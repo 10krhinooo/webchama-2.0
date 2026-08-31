@@ -4,6 +4,13 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import ContributionsPage from './ContributionsPage'
 import { selectOption } from '../../test-utils/selectOption'
 
+vi.mock('../../api/documents', () => ({
+  receiptForContribution: vi.fn(),
+  getDocumentWithPdf: vi.fn(),
+}))
+
+vi.mock('../../utils/download', () => ({ downloadBase64Pdf: vi.fn() }))
+
 vi.mock('../../api/contributions', () => ({
   getContributions: vi.fn(),
   getMyContributions: vi.fn(),
@@ -677,5 +684,40 @@ describe('ContributionsPage', () => {
     // A request that failed is not an account with nothing in it. Saying the second when the first
     // happened states something false and then invites the reader to act on it.
     expect(screen.queryByTestId('empty-state')).toBeNull()
+  })
+
+  it('lets a member download the receipt for their own paid contribution', async () => {
+    const { receiptForContribution } = await import('../../api/documents')
+    const { downloadBase64Pdf } = await import('../../utils/download')
+    const receipt = receiptForContribution as ReturnType<typeof vi.fn>
+    const download = downloadBase64Pdf as ReturnType<typeof vi.fn>
+    receipt.mockResolvedValue({ id: 7, documentNumber: 'CR-2026-08-0007', pdfBase64: 'JVBERi0=' })
+
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([
+      { id: 1, memberName: 'Jane Doe', period: '2026-08-01', amountDue: 500, amountPaid: 500, status: 'PAID' },
+    ])
+    renderPage()
+
+    fireEvent.click(await screen.findByText('Receipt'))
+
+    await waitFor(() => expect(receipt).toHaveBeenCalledWith(3, 1))
+    expect(download).toHaveBeenCalledWith('CR-2026-08-0007.pdf', 'JVBERi0=')
+  })
+
+  it('surfaces the reason when a receipt cannot be produced', async () => {
+    const { receiptForContribution } = await import('../../api/documents')
+    const receipt = receiptForContribution as ReturnType<typeof vi.fn>
+    receipt.mockRejectedValue(new Error('Contribution has no recorded payment to receipt'))
+
+    mockUseMyMembership.mockReturnValue({ isTreasurer: false, isChairperson: false, loading: false })
+    mockGetMyContributions.mockResolvedValue([
+      { id: 1, memberName: 'Jane Doe', period: '2026-08-01', amountDue: 500, amountPaid: 500, status: 'PAID' },
+    ])
+    renderPage()
+
+    fireEvent.click(await screen.findByText('Receipt'))
+
+    expect(await screen.findByText('Contribution has no recorded payment to receipt')).toBeTruthy()
   })
 })

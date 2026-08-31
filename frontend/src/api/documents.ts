@@ -74,3 +74,41 @@ export async function generateAgmStatement(chamaId: number, from: string, to: st
   )
   return data
 }
+
+/** A member's own documents. The member is resolved from the session, never passed in. */
+export async function getMyDocuments(chamaId: number): Promise<GeneratedDocument[]> {
+  const { data } = await client.get<GeneratedDocument[]>(`/chamas/${chamaId}/documents/mine`)
+  return data
+}
+
+/**
+ * The receipt or statement for one record, generating it if it does not exist yet.
+ *
+ * Safe to call repeatedly: the backend returns the document already on file rather than minting a
+ * second one, so a member tapping "Receipt" twice gets the same document number both times.
+ */
+export async function receiptForContribution(chamaId: number, contributionId: number): Promise<GeneratedDocument> {
+  const { data } = await client.post<GeneratedDocument>(
+    `/chamas/${chamaId}/contributions/${contributionId}/documents/receipt`,
+    {},
+  )
+  return data
+}
+
+export async function statementForLoan(chamaId: number, loanId: number): Promise<GeneratedDocument> {
+  const { data } = await client.post<GeneratedDocument>(`/chamas/${chamaId}/loans/${loanId}/documents/statement`, {})
+  return data
+}
+
+export async function receiptForPayout(chamaId: number, payoutId: number): Promise<GeneratedDocument> {
+  const { data } = await client.post<GeneratedDocument>(`/chamas/${chamaId}/payouts/${payoutId}/documents/receipt`, {})
+  return data
+}
+
+/** Fetches a document including its PDF bytes, which the list view deliberately omits. */
+export async function getDocumentWithPdf(chamaId: number, id: number): Promise<GeneratedDocument> {
+  const { data } = await client.get<GeneratedDocument>(`/chamas/${chamaId}/documents/${id}`, {
+    params: { pdf: true },
+  })
+  return data
+}
