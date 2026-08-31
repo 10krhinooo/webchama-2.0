@@ -47,6 +47,11 @@ All notable changes to this project will be documented in this file.
   creation, and the CSV export
 
 ### Changed
+- the public site now fills a wide screen: the navigation, every section and the footer share one
+  content width, where before the nav and the hero did not even line up with each other
+- signing in and starting a chama hand over with a fade rather than cutting to a white flash.
+  Keycloak is a different document on a different origin, so this is the half of the journey that
+  can be animated
 - adopted a new Webchama mark: two ticks, the second confirming the first, drawing the
   maker-checker rule the product is built on. It replaces the woven-cross-hatch swatch in the
   favicon, the Keycloak sign-in page, the sidebar, the footer and the error screens. The concepts
@@ -80,6 +85,8 @@ All notable changes to this project will be documented in this file.
 - the loans table reads every credit score in one request instead of one request per member
 
 ### Fixed
+- the hero's blurred background glow is gone. It was drawn for a cream ground and read as a
+  coloured smear in both themes once the palette carried the atmosphere itself
 - asking for the same receipt twice filed two documents, with two document numbers, against one
   contribution
 - generated PDFs were printed in the indigo brand colour the product stopped using when the

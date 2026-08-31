@@ -10,6 +10,15 @@ vi.mock('@react-keycloak/web', () => ({
   useKeycloak: () => ({ keycloak: { register } }),
 }))
 
+const navigate = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...actual, useNavigate: () => navigate }
+})
+
+// The fade is covered in leaveTransition.test.ts; here it runs straight through.
+vi.mock('../../lib/leaveTransition', () => ({ leaveThen: (action: () => void) => action() }))
+
 function renderNav() {
   return render(
     <ThemeProvider>
@@ -35,9 +44,10 @@ describe('PublicNav', () => {
     expect(register).toHaveBeenCalledWith({ redirectUri: `${window.location.origin}/my-chamas` })
   })
 
-  it('links Sign In to the staff area, which redirects to Keycloak login', () => {
+  it('sends Sign In to the staff area, which redirects to Keycloak login', () => {
     renderNav()
-    expect(screen.getByText('Sign In').closest('a')).toHaveAttribute('href', '/my-chamas')
+    fireEvent.click(screen.getAllByText('Sign In')[0])
+    expect(navigate).toHaveBeenCalledWith('/my-chamas')
   })
 
   it('reveals the section links and CTAs in a mobile menu when the toggle is opened', () => {

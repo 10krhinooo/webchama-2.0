@@ -88,8 +88,11 @@ describe('HomePage', () => {
     expect(screen.getByText(/Grace W\./)).toBeTruthy()
   })
 
-  it('links Sign In to the staff area', () => {
+  it('offers a way in to the staff area', () => {
+    // A button rather than a link now: the click plays a hand-off before navigating, because
+    // signing in leaves this document for Keycloak's. Where it goes is asserted in
+    // PublicNav.test.tsx, which owns that control.
     renderPage()
-    expect(screen.getByText('Sign In').closest('a')).toHaveAttribute('href', '/my-chamas')
+    expect(screen.getAllByText('Sign In')[0].closest('button')).toBeTruthy()
   })
 })
