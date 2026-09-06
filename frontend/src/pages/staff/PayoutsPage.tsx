@@ -206,7 +206,7 @@ export default function PayoutsPage() {
       ) : (
         <>
           <Reveal eager delayMs={80} as="section" className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-y-2">
               <h2 className="font-heading text-lg font-semibold text-ink">Rotation Schedule</h2>
               {canManage && <Button onClick={openScheduleModal}>Generate Schedule</Button>}
             </div>
@@ -240,7 +240,7 @@ export default function PayoutsPage() {
           </Reveal>
 
           <Reveal eager delayMs={160} as="section" className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-y-2">
               <h2 className="font-heading text-lg font-semibold text-ink">{canManage ? 'Payouts' : 'My Payouts'}</h2>
               {canManage && <Button onClick={openPayoutModal}>Create Next Payout</Button>}
             </div>

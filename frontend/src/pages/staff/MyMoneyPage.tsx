@@ -191,7 +191,7 @@ export default function MyMoneyPage() {
       </Card>
 
       <Card className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <h2 className="font-heading text-lg font-semibold text-ink">Payouts and penalties</h2>
           <Link to={`/chamas/${chamaId}/payouts`} className="text-xs text-brand hover:underline">
             View payouts
@@ -207,7 +207,7 @@ export default function MyMoneyPage() {
                 : 'Not scheduled yet'
             }
           />
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-x-3">
             <dt className="text-muted">Penalties owed</dt>
             <dd>
               {summary.outstandingPenaltyCount === 0 ? (
@@ -281,7 +281,7 @@ export default function MyMoneyPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-wrap items-center justify-between gap-x-3">
       <dt className="text-muted">{label}</dt>
       <dd className="font-mono text-ink">{value}</dd>
     </div>

@@ -99,7 +99,7 @@ export default function MyChamasPage() {
   return (
     <div className="space-y-4">
       {firstName && <p className="text-sm text-muted">Hello, {firstName}</p>}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">My Chamas</h1>
         <div className="flex items-center gap-4">
           <button onClick={openJoinModal} className="text-sm font-semibold text-brand hover:underline">
