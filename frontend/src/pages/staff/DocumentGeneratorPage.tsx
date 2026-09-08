@@ -27,6 +27,8 @@ import Select from '../../components/ui/Select'
 import Textarea from '../../components/ui/Textarea'
 import Pagination from '../../components/ui/Pagination'
 import { usePagination } from '../../hooks/usePagination'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const STEPS = ['Setup', 'Line Items', 'Details', 'Preview & Send']
 
@@ -49,6 +51,7 @@ function statusVariant(status: DeliveryStatus | null) {
 export default function DocumentGeneratorPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { isTreasurer, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
@@ -296,7 +299,7 @@ export default function DocumentGeneratorPage() {
                           onChange={(e) => updateLineItem(i, { unitPrice: e.target.value })}
                         />
                       </td>
-                      <td className="py-1 text-right font-mono text-muted">{lineItemTotal(item).toLocaleString()}</td>
+                      <td className="py-1 text-right font-mono text-muted">{formatMoney(lineItemTotal(item), currency)}</td>
                       <td className="py-1 text-right">
                         {lineItems.length > 1 && (
                           <button type="button" onClick={() => removeLineItem(i)} className="text-danger text-xs hover:underline">
@@ -310,7 +313,7 @@ export default function DocumentGeneratorPage() {
               </table>
               <Button variant="ghost" onClick={addLineItem}>+ Add line item</Button>
               <div className="flex justify-end border-t border-border pt-3">
-                <p className="font-mono text-lg font-bold text-brand">Total {grandTotal.toLocaleString()}</p>
+                <p className="font-mono text-lg font-bold text-brand">Total {formatMoney(grandTotal, currency)}</p>
               </div>
             </div>
           )}
@@ -331,7 +334,7 @@ export default function DocumentGeneratorPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs text-muted">{generated.documentNumber}</p>
-                  <p className="font-mono text-2xl font-bold text-brand">KES {generated.totalAmount.toLocaleString()}</p>
+                  <p className="font-mono text-2xl font-bold text-brand">{formatMoney(generated.totalAmount, currency)}</p>
                 </div>
                 <div className="flex gap-2">
                   <LoadingButton onClick={handleSendEmail} loading={sendingEmail} loadingText="Sending…">
@@ -411,7 +414,7 @@ export default function DocumentGeneratorPage() {
               <div>
                 <p className="text-xs text-muted">{agmResult.documentNumber}</p>
                 <p className="font-mono text-xl font-bold text-brand">
-                  Closing balance: KES {agmResult.totalAmount.toLocaleString()}
+                  Closing balance: {formatMoney(agmResult.totalAmount, currency)}
                 </p>
               </div>
               <Button variant="secondary" onClick={() => setAgmResult(null)}>Dismiss</Button>
@@ -457,7 +460,7 @@ export default function DocumentGeneratorPage() {
                 <TableCell className="font-mono text-ink">{doc.documentNumber}</TableCell>
                 <TableCell className="text-muted">{doc.documentType}</TableCell>
                 <TableCell className="font-medium text-ink">{doc.memberName}</TableCell>
-                <TableCell className="font-mono text-muted">{doc.totalAmount.toLocaleString()}</TableCell>
+                <TableCell className="font-mono text-muted">{formatMoney(doc.totalAmount, currency)}</TableCell>
                 <TableCell>
                   {doc.emailStatus ? (
                     <Badge label={doc.emailStatus} variant={statusVariant(doc.emailStatus)} />

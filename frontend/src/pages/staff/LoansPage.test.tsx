@@ -31,6 +31,7 @@ vi.mock('../../api/chamas', () => ({
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
+vi.mock('../../hooks/useChamaCurrency', () => ({ useChamaCurrency: () => 'KES' }))
 
 import { getLoans, getMyLoans, createLoan, approveLoan, rejectLoan, getLoanRepayments, recordLoanRepayment, disburseLoan } from '../../api/loans'
 import type { Loan } from '../../api/loans'
@@ -440,7 +441,8 @@ describe('LoansPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Disburse' }))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disburse' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/has not cleared yet/i)
+    // An error, so it announces assertively and stays put rather than fading after 5s.
+    expect(await screen.findByRole('alert')).toHaveTextContent(/has not cleared yet/i)
   })
 
   it('shows a payout already in flight rather than offering to send another', async () => {

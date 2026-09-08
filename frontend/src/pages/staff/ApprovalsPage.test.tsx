@@ -22,6 +22,7 @@ vi.mock('../../api/payouts', () => ({
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
+vi.mock('../../hooks/useChamaCurrency', () => ({ useChamaCurrency: () => 'KES' }))
 
 import { getApprovals, requestApproval, approveApproval, rejectApproval } from '../../api/approvals'
 import { getMembers } from '../../api/members'
@@ -83,7 +84,7 @@ describe('ApprovalsPage', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
-    expect(screen.getByText('150,000')).toBeTruthy()
+    expect(screen.getByText('Ksh 150,000.00')).toBeTruthy()
     expect(screen.getByText('School fees emergency')).toBeTruthy()
     expect(screen.getByText('Loan disbursement')).toBeTruthy()
     expect(screen.getByText('Pending')).toBeTruthy()
@@ -103,7 +104,7 @@ describe('ApprovalsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Approval'))
-    selectOption(/^loan\b/i, 'Jane Doe · 150,000')
+    selectOption(/^loan\b/i, 'Jane Doe · Ksh 150,000.00')
     selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '150000' } })
     fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))
@@ -147,7 +148,7 @@ describe('ApprovalsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/no approval requests yet/i)).toBeTruthy())
     fireEvent.click(screen.getByText('+ Request Approval'))
-    selectOption(/^loan\b/i, 'Jane Doe · 150,000')
+    selectOption(/^loan\b/i, 'Jane Doe · Ksh 150,000.00')
     selectOption(/member/i, 'Jane Doe')
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '150000' } })
     fireEvent.click(screen.getByText('Request Approval', { selector: 'button[type="submit"]' }))

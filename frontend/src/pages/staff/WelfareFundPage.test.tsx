@@ -20,6 +20,7 @@ vi.mock('../../api/members', () => ({
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
+vi.mock('../../hooks/useChamaCurrency', () => ({ useChamaCurrency: () => 'KES' }))
 
 import {
   getWelfareFund,
@@ -101,7 +102,7 @@ describe('WelfareFundPage', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Jane Doe')).toBeTruthy())
-    expect(screen.getByText('5,000')).toBeTruthy()
+    expect(screen.getByText('Ksh 5,000.00')).toBeTruthy()
   })
 
   it("shows only the caller's own contributions for a plain member, without a fund balance", async () => {
@@ -110,7 +111,7 @@ describe('WelfareFundPage', () => {
 
     renderPage()
 
-    await waitFor(() => expect(screen.getByText('300')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Ksh 300.00')).toBeTruthy())
     expect(screen.queryByText('Jane Doe')).toBeNull()
     expect(mockGetWelfareFund).not.toHaveBeenCalled()
     expect(mockGetWelfareContributions).not.toHaveBeenCalled()
@@ -171,7 +172,7 @@ describe('WelfareFundPage', () => {
 
     renderPage()
 
-    await waitFor(() => expect(screen.getByText('1,000')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Ksh 1,000.00')).toBeTruthy())
     fireEvent.click(screen.getByText('+ Withdrawal'))
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '200' } })
     fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: 'Medical emergency' } })
@@ -188,7 +189,7 @@ describe('WelfareFundPage', () => {
     mockCreateWelfareWithdrawal.mockResolvedValue(aWithdrawal({ status: 'DISBURSED' }))
 
     renderPage()
-    await waitFor(() => expect(screen.getByText('1,000')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Ksh 1,000.00')).toBeTruthy())
     fireEvent.click(screen.getByText('+ Withdrawal'))
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '200' } })
     fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: 'Medical emergency' } })
@@ -205,7 +206,7 @@ describe('WelfareFundPage', () => {
     mockCreateWelfareWithdrawal.mockResolvedValue(aWithdrawal({ status: 'PENDING_APPROVAL' }))
 
     renderPage()
-    await waitFor(() => expect(screen.getByText('100,000')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Ksh 100,000.00')).toBeTruthy())
     fireEvent.click(screen.getByText('+ Withdrawal'))
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '50000' } })
     fireEvent.change(screen.getByLabelText(/reason/i), { target: { value: 'Medical emergency' } })
