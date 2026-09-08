@@ -70,3 +70,25 @@ export function formatDateTime(value: string | null | undefined): string {
     timeZone: ZONE,
   }).format(parsed)
 }
+
+/** A backend month key, serialised as `2026-05`. */
+const MONTH_ONLY = /^\d{4}-\d{2}$/
+
+/**
+ * A month, rendered as `May 26`, for a chart axis where `2026-05` reads as a date to a machine
+ * and not to a person.
+ *
+ * Formatted from the components rather than by constructing a Date, for the same reason
+ * `formatDate` avoids it: there is no instant here to convert, only a label, and involving a
+ * timezone can only move it to the wrong month.
+ */
+export function formatMonth(value: string): string {
+  if (!MONTH_ONLY.test(value)) return value
+
+  const [year, month] = value.split('-').map(Number)
+  return new Intl.DateTimeFormat(LOCALE, {
+    month: 'short',
+    year: '2-digit',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, 1)))
+}

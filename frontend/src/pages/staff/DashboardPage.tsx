@@ -454,7 +454,7 @@ export default function DashboardPage() {
           <div className="grid gap-6 lg:grid-cols-3">
             <HealthScoreCard health={health} />
             <div className="lg:col-span-2">
-              <ContributionTrendChart points={trend} />
+              <ContributionTrendChart points={trend} currency={currency} />
             </div>
           </div>
         </Reveal>
@@ -462,7 +462,7 @@ export default function DashboardPage() {
 
       {isManager && arrears.length > 0 && (
         <Reveal>
-          <ArrearsAgeingChart buckets={arrears} />
+          <ArrearsAgeingChart buckets={arrears} currency={currency} />
         </Reveal>
       )}
 

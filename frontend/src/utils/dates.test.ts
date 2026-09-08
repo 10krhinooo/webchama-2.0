@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDate, formatDateTime, ZONE } from './dates'
+import { formatDate, formatDateTime, formatMonth, ZONE } from './dates'
 
 describe('formatDate', () => {
   it('matches the zone the backend keeps its calendar in', () => {
@@ -47,5 +47,20 @@ describe('formatDateTime', () => {
 
   it('renders a dash for an unparseable value', () => {
     expect(formatDateTime('not-a-date')).toBe('—')
+  })
+})
+
+describe('formatMonth', () => {
+  it('turns a month key into something a person can read on an axis', () => {
+    expect(formatMonth('2026-05')).toBe('May 26')
+  })
+
+  it('does not slip into the neighbouring month', () => {
+    expect(formatMonth('2026-01')).toBe('Jan 26')
+    expect(formatMonth('2026-12')).toBe('Dec 26')
+  })
+
+  it('passes through anything that is not a month key rather than inventing a date', () => {
+    expect(formatMonth('not-a-month')).toBe('not-a-month')
   })
 })
