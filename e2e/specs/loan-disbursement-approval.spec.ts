@@ -1,7 +1,7 @@
 import { test, expect } from '../support/test'
 import { FIXTURE, queryOne } from '../support/db'
 import { api } from '../support/api'
-import { chooseOption, expectNotice } from '../support/actions'
+import { chooseOption, expectNotice, expectErrorNotice } from '../support/actions'
 
 /**
  * Dual sign-off on a loan above the chama's approval threshold, in chama 12, which this file owns.
@@ -43,7 +43,7 @@ test.describe('loan disbursement above the approval threshold', () => {
     await row.getByRole('button', { name: 'Disburse' }).click()
     await expect(asChairperson.getByRole('dialog')).toContainText(/above this chama's approval threshold/i)
     await asChairperson.getByRole('dialog').getByRole('button', { name: 'Disburse' }).click()
-    await expectNotice(asChairperson, /sign-off|approval is required/i)
+    await expectErrorNotice(asChairperson, /sign-off|approval is required/i)
 
     expect(
       (await queryOne<{ status: string }>('SELECT status FROM loan WHERE id = $1', [loan!.id]))
@@ -65,7 +65,7 @@ test.describe('loan disbursement above the approval threshold', () => {
     // The maker cannot supply a signature on their own request. Otherwise one treasurer could
     // raise a payout and immediately provide half of the sign-off it is meant to require.
     await approvalRow.getByRole('button', { name: 'Sign off' }).click()
-    await expectNotice(asTreasurer, /cannot also sign/i)
+    await expectErrorNotice(asTreasurer, /cannot also sign/i)
 
     await asChairperson.goto(`/chamas/${chama}/approvals`)
     await asChairperson.getByRole('row').filter({ hasText: '61,000' }).getByRole('button', { name: 'Sign off' }).click()
