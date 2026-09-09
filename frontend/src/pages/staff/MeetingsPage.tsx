@@ -28,6 +28,7 @@ import Pagination from '../../components/ui/Pagination'
 import TransientAlert from '../../components/ui/TransientAlert'
 import EmptyState from '../../components/ui/EmptyState'
 import Reveal from '../../components/ui/Reveal'
+import { formatDate } from '../../utils/dates'
 
 const EMPTY_FORM = { meetingDate: '', agenda: '' }
 
@@ -200,7 +201,7 @@ export default function MeetingsPage() {
               {pageItems.map((meeting) => (
                 <TableRow key={meeting.id} data-testid={`meeting-row-${meeting.id}`}>
                   <TableCell className="font-mono text-ink">
-                    {new Date(meeting.meetingDate).toLocaleDateString()}
+                    {formatDate(meeting.meetingDate)}
                   </TableCell>
                   <TableCell className="max-w-md">{meeting.agenda}</TableCell>
                   <TableCell>
@@ -313,7 +314,7 @@ export default function MeetingsPage() {
           <div className="space-y-4">
             <FormError message={attendanceNotice} />
             <p className="text-sm text-muted">
-              {new Date(attendanceFor.meetingDate).toLocaleDateString()} · {attendanceFor.agenda}
+              {formatDate(attendanceFor.meetingDate)} · {attendanceFor.agenda}
             </p>
 
             {attendanceLoading ? (

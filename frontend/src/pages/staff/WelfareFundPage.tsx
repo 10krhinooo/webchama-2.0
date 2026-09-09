@@ -32,6 +32,8 @@ import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_RECORD_FORM = { memberId: '', amount: '', method: 'CASH' as PaymentMethod }
 const EMPTY_WITHDRAWAL_FORM = { amount: '', reason: '' }
@@ -48,6 +50,7 @@ const WITHDRAWAL_STATUS_LABELS: Record<WelfareWithdrawal['status'], string> = {
 export default function WelfareFundPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { isManager, member, loading: roleLoading } = useMyMembership(chamaId)
 
   const [fund, setFund] = useState<WelfareFund | null>(null)
@@ -220,7 +223,7 @@ export default function WelfareFundPage() {
           {isManager && fund && (
             <Card>
               <p className="text-sm text-muted">Fund balance</p>
-              <p className="font-mono text-3xl font-bold text-brand">{fund.balance.toLocaleString()}</p>
+              <p className="font-mono text-3xl font-bold text-brand">{formatMoney(fund.balance, currency)}</p>
             </Card>
           )}
 
@@ -244,7 +247,7 @@ export default function WelfareFundPage() {
               {contributions.map((c) => (
                 <TableRow key={c.id}>
                   {isManager && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
-                  <TableCell className="font-mono text-muted">{c.amount.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-muted">{formatMoney(c.amount, currency)}</TableCell>
                   <TableCell className="text-muted">{c.paymentMethod ?? '—'}</TableCell>
                   <TableCell><Badge label={c.status} variant={contributionStatusVariant(c.status)} /></TableCell>
                 </TableRow>
@@ -274,7 +277,7 @@ export default function WelfareFundPage() {
                 )}
                 {withdrawals.map((w) => (
                   <TableRow key={w.id}>
-                    <TableCell className="font-mono text-muted">{w.amount.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-muted">{formatMoney(w.amount, currency)}</TableCell>
                     <TableCell className="text-muted">{w.reason}</TableCell>
                     <TableCell>
                       <Badge
@@ -300,7 +303,7 @@ export default function WelfareFundPage() {
       {disbursing && (
         <ConfirmDialog
           title="Disburse from the welfare fund"
-          message={`Release ${disbursing.amount.toLocaleString()} for "${disbursing.reason}"? This debits the fund and cannot be undone.`}
+          message={`Release ${formatMoney(disbursing.amount, currency)} for "${disbursing.reason}"? This debits the fund and cannot be undone.`}
           confirmLabel="Disburse"
           loading={disburseSaving}
           onConfirm={handleDisburse}

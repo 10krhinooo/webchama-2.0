@@ -34,7 +34,8 @@ describe('ArrearsAgeingChart', () => {
       { bucket: '90+', members: 0, amount: '0.00' },
     ]} />)
 
-    expect(screen.getByText('1,500.5 owed')).toBeTruthy()
+    // Was "1,500.5 owed": no currency, and a decimal place that appeared or vanished with the value.
+    expect(screen.getByText('Ksh 1,500.50 owed')).toBeTruthy()
   })
 
   it('says so plainly when nothing is in arrears', () => {

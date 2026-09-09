@@ -16,6 +16,7 @@ vi.mock('../../api/members', () => ({
 vi.mock('../../hooks/useMyMembership', () => ({
   useMyMembership: vi.fn(),
 }))
+vi.mock('../../hooks/useChamaCurrency', () => ({ useChamaCurrency: () => 'KES' }))
 
 import { getDocuments, generateCustomDocument, generateAgmStatement, sendDocumentEmail } from '../../api/documents'
 import { getMembers } from '../../api/members'
@@ -234,7 +235,7 @@ describe('DocumentGeneratorPage', () => {
 
     await waitFor(() => expect(mockGenerateAgmStatement).toHaveBeenCalledWith(3, '2026-01-01', '2026-12-31'))
     await waitFor(() => expect(screen.getByText('AGM-2026-07-0042')).toBeTruthy())
-    expect(screen.getByText(/Closing balance: KES 15,000/)).toBeTruthy()
+    expect(screen.getByText(/Closing balance: Ksh 15,000.00/)).toBeTruthy()
     expect(screen.getByTitle('AGM statement preview')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Dismiss'))

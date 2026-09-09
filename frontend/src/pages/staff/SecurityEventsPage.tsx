@@ -8,11 +8,12 @@ import Badge from '../../components/ui/Badge'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import Pagination from '../../components/ui/Pagination'
 import { usePagination } from '../../hooks/usePagination'
+import { formatDateTime } from '../../utils/dates'
 
 const SUSPICIOUS_ERROR = 'user_temporarily_disabled'
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString()
+  return formatDateTime(iso)
 }
 
 export default function SecurityEventsPage() {

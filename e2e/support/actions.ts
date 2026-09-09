@@ -16,9 +16,26 @@ export function waitForGet(page: Page, pathFragment: string): Promise<Response> 
   )
 }
 
-/** Asserts the transient success banner said what we expect. */
+/**
+ * Asserts the transient banner said what we expect, whichever variant it was.
+ *
+ * The banner announces through `role="status"` when it is reporting a success and `role="alert"`
+ * when it is reporting a failure, because a screen reader should interrupt for one and not the
+ * other. Callers here mostly do not care which they got, only that the app said the right thing,
+ * so this matches either. Use `expectErrorNotice` where the variant is the point.
+ */
 export async function expectNotice(page: Page, pattern: RegExp) {
-  await expect(page.getByRole('status').filter({ hasText: pattern }).first()).toBeVisible()
+  await expect(
+    page.locator('[role="status"], [role="alert"]').filter({ hasText: pattern }).first(),
+  ).toBeVisible()
+}
+
+/**
+ * Asserts a failure was reported as a failure: announced assertively, and still on screen rather
+ * than faded out on a timer the way a success banner is.
+ */
+export async function expectErrorNotice(page: Page, pattern: RegExp) {
+  await expect(page.getByRole('alert').filter({ hasText: pattern }).first()).toBeVisible()
 }
 
 /** Asserts the form-level error banner said what we expect. */

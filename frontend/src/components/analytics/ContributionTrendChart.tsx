@@ -12,18 +12,19 @@ import type { ContributionTrendPoint } from '../../api/analytics'
 import { chartAxisProps, chartTooltipProps } from '../../lib/chartTheme'
 import Card from '../ui/Card'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
+import { formatMoney } from '../../utils/money'
+import { formatMonth } from '../../utils/dates'
 
-/** "2026-05" reads as a date to a machine, not to a person looking at an axis. */
-function monthLabel(month: string) {
-  const [year, m] = month.split('-')
-  const date = new Date(Number(year), Number(m) - 1, 1)
-  return date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
-}
-
-export default function ContributionTrendChart({ points }: { points: ContributionTrendPoint[] }) {
+export default function ContributionTrendChart({
+  points,
+  currency,
+}: {
+  points: ContributionTrendPoint[]
+  currency?: string
+}) {
   const reducedMotion = useReducedMotion()
   const data = points.map((p) => ({
-    month: monthLabel(p.month),
+    month: formatMonth(p.month),
     expected: Number(p.expected),
     collected: Number(p.collected),
   }))
@@ -41,7 +42,7 @@ export default function ContributionTrendChart({ points }: { points: Contributio
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
             <XAxis dataKey="month" {...chartAxisProps} />
             <YAxis width={72} {...chartAxisProps} />
-            <Tooltip {...chartTooltipProps} formatter={(value) => Number(value ?? 0).toLocaleString()} />
+            <Tooltip {...chartTooltipProps} formatter={(value) => formatMoney(Number(value ?? 0), currency)} />
             <Legend />
             {/*
               Tailwind fill utilities and currentColor rather than hex literals, so the chart

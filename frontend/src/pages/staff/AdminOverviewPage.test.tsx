@@ -46,9 +46,9 @@ describe('AdminOverviewPage', () => {
     expect(screen.getByText('84')).toBeTruthy()
     expect(screen.getByText('79 active')).toBeTruthy()
     expect(screen.getByText('6')).toBeTruthy()
-    expect(screen.getByText('KES 5,200,000')).toBeTruthy()
-    expect(screen.getByText('KES 420,000')).toBeTruthy()
-    expect(screen.getByText('KES 180,000')).toBeTruthy()
+    expect(screen.getByText('Ksh 5,200,000.00')).toBeTruthy()
+    expect(screen.getByText('Ksh 420,000.00')).toBeTruthy()
+    expect(screen.getByText('Ksh 180,000.00')).toBeTruthy()
   })
 
   it('shows a payment success rate summary for M-Pesa and card', async () => {
