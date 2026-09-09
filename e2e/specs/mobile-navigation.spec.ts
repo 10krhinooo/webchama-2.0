@@ -91,4 +91,18 @@ test.describe('mobile navigation', () => {
     await asMember.goto(`/chamas/${chama}/contributions`)
     await expect(asMember.getByRole('table')).toBeVisible()
   })
+
+  // Notification preferences keeps a hand-written table, for its sr-only caption and scope="row"
+  // headers, so it is the one page whose width is guarded by a scroll container rather than by
+  // the card stack. Worth its own check for exactly that reason.
+  test('the notification preferences table does not push the page sideways', async ({ asMember }) => {
+    await asMember.setViewportSize(PHONE)
+    await asMember.goto('/notification-preferences')
+    await expect(asMember.getByRole('heading', { level: 1 })).toBeVisible()
+
+    const overflow = await asMember.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow).toBeLessThanOrEqual(0)
+  })
 })

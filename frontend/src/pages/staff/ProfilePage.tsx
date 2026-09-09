@@ -85,13 +85,13 @@ export default function ProfilePage() {
         <h2 className="font-heading text-lg font-semibold text-ink">{displayName}</h2>
         <dl className="space-y-2 text-sm">
           {token?.preferred_username && (
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <dt className="text-muted">Username</dt>
               <dd className="truncate font-mono text-ink">{token.preferred_username}</dd>
             </div>
           )}
           {token?.email && (
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <dt className="text-muted">Email</dt>
               <dd className="truncate font-mono text-ink">{token.email}</dd>
             </div>
