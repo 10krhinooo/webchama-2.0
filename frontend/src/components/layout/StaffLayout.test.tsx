@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import StaffLayout from './StaffLayout'
 
@@ -32,6 +32,7 @@ function renderAt(path: string) {
             <Route path="/chamas" element={<div>Chamas Page</div>} />
             <Route path="/chamas/:chamaId/members" element={<div>Members Page</div>} />
             <Route path="/chamas/:chamaId/contributions" element={<div>Contributions Page</div>} />
+            <Route path="/profile" element={<div>Profile Page</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -175,13 +176,47 @@ describe('StaffLayout', () => {
     expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeNull()
   })
 
-  it('closes the mobile nav drawer when the backdrop is clicked', () => {
+  it('closes the mobile nav drawer on Escape', () => {
     renderAt('/chamas')
     fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
-    const backdrop = document.querySelector('[data-testid="nav-backdrop"]')
-    expect(backdrop).toBeTruthy()
-    fireEvent.click(backdrop as Element)
+    expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
     expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeNull()
+  })
+
+  // The regression this guards: the drawer used to be hidden with -translate-x-full, which moves
+  // it off screen and leaves every link in it focusable. A phone user tabbed through fourteen
+  // invisible destinations before reaching the page.
+  it('keeps the closed mobile drawer out of the document entirely', () => {
+    renderAt('/chamas/3/contributions')
+    expect(document.querySelector('[data-testid="nav-backdrop"]')).toBeNull()
+    // The desktop sidebar copy is display:none below lg, so the only Contributions link that can
+    // exist while the drawer is shut is that one.
+    expect(screen.getAllByRole('link', { name: /contributions/i })).toHaveLength(1)
+  })
+
+  it('offers a skip link as the first focusable element', () => {
+    renderAt('/chamas')
+    const skip = screen.getByRole('link', { name: /skip to content/i })
+    expect(skip).toHaveAttribute('href', '#main-content')
+    expect(document.getElementById('main-content')).toBeTruthy()
+  })
+
+  it('names the current page in the breadcrumb', () => {
+    renderAt('/chamas/3/contributions')
+    // Scoped to the breadcrumb: the active NavLink in the sidebar also carries aria-current.
+    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
+    expect(within(breadcrumb).getByText('Contributions')).toBeTruthy()
+  })
+
+  // The <details> element this replaced could not know a navigation had happened, so choosing
+  // "Your profile" left the menu hanging open on top of the profile page.
+  it('closes the account menu on navigation rather than leaving it over the next page', () => {
+    renderAt('/chamas')
+    fireEvent.click(screen.getByRole('button', { name: /account menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /your profile/i }))
+    expect(screen.getByText('Profile Page')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /your profile/i })).toBeNull()
   })
 
   it('falls back to the preferred username when the token has no name', () => {

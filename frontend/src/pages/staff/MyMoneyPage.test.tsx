@@ -75,7 +75,7 @@ describe('MyMoneyPage', () => {
     renderPage()
 
     // Contributions and penalties together, because a member owes one amount, not two.
-    expect(await screen.findByText('KES 1,700')).toBeTruthy()
+    expect(await screen.findByText('Ksh 1,700.00')).toBeTruthy()
     expect(screen.getByText('You owe')).toBeTruthy()
     expect(screen.getByText('2 overdue contributions')).toBeTruthy()
   })
@@ -85,7 +85,7 @@ describe('MyMoneyPage', () => {
 
     expect(await screen.findByText('You are up to date')).toBeTruthy()
     // Several fields legitimately read zero, so scope to the headline figure.
-    expect(screen.getAllByText('KES 0').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Ksh 0.00').length).toBeGreaterThan(0)
   })
 
   it('shows an on-time streak when there is one', async () => {
@@ -111,7 +111,7 @@ describe('MyMoneyPage', () => {
     renderPage()
 
     await screen.findByText('You owe')
-    expect(screen.getByText(/KES 500 on/)).toBeTruthy()
+    expect(screen.getByText(/Ksh 500.00 on/)).toBeTruthy()
   })
 
   it('says there is nothing outstanding rather than showing a blank date', async () => {
@@ -136,8 +136,8 @@ describe('MyMoneyPage', () => {
     }))
     renderPage()
 
-    expect(await screen.findByText('KES 3,600')).toBeTruthy()
-    expect(screen.getByText(/KES 900 on/)).toBeTruthy()
+    expect(await screen.findByText('Ksh 3,600.00')).toBeTruthy()
+    expect(screen.getByText(/Ksh 900.00 on/)).toBeTruthy()
     expect(screen.queryByText('No loans running.')).toBeNull()
   })
 
@@ -163,7 +163,7 @@ describe('MyMoneyPage', () => {
     renderPage()
 
     // The badge and the headline both read 300 here, which is the point: it is what they owe.
-    expect((await screen.findAllByText('KES 300')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Ksh 300.00')).length).toBeGreaterThan(0)
     expect(screen.getByText(/across 2 penalties/)).toBeTruthy()
   })
 

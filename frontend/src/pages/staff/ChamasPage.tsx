@@ -32,6 +32,7 @@ import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
+import { formatMoney } from '../../utils/money'
 
 const EMPTY_FORM = {
   name: '',
@@ -244,7 +245,7 @@ export default function ChamasPage() {
                   </TableCell>
                   <TableCell className="text-muted">{c.type.replaceAll('_', ' ')}</TableCell>
                   <TableCell className="font-mono text-muted">
-                    {c.currency} {c.contributionAmount.toLocaleString()} / {c.contributionFrequency.toLowerCase()}
+                    {formatMoney(c.contributionAmount, c.currency)} / {c.contributionFrequency.toLowerCase()}
                   </TableCell>
                   <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
                   <TableCell>

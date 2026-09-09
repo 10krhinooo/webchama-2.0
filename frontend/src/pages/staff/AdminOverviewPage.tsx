@@ -19,9 +19,15 @@ import TransientAlert from '../../components/ui/TransientAlert'
 import { chartAxisProps, chartTooltipProps } from '../../lib/chartTheme'
 import { useChartColors } from '../../lib/useChartColors'
 import { downloadCsv } from '../../utils/csv'
+import { formatMoney, DEFAULT_CURRENCY } from '../../utils/money'
 
-function formatMoney(amount: number) {
-  return `KES ${amount.toLocaleString()}`
+/**
+ * Platform totals sum across every chama, which may not all keep the same currency. There is no
+ * single correct unit to show here, so this states the platform default explicitly rather than
+ * reading one chama's column and implying the total is denominated in it.
+ */
+function formatPlatformTotal(amount: number) {
+  return formatMoney(amount, DEFAULT_CURRENCY)
 }
 
 function successRate(succeeded: number, failed: number): string {
@@ -175,17 +181,17 @@ export default function AdminOverviewPage() {
             <StatTile label="Overdue contributions" value={overview.overdueContributions} />
             <StatTile
               label="Contributions collected"
-              value={formatMoney(overview.totalContributionsCollected)}
+              value={formatPlatformTotal(overview.totalContributionsCollected)}
               detail="All time"
             />
             <StatTile
               label="Collected this month"
-              value={formatMoney(overview.contributionsCollectedThisMonth)}
+              value={formatPlatformTotal(overview.contributionsCollectedThisMonth)}
             />
             <StatTile
               label="Outstanding loans"
               value={overview.outstandingLoans}
-              detail={formatMoney(overview.outstandingLoanPrincipal)}
+              detail={formatPlatformTotal(overview.outstandingLoanPrincipal)}
             />
             <StatTile
               label="M-Pesa payments"

@@ -32,6 +32,8 @@ import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_FORM = { memberId: '', principal: '', interestRate: '', interestMethod: 'FLAT' as InterestMethod, termMonths: '' }
 const EMPTY_PAYMENT_FORM = { amount: '' }
@@ -51,8 +53,6 @@ function repaymentStatusVariant(status: LoanRepayment['status']) {
   if (status === 'OVERDUE') return 'danger' as const
   return 'muted' as const
 }
-
-const formatMoney = (amount: number) => `KES ${amount.toLocaleString()}`
 
 function creditScoreVariant(band: CreditScore['band']) {
   if (band === 'EXCELLENT' || band === 'GOOD') return 'success' as const
@@ -82,6 +82,7 @@ function creditScoreDescription(score: CreditScore) {
 export default function LoansPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { isTreasurer, isChairperson, member, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
@@ -304,7 +305,7 @@ export default function LoansPage() {
                         : <span className="text-muted text-xs">—</span>}
                     </TableCell>
                   )}
-                  <TableCell className="font-mono text-muted">{loan.principal.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-muted">{formatMoney(loan.principal, currency)}</TableCell>
                   <TableCell className="text-muted">
                     {loan.interestRate}% ({loan.interestMethod === 'FLAT' ? 'Flat' : 'Reducing balance'})
                   </TableCell>
@@ -405,8 +406,8 @@ export default function LoansPage() {
           title="Disburse this loan"
           message={
             needsDualSignOff(disbursing)
-              ? `${formatMoney(disbursing.principal)} is above this chama's approval threshold, so it needs a second sign-off before it can be paid out. If that has not cleared on the Approvals page, this will be rejected.`
-              : `Send ${formatMoney(disbursing.principal)} to ${disbursing.memberName} by M-Pesa. This moves real money and cannot be undone from here.`
+              ? `${formatMoney(disbursing.principal, currency)} is above this chama's approval threshold, so it needs a second sign-off before it can be paid out. If that has not cleared on the Approvals page, this will be rejected.`
+              : `Send ${formatMoney(disbursing.principal, currency)} to ${disbursing.memberName} by M-Pesa. This moves real money and cannot be undone from here.`
           }
           confirmLabel="Disburse"
           variant="primary"
@@ -439,8 +440,8 @@ export default function LoansPage() {
                   <tr key={r.id}>
                     <td className="py-2">{r.installmentNumber}</td>
                     <td className="py-2 text-muted">{r.scheduledDate}</td>
-                    <td className="py-2 font-mono text-muted">{r.amountDue.toLocaleString()}</td>
-                    <td className="py-2 font-mono text-muted">{r.amountPaid.toLocaleString()}</td>
+                    <td className="py-2 font-mono text-muted">{formatMoney(r.amountDue, currency)}</td>
+                    <td className="py-2 font-mono text-muted">{formatMoney(r.amountPaid, currency)}</td>
                     <td className="py-2"><Badge label={r.status} variant={repaymentStatusVariant(r.status)} /></td>
                     {canManage && (
                       <td className="py-2 text-right">
@@ -464,7 +465,7 @@ export default function LoansPage() {
               <FormError message={paymentNotice} />
             )}
             <p className="text-sm text-muted">
-              Due {payingRepayment.amountDue.toLocaleString()}, already paid {payingRepayment.amountPaid.toLocaleString()}.
+              Due {formatMoney(payingRepayment.amountDue, currency)}, already paid {formatMoney(payingRepayment.amountPaid, currency)}.
             </p>
             <FormField label="Amount" htmlFor="loan-payment-amount" required>
               <Input id="loan-payment-amount" required type="number" min="0" step="0.01" value={paymentForm.amount}

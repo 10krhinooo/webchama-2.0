@@ -30,6 +30,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Reveal from '../../components/ui/Reveal'
+import { formatMoney } from '../../utils/money'
 
 const EMPTY_SCHEDULE_FORM = { rotationOrderType: 'SENIORITY' as RotationOrderType }
 const EMPTY_PAYOUT_FORM = { scheduledDate: '' }
@@ -268,7 +269,7 @@ export default function PayoutsPage() {
                     <TableCell className="font-mono text-muted">{payout.roundNumber}</TableCell>
                     {canManage && <TableCell className="font-medium text-ink">{payout.memberName}</TableCell>}
                     <TableCell className="text-muted">{payout.scheduledDate}</TableCell>
-                    <TableCell className="font-mono text-muted">{payout.amount.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-muted">{formatMoney(payout.amount, chama?.currency)}</TableCell>
                     <TableCell><Badge label={payout.status} variant={payoutStatusVariant(payout.status)} /></TableCell>
                     <TableCell className="text-right">
                       {canManage && payout.status === 'SCHEDULED' && (
@@ -396,7 +397,7 @@ export default function PayoutsPage() {
       {disbursingPayout && (
         <ConfirmDialog
           title="Mark payout disbursed"
-          message={`Mark the round ${disbursingPayout.roundNumber} payout of ${disbursingPayout.amount.toLocaleString()} for ${disbursingPayout.memberName} as disbursed? This cannot be undone.`}
+          message={`Mark the round ${disbursingPayout.roundNumber} payout of ${formatMoney(disbursingPayout.amount, chama?.currency)} for ${disbursingPayout.memberName} as disbursed? This cannot be undone.`}
           confirmLabel="Mark Disbursed"
           variant="primary"
           loading={disbursing}

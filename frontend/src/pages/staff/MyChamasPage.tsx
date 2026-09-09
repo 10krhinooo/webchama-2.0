@@ -13,6 +13,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import PhoneInput from '../../components/ui/PhoneInput'
 import LoadingButton from '../../components/ui/LoadingButton'
+import { formatMoney } from '../../utils/money'
 
 const EMPTY_JOIN_FORM: JoinChamaRequest = {
   joinCode: '',
@@ -144,7 +145,7 @@ export default function MyChamasPage() {
                 </div>
                 {c.description && <p className="text-sm text-muted line-clamp-2">{c.description}</p>}
                 <p className="font-mono text-xs text-muted">
-                  {c.type.replaceAll('_', ' ')} &middot; {c.currency} {c.contributionAmount.toLocaleString()} /{' '}
+                  {c.type.replaceAll('_', ' ')} &middot; {formatMoney(c.contributionAmount, c.currency)} /{' '}
                   {c.contributionFrequency.toLowerCase()}
                 </p>
               </Card>

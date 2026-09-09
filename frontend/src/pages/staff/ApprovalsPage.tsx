@@ -29,6 +29,8 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_FORM = { targetType: 'LOAN_DISBURSEMENT' as ApprovalTargetType, targetId: '', memberId: '', amount: '', reason: '' }
 
@@ -47,6 +49,7 @@ function targetTypeLabel(type: ApprovalTargetType) {
 export default function ApprovalsPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { member, loading: roleLoading } = useMyMembership(chamaId)
 
   const [approvals, setApprovals] = useState<Approval[]>([])
@@ -179,7 +182,7 @@ export default function ApprovalsPage() {
                 <TableRow key={approval.id}>
                   <TableCell className="font-medium text-ink">{approval.memberName}</TableCell>
                   <TableCell className="text-muted">{targetTypeLabel(approval.targetType)}</TableCell>
-                  <TableCell className="font-mono text-muted">{approval.amount.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-muted">{formatMoney(approval.amount, currency)}</TableCell>
                   <TableCell className="text-muted">{approval.reason || '—'}</TableCell>
                   <TableCell>
                     <SignOffTrail requestedByName={approval.requestedByName} firstApproverName={approval.firstApproverName} />
@@ -242,7 +245,7 @@ export default function ApprovalsPage() {
                   onChange={(v) => setForm({ ...form, targetId: v })}>
                   <option value="" disabled>Select a loan</option>
                   {loans.map((l) => (
-                    <option key={l.id} value={l.id}>{l.memberName} &middot; {l.principal.toLocaleString()}</option>
+                    <option key={l.id} value={l.id}>{l.memberName} &middot; {formatMoney(l.principal, currency)}</option>
                   ))}
                 </Select>
               </FormField>

@@ -32,6 +32,9 @@ import TransientAlert from '../../components/ui/TransientAlert'
 import EmptyState from '../../components/ui/EmptyState'
 import StatTile from '../../components/ui/StatTile'
 import Reveal from '../../components/ui/Reveal'
+import { formatMoney } from '../../utils/money'
+import { formatDate } from '../../utils/dates'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_FORM = { memberId: '', reason: 'LATE_CONTRIBUTION' as PenaltyReason, amount: '' }
 
@@ -49,11 +52,10 @@ function statusVariant(status: PenaltyStatus) {
   return 'warning' as const
 }
 
-const formatMoney = (amount: number) => `KES ${amount.toLocaleString()}`
-
 export default function PenaltiesPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { isTreasurer, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
@@ -176,7 +178,7 @@ export default function PenaltiesPage() {
       {canManage && !loading && !loadError && (
         <Reveal>
           <div className="grid gap-4 sm:grid-cols-2">
-            <StatTile label="Outstanding" value={formatMoney(outstanding)} detail="Approved and unpaid" />
+            <StatTile label="Outstanding" value={formatMoney(outstanding, currency)} detail="Approved and unpaid" />
             <StatTile label="Awaiting decision" value={awaitingDecision} detail="Issued but not yet approved or waived" />
           </div>
         </Reveal>
@@ -213,7 +215,7 @@ export default function PenaltiesPage() {
                 <TableRow key={penalty.id} data-testid={`penalty-row-${penalty.id}`}>
                   {canManage && <TableCell className="font-medium text-ink">{penalty.memberName}</TableCell>}
                   <TableCell>{REASON_LABELS[penalty.reason]}</TableCell>
-                  <TableCell className="font-mono">{formatMoney(penalty.amount)}</TableCell>
+                  <TableCell className="font-mono">{formatMoney(penalty.amount, currency)}</TableCell>
                   <TableCell>
                     <Badge label={penalty.status} variant={statusVariant(penalty.status)} />
                     {penalty.status === 'WAIVED' && penalty.waiverReason && (
@@ -221,7 +223,7 @@ export default function PenaltiesPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-muted">
-                    {new Date(penalty.imposedAt).toLocaleDateString()}
+                    {formatDate(penalty.imposedAt)}
                   </TableCell>
                   {canManage && (
                     <TableCell>
@@ -346,7 +348,7 @@ export default function PenaltiesPage() {
         <Modal title={`Waive penalty for ${waiving.memberName}`} onClose={() => setWaiving(null)}>
           <form onSubmit={handleWaive} className="space-y-4">
             <p className="text-sm text-ink/80">
-              Waiving cancels {formatMoney(waiving.amount)} for {REASON_LABELS[waiving.reason].toLowerCase()}.
+              Waiving cancels {formatMoney(waiving.amount, currency)} for {REASON_LABELS[waiving.reason].toLowerCase()}.
             </p>
             <FormField
               label="Reason for waiving"

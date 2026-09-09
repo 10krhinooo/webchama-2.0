@@ -40,6 +40,8 @@ import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_CONTRIBUTION_FORM = { memberId: '', period: '', amountDue: '' }
 const EMPTY_PAYMENT_FORM = { amount: '', method: 'MPESA' as PaymentMethod }
@@ -68,6 +70,7 @@ function latestPaymentFor(payments: Payment[], contributionId: number): Payment 
 export default function ContributionsPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { isTreasurer, isChairperson, member, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
@@ -391,8 +394,8 @@ export default function ContributionsPage() {
                   <TableRow key={c.id}>
                     {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
                     <TableCell className="text-muted">{c.period}</TableCell>
-                    <TableCell className="font-mono text-muted">{c.amountDue.toLocaleString()}</TableCell>
-                    <TableCell className="font-mono text-muted">{c.amountPaid.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-muted">{formatMoney(c.amountDue, currency)}</TableCell>
+                    <TableCell className="font-mono text-muted">{formatMoney(c.amountPaid, currency)}</TableCell>
                     <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
                     <TableCell>
                       {latestPayment ? (
@@ -535,7 +538,7 @@ export default function ContributionsPage() {
               <FormError message={modalNotice} />
             )}
             <p className="text-sm text-muted">
-              Due {payingContribution.amountDue.toLocaleString()}, already paid {payingContribution.amountPaid.toLocaleString()}.
+              Due {formatMoney(payingContribution.amountDue, currency)}, already paid {formatMoney(payingContribution.amountPaid, currency)}.
             </p>
             <FormField label="Amount" htmlFor="payment-amount" required>
               <Input id="payment-amount" required type="number" min="0" step="0.01" value={paymentForm.amount}
@@ -570,7 +573,7 @@ export default function ContributionsPage() {
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">
               <p className="text-xs text-muted">{mpesaConfirm.period}</p>
               <p className="font-mono text-2xl font-bold text-brand">
-                KES {(mpesaConfirm.amountDue - mpesaConfirm.amountPaid).toLocaleString()}
+                {formatMoney(mpesaConfirm.amountDue - mpesaConfirm.amountPaid, currency)}
               </p>
               {member?.phone && <p className="text-xs text-muted">To {member.phone}</p>}
             </div>
@@ -602,7 +605,7 @@ export default function ContributionsPage() {
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">
               <p className="text-xs text-muted">{cardPayment.period}</p>
               <p className="font-mono text-2xl font-bold text-brand">
-                KES {(cardPayment.amountDue - cardPayment.amountPaid).toLocaleString()}
+                {formatMoney(cardPayment.amountDue - cardPayment.amountPaid, currency)}
               </p>
             </div>
             <FormField label="Receipt email" htmlFor="card-payment-email" required>
