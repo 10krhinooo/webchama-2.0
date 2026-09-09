@@ -18,7 +18,7 @@ import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import FormError from '../../components/ui/FormError'
 import TransientAlert from '../../components/ui/TransientAlert'
@@ -40,6 +40,78 @@ export default function ResolutionsPage() {
   const chamaId = Number(chamaIdParam)
   const { isSecretary, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isSecretary || isChairperson
+
+  const resolutionColumns: TableColumn<Resolution>[] = [
+    {
+      key: 'title',
+      header: 'Title',
+      priority: 1,
+      render: (r) => (
+        <span className="font-medium text-ink">
+          {r.title}
+          {r.description && <p className="mt-0.5 text-xs font-normal text-muted">{r.description}</p>}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (r) => <Badge label={r.status} variant={resolutionStatusVariant(r.status)} />,
+    },
+    { key: 'openedBy', header: 'Opened by', render: (r) => <span className="text-muted">{r.openedByName}</span> },
+    {
+      key: 'votes',
+      header: 'Votes (For / Against / Abstain)',
+      render: (r) => (
+        <span className="font-mono text-muted">
+          {r.forVotes} / {r.againstVotes} / {r.abstainVotes}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      render: (r) => (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {r.status === 'OPEN' && (
+            <>
+              <button
+                onClick={() => handleVote(r, 'FOR')}
+                disabled={votingId === r.id}
+                className="text-success text-xs hover:underline disabled:opacity-50"
+              >
+                For
+              </button>
+              <button
+                onClick={() => handleVote(r, 'AGAINST')}
+                disabled={votingId === r.id}
+                className="text-danger text-xs hover:underline disabled:opacity-50"
+              >
+                Against
+              </button>
+              <button
+                onClick={() => handleVote(r, 'ABSTAIN')}
+                disabled={votingId === r.id}
+                className="text-muted text-xs hover:underline disabled:opacity-50"
+              >
+                Abstain
+              </button>
+              {canManage && (
+                <button
+                  onClick={() => handleClose(r)}
+                  disabled={closingId === r.id}
+                  className="text-brand text-xs hover:underline disabled:opacity-50"
+                >
+                  {closingId === r.id ? 'Closing\u2026' : 'Close'}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      ),
+    },
+  ]
 
   const [resolutions, setResolutions] = useState<Resolution[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
@@ -135,79 +207,13 @@ export default function ResolutionsPage() {
       ) : loadError ? (
         <LoadFailed what="resolutions" detail={loadError} onRetry={refresh} />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Title</TableHead>
-              <TableHead>Opened by</TableHead>
-              <TableHead>Votes (For / Against / Abstain)</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {resolutions.length === 0 && (
-              <TableRow>
-                  <TableCell colSpan={5}>
-                    <EmptyState title="No resolutions yet" description="Open one against a meeting to put a decision to a vote." />
-                  </TableCell>
-                </TableRow>
-            )}
-            {pageItems.map((resolution) => (
-              <TableRow key={resolution.id}>
-                <TableCell className="font-medium text-ink">
-                  {resolution.title}
-                  {resolution.description && (
-                    <p className="mt-0.5 text-xs font-normal text-muted">{resolution.description}</p>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted">{resolution.openedByName}</TableCell>
-                <TableCell className="font-mono text-muted">
-                  {resolution.forVotes} / {resolution.againstVotes} / {resolution.abstainVotes}
-                </TableCell>
-                <TableCell><Badge label={resolution.status} variant={resolutionStatusVariant(resolution.status)} /></TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-3">
-                    {resolution.status === 'OPEN' && (
-                      <>
-                        <button
-                          onClick={() => handleVote(resolution, 'FOR')}
-                          disabled={votingId === resolution.id}
-                          className="text-success text-xs hover:underline disabled:opacity-50"
-                        >
-                          For
-                        </button>
-                        <button
-                          onClick={() => handleVote(resolution, 'AGAINST')}
-                          disabled={votingId === resolution.id}
-                          className="text-danger text-xs hover:underline disabled:opacity-50"
-                        >
-                          Against
-                        </button>
-                        <button
-                          onClick={() => handleVote(resolution, 'ABSTAIN')}
-                          disabled={votingId === resolution.id}
-                          className="text-muted text-xs hover:underline disabled:opacity-50"
-                        >
-                          Abstain
-                        </button>
-                        {canManage && (
-                          <button
-                            onClick={() => handleClose(resolution)}
-                            disabled={closingId === resolution.id}
-                            className="text-brand text-xs hover:underline disabled:opacity-50"
-                          >
-                            {closingId === resolution.id ? 'Closing…' : 'Close'}
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        resolutions.length === 0 ? (
+          <div className="rounded-2xl bg-surface shadow-card">
+            <EmptyState title="No resolutions yet" description="Open one against a meeting to put a decision to a vote." />
+          </div>
+        ) : (
+          <Table columns={resolutionColumns} rows={pageItems} rowKey={(r) => r.id} />
+        )
       )}
 
       {!loading && !roleLoading && (

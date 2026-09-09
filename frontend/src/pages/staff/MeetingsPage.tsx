@@ -15,7 +15,7 @@ import { extractErrorMessage } from '../../api/client'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
@@ -45,6 +45,39 @@ export default function MeetingsPage() {
   const chamaId = Number(chamaIdParam)
   const { isSecretary, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isSecretary || isChairperson
+
+  const meetingColumns: TableColumn<Meeting>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      priority: 1,
+      render: (m) => <span className="font-mono text-ink">{formatDate(m.meetingDate)}</span>,
+    },
+    {
+      key: 'minutes',
+      header: 'Minutes',
+      priority: 1,
+      render: (m) =>
+        m.minutes ? <Badge label="RECORDED" variant="success" /> : <Badge label="NOT RECORDED" variant="muted" />,
+    },
+    { key: 'agenda', header: 'Agenda', render: (m) => <span className="max-w-md">{m.agenda}</span> },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (m) => (
+        <div className="flex flex-wrap justify-end gap-3">
+          <button onClick={() => openAttendance(m)} className="text-xs text-brand hover:underline">
+            Attendance
+          </button>
+          {canManage && (
+            <button onClick={() => openMinutes(m)} className="text-xs text-brand hover:underline">
+              {m.minutes ? 'Edit minutes' : 'Record minutes'}
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ]
 
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -188,51 +221,13 @@ export default function MeetingsPage() {
         />
       ) : (
         <Reveal>
-          <Table data-testid="meetings-table">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Agenda</TableHead>
-                <TableHead>Minutes</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageItems.map((meeting) => (
-                <TableRow key={meeting.id} data-testid={`meeting-row-${meeting.id}`}>
-                  <TableCell className="font-mono text-ink">
-                    {formatDate(meeting.meetingDate)}
-                  </TableCell>
-                  <TableCell className="max-w-md">{meeting.agenda}</TableCell>
-                  <TableCell>
-                    {meeting.minutes ? (
-                      <Badge label="RECORDED" variant="success" />
-                    ) : (
-                      <Badge label="NOT RECORDED" variant="muted" />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={() => openAttendance(meeting)}
-                        className="text-xs text-brand hover:underline"
-                      >
-                        Attendance
-                      </button>
-                      {canManage && (
-                        <button
-                          onClick={() => openMinutes(meeting)}
-                          className="text-xs text-brand hover:underline"
-                        >
-                          {meeting.minutes ? 'Edit minutes' : 'Record minutes'}
-                        </button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Table
+            data-testid="meetings-table"
+            columns={meetingColumns}
+            rows={pageItems}
+            rowKey={(m) => m.id}
+            rowTestId={(m) => `meeting-row-${m.id}`}
+          />
           <Pagination
             page={page}
             totalPages={totalPages}
