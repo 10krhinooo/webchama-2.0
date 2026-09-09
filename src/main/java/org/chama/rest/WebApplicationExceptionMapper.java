@@ -1,10 +1,12 @@
 package org.chama.rest;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+import org.chama.observability.ErrorReporter;
 import org.jboss.logging.Logger;
 
 /**
@@ -21,6 +23,10 @@ import org.jboss.logging.Logger;
  * <p>Only 4xx messages are passed through. A 5xx is a fault rather than an answer, and its message
  * is a stack-trace-adjacent internal detail, so those are logged and replaced with a fixed line.
  *
+ * <p>A 5xx is also reported to Sentry through {@link ErrorReporter}. A deliberate 4xx is not: it
+ * is an answer the product meant to give, and reporting those would bury the real faults under a
+ * stream of "that member has history and cannot be deleted".
+ *
  * <p>Bean validation is deliberately not touched here. Quarkus maps ConstraintViolationException
  * itself, and that is not a WebApplicationException, so its structured per-field body still stands.
  */
@@ -29,6 +35,9 @@ public class WebApplicationExceptionMapper implements ExceptionMapper<WebApplica
 
     private static final Logger LOG = Logger.getLogger(WebApplicationExceptionMapper.class);
     private static final String SERVER_FAULT = "Something went wrong on our side. Please try again.";
+
+    @Inject
+    ErrorReporter errorReporter;
 
     @Override
     public Response toResponse(WebApplicationException exception) {
@@ -47,6 +56,7 @@ public class WebApplicationExceptionMapper implements ExceptionMapper<WebApplica
         String message;
         if (status >= 500) {
             LOG.errorf(exception, "Unhandled %d answering a request", status);
+            errorReporter.report(exception);
             message = SERVER_FAULT;
         } else {
             message = usableMessage(exception, reason);

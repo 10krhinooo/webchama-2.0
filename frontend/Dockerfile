@@ -6,6 +6,11 @@
 # VITE_KEYCLOAK_URL is a build-time value (Vite bakes VITE_* vars into the bundle), pass it with
 # --build-arg; everything else the app needs is resolved at request time through the reverse
 # proxy, not baked in.
+#
+# The VITE_SENTRY_* vars are build-time for the same reason, and all three are optional: with no
+# DSN the reporting code initialises nothing, so an image built without them simply does not
+# report. VITE_SENTRY_RELEASE is worth setting to the same value as the backend's SENTRY_RELEASE,
+# since that is what lets one deploy's errors be told from the next one's.
 
 FROM node:24-alpine AS build
 WORKDIR /workspace
@@ -17,6 +22,12 @@ COPY . .
 
 ARG VITE_KEYCLOAK_URL
 ENV VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
+ARG VITE_SENTRY_DSN
+ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
+ARG VITE_SENTRY_ENVIRONMENT
+ENV VITE_SENTRY_ENVIRONMENT=${VITE_SENTRY_ENVIRONMENT}
+ARG VITE_SENTRY_RELEASE
+ENV VITE_SENTRY_RELEASE=${VITE_SENTRY_RELEASE}
 RUN npm run build
 
 FROM nginx:1.31-alpine
