@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams, useLocation } from 'react-router-dom'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import PageTransition from './PageTransition'
+import RouteFallback from '../feedback/RouteFallback'
 import { useKeycloak } from '@react-keycloak/web'
 import { Users, Wallet, Building2, LogOut, UserRound, ChevronDown, LayoutDashboard, HandCoins, RotateCw, FileText, ShieldCheck, Vote, HeartHandshake, Gauge, AlertTriangle, Menu, X, Gavel, CalendarDays, PiggyBank } from 'lucide-react'
 import ChamaMark from '../marketing/ChamaMark'
@@ -358,9 +359,13 @@ export default function StaffLayout() {
           scrollbar while the page shell itself slid sideways.
         */}
         <main id="main-content" className="shell flex-1 py-6 lg:py-8">
-          <PageTransition key={location.pathname}>
-            <Outlet />
-          </PageTransition>
+          {/* This boundary, not App's, catches a lazy staff page loading its chunk, so the
+              sidebar and header stay on screen instead of being swapped for the fallback. */}
+          <Suspense fallback={<RouteFallback />}>
+            <PageTransition key={location.pathname}>
+              <Outlet />
+            </PageTransition>
+          </Suspense>
         </main>
       </div>
     </div>
