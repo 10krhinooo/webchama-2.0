@@ -24,7 +24,7 @@ import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import FormError from '../../components/ui/FormError'
@@ -52,6 +52,60 @@ export default function WelfareFundPage() {
   const chamaId = Number(chamaIdParam)
   const currency = useChamaCurrency(chamaId)
   const { isManager, member, loading: roleLoading } = useMyMembership(chamaId)
+
+  const contributionColumns: TableColumn<WelfareContribution>[] = [
+    ...(isManager
+      ? [
+          {
+            key: 'member',
+            header: 'Member',
+            priority: 1 as const,
+            render: (c: WelfareContribution) => <span className="font-medium text-ink">{c.memberName}</span>,
+          },
+        ]
+      : []),
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (c) => <Badge label={c.status} variant={contributionStatusVariant(c.status)} />,
+    },
+    { key: 'amount', header: 'Amount', render: (c) => <span className="font-mono text-muted">{formatMoney(c.amount, currency)}</span> },
+    { key: 'method', header: 'Method', render: (c) => <span className="text-muted">{c.paymentMethod ?? '\u2014'}</span> },
+  ]
+
+  const withdrawalColumns: TableColumn<WelfareWithdrawal>[] = [
+    {
+      key: 'reason',
+      header: 'Reason',
+      priority: 1,
+      render: (w) => <span className="text-muted">{w.reason}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (w) => (
+        <Badge
+          label={WITHDRAWAL_STATUS_LABELS[w.status]}
+          variant={w.status === 'DISBURSED' ? 'success' : 'warning'}
+        />
+      ),
+    },
+    { key: 'amount', header: 'Amount', render: (w) => <span className="font-mono text-muted">{formatMoney(w.amount, currency)}</span> },
+    { key: 'requestedBy', header: 'Requested by', render: (w) => <span className="text-muted">{w.requestedByName}</span> },
+    { key: 'disbursedBy', header: 'Disbursed by', render: (w) => <span className="text-muted">{w.disbursedByName ?? '\u2014'}</span> },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      render: (w) =>
+        w.status === 'PENDING_APPROVAL' ? (
+          <div className="text-right">
+            <Button variant="secondary" onClick={() => setDisbursing(w)}>Disburse</Button>
+          </div>
+        ) : null,
+    },
+  ]
 
   const [fund, setFund] = useState<WelfareFund | null>(null)
   const [contributions, setContributions] = useState<WelfareContribution[]>([])
@@ -227,76 +281,22 @@ export default function WelfareFundPage() {
             </Card>
           )}
 
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {isManager && <TableHead>Member</TableHead>}
-                <TableHead>Amount</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contributions.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <EmptyState title="No welfare contributions yet" description="Contributions to the fund appear here once members pay in." />
-                  </TableCell>
-                </TableRow>
-              )}
-              {contributions.map((c) => (
-                <TableRow key={c.id}>
-                  {isManager && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
-                  <TableCell className="font-mono text-muted">{formatMoney(c.amount, currency)}</TableCell>
-                  <TableCell className="text-muted">{c.paymentMethod ?? '—'}</TableCell>
-                  <TableCell><Badge label={c.status} variant={contributionStatusVariant(c.status)} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {isManager && (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Requested by</TableHead>
-                  <TableHead>Disbursed by</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {withdrawals.length === 0 && (
-                  <TableRow>
-                  <TableCell colSpan={6}>
-                    <EmptyState title="No withdrawals yet" description="Requests to draw on the fund appear here." />
-                  </TableCell>
-                </TableRow>
-                )}
-                {withdrawals.map((w) => (
-                  <TableRow key={w.id}>
-                    <TableCell className="font-mono text-muted">{formatMoney(w.amount, currency)}</TableCell>
-                    <TableCell className="text-muted">{w.reason}</TableCell>
-                    <TableCell>
-                      <Badge
-                        label={WITHDRAWAL_STATUS_LABELS[w.status]}
-                        variant={w.status === 'DISBURSED' ? 'success' : 'warning'}
-                      />
-                    </TableCell>
-                    <TableCell className="text-muted">{w.requestedByName}</TableCell>
-                    <TableCell className="text-muted">{w.disbursedByName ?? '\u2014'}</TableCell>
-                    <TableCell className="text-right">
-                      {w.status === 'PENDING_APPROVAL' && (
-                        <Button variant="secondary" onClick={() => setDisbursing(w)}>Disburse</Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          {contributions.length === 0 ? (
+            <div className="rounded-2xl bg-surface shadow-card">
+              <EmptyState title="No welfare contributions yet" description="Contributions to the fund appear here once members pay in." />
+            </div>
+          ) : (
+            <Table columns={contributionColumns} rows={contributions} rowKey={(c) => c.id} />
           )}
+
+          {isManager &&
+            (withdrawals.length === 0 ? (
+              <div className="rounded-2xl bg-surface shadow-card">
+                <EmptyState title="No withdrawals yet" description="Requests to draw on the fund appear here." />
+              </div>
+            ) : (
+              <Table columns={withdrawalColumns} rows={withdrawals} rowKey={(w) => w.id} />
+            ))}
         </>
       )}
 
