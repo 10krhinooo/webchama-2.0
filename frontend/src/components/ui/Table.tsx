@@ -30,6 +30,11 @@ interface TableDataProps<T> {
    * not stop mattering on a phone. Payouts uses it to pick out the reader's own turn.
    */
   rowClassName?: (row: T) => string | undefined
+  /**
+   * A stable per-row hook for tests, applied to the table row and the card alike so a spec that
+   * finds a row does not have to know which rendering it got. Penalties uses it end to end.
+   */
+  rowTestId?: (row: T) => string | undefined
 }
 
 type TableProps<T> =
@@ -63,7 +68,7 @@ export function Table<T>(props: TableProps<T>) {
   const isCompact = useIsCompact()
 
   if (props.columns) {
-    const { columns, rows, rowKey, rowClassName, className, ...rest } = props
+    const { columns, rows, rowKey, rowClassName, rowTestId, className, ...rest } = props
     // On a phone, priority-1 columns become the card's header line, priority-2 its
     // label/value rows, and priority-3 columns are table-only.
     const headerColumns = columns.filter((column) => (column.priority ?? 2) === 1)
@@ -72,7 +77,11 @@ export function Table<T>(props: TableProps<T>) {
       return (
         <ul className="space-y-3">
           {rows.map((row) => (
-            <li key={rowKey(row)} className={cn('rounded-2xl bg-surface p-4 shadow-card', rowClassName?.(row))}>
+            <li
+              key={rowKey(row)}
+              data-testid={rowTestId?.(row)}
+              className={cn('rounded-2xl bg-surface p-4 shadow-card', rowClassName?.(row))}
+            >
               {headerColumns.length > 0 && (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-heading text-sm font-semibold text-ink">
                   {headerColumns.map((column) => (
@@ -108,7 +117,7 @@ export function Table<T>(props: TableProps<T>) {
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={rowKey(row)} className={rowClassName?.(row)}>
+              <TableRow key={rowKey(row)} data-testid={rowTestId?.(row)} className={rowClassName?.(row)}>
                 {columns.map((column) => (
                   <TableCell key={column.key}>{column.render(row)}</TableCell>
                 ))}
