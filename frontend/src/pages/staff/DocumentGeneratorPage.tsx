@@ -19,7 +19,7 @@ import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import FormError from '../../components/ui/FormError'
 import Badge from '../../components/ui/Badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -52,6 +52,23 @@ export default function DocumentGeneratorPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
   const currency = useChamaCurrency(chamaId)
+
+  const documentColumns: TableColumn<GeneratedDocument>[] = [
+    { key: 'number', header: 'Number', priority: 1, render: (d) => <span className="font-mono text-ink">{d.documentNumber}</span> },
+    { key: 'member', header: 'Member', priority: 1, render: (d) => <span className="font-medium text-ink">{d.memberName}</span> },
+    { key: 'type', header: 'Type', render: (d) => <span className="text-muted">{d.documentType}</span> },
+    { key: 'total', header: 'Total', render: (d) => <span className="font-mono text-muted">{formatMoney(d.totalAmount, currency)}</span> },
+    {
+      key: 'email',
+      header: 'Email',
+      render: (d) =>
+        d.emailStatus ? (
+          <Badge label={d.emailStatus} variant={statusVariant(d.emailStatus)} />
+        ) : (
+          <span className="text-muted text-xs">Not sent</span>
+        ),
+    },
+  ]
   const { isTreasurer, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
@@ -436,42 +453,12 @@ export default function DocumentGeneratorPage() {
         <TablePageSkeleton withFilter={false} />
       ) : loadError ? (
         <LoadFailed what="documents" detail={loadError} onRetry={refresh} />
+      ) : documents.length === 0 ? (
+        <div className="rounded-2xl bg-surface shadow-card">
+          <EmptyState title="No documents generated yet" description="Generate a receipt or statement and it will be listed here." />
+        </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Number</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Member</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Email</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {documents.length === 0 && (
-              <TableRow>
-                  <TableCell colSpan={5}>
-                    <EmptyState title="No documents generated yet" description="Generate a receipt or statement and it will be listed here." />
-                  </TableCell>
-                </TableRow>
-            )}
-            {pageItems.map((doc) => (
-              <TableRow key={doc.id}>
-                <TableCell className="font-mono text-ink">{doc.documentNumber}</TableCell>
-                <TableCell className="text-muted">{doc.documentType}</TableCell>
-                <TableCell className="font-medium text-ink">{doc.memberName}</TableCell>
-                <TableCell className="font-mono text-muted">{formatMoney(doc.totalAmount, currency)}</TableCell>
-                <TableCell>
-                  {doc.emailStatus ? (
-                    <Badge label={doc.emailStatus} variant={statusVariant(doc.emailStatus)} />
-                  ) : (
-                    <span className="text-muted text-xs">Not sent</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Table columns={documentColumns} rows={pageItems} rowKey={(d) => d.id} />
       )}
 
       {!loading && !roleLoading && (
