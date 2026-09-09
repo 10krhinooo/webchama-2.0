@@ -38,8 +38,10 @@ import { SkeletonLine } from '../../components/ui/Skeleton'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_CONTRIBUTION_FORM = { memberId: '', period: '', amountDue: '' }
 const EMPTY_PAYMENT_FORM = { amount: '', method: 'MPESA' as PaymentMethod }
@@ -68,6 +70,7 @@ function latestPaymentFor(payments: Payment[], contributionId: number): Payment 
 export default function ContributionsPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { isTreasurer, isChairperson, member, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
@@ -100,6 +103,100 @@ export default function ContributionsPage() {
   const [streak, setStreak] = useState<number | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(contributions)
+
+  /**
+   * The table as column definitions, so the same data renders as a table from `md` up and as a
+   * card stack below it. Priorities decide the card: 1 goes in the card's header line, 2 becomes a
+   * label and value row, 3 is table-only.
+   *
+   * Period and status lead the card because they are what a member scans for, in that order:
+   * which month, and did it go through. The member's own name is not on their own card, only on a
+   * treasurer's, which is why the Member column is added conditionally rather than hidden.
+   */
+  const contributionColumns: TableColumn<Contribution>[] = [
+    ...(canManage
+      ? [
+          {
+            key: 'member',
+            header: 'Member',
+            priority: 1 as const,
+            render: (c: Contribution) => <span className="font-medium text-ink">{c.memberName}</span>,
+          },
+        ]
+      : []),
+    { key: 'period', header: 'Period', priority: 1, render: (c) => <span className="text-muted">{c.period}</span> },
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (c) => <Badge label={c.status} variant={statusVariant(c.status)} />,
+    },
+    {
+      key: 'due',
+      header: 'Due',
+      render: (c) => <span className="font-mono text-muted">{formatMoney(c.amountDue, currency)}</span>,
+    },
+    {
+      key: 'paid',
+      header: 'Paid',
+      render: (c) => <span className="font-mono text-muted">{formatMoney(c.amountPaid, currency)}</span>,
+    },
+    {
+      key: 'payment',
+      header: 'Payment',
+      render: (c) => {
+        const latestPayment = latestPaymentFor(payments, c.id)
+        return latestPayment ? (
+          <Badge
+            label={`${latestPayment.method} ${latestPayment.status}`}
+            variant={paymentStatusVariant(latestPayment.status)}
+          />
+        ) : (
+          <span className="text-xs text-muted">&mdash;</span>
+        )
+      },
+    },
+    {
+      key: 'actions',
+      // Labelled for a screen reader but not shown: an empty th is a real barrier in table
+      // navigation mode, and on a card the label column stays visually blank beside the buttons.
+      header: <span className="sr-only">Actions</span>,
+      render: (c) => {
+        const latestPayment = latestPaymentFor(payments, c.id)
+        const mpesaPending = latestPayment?.method === 'MPESA' && latestPayment.status === 'PENDING'
+        return (
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {canManage ? (
+              <>
+                {c.status !== 'PAID' && (
+                  <button onClick={() => openPayment(c)} className="text-brand text-xs hover:underline">Record Payment</button>
+                )}
+                <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+              </>
+            ) : c.status === 'PAID' ? (
+              // Their own contribution, so they can produce their own receipt. Safe to press
+              // twice: the backend returns the document already on file rather than filing a
+              // second one.
+              <button
+                onClick={() => handleReceipt(c)}
+                disabled={receiptingId === c.id}
+                className="text-brand text-xs hover:underline disabled:opacity-50"
+              >
+                {receiptingId === c.id ? 'Preparing\u2026' : 'Receipt'}
+              </button>
+            ) : mpesaPending ? (
+              <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
+            ) : (
+              <>
+                <button onClick={() => openMpesaConfirm(c)} className="text-brand text-xs hover:underline">Pay via M-Pesa</button>
+                <button onClick={() => openCardPayment(c)} className="text-brand text-xs hover:underline">Pay by Card</button>
+              </>
+            )}
+          </div>
+        )
+      },
+    },
+  ]
 
   useEffect(() => {
     setAutoPayEnabled(member?.autoPayEnabled ?? false)
@@ -319,12 +416,12 @@ export default function ContributionsPage() {
 
   return (
     <div className="space-y-4">
-      <Reveal eager className="flex items-center justify-between">
+      <Reveal eager className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">
           {canManage ? 'Contributions' : 'My Contributions'}
         </h1>
         {!roleLoading && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4 gap-y-2">
             {!canManage && streak !== null && streak > 0 && (
               <span
                 data-testid="contribution-streak"
@@ -364,83 +461,17 @@ export default function ContributionsPage() {
         <LoadFailed what="contributions" detail={loadError} onRetry={refresh} />
       ) : (
         <Reveal eager delayMs={80}>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {canManage && <TableHead>Member</TableHead>}
-                <TableHead>Period</TableHead>
-                <TableHead>Due</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contributions.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7}>
-                    <EmptyState title="No contributions yet" description="Contributions appear here once a cycle is billed." />
-                  </TableCell>
-                </TableRow>
-              )}
-              {pageItems.map((c) => {
-                const latestPayment = latestPaymentFor(payments, c.id)
-                const mpesaPending = latestPayment?.method === 'MPESA' && latestPayment.status === 'PENDING'
-                return (
-                  <TableRow key={c.id}>
-                    {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
-                    <TableCell className="text-muted">{c.period}</TableCell>
-                    <TableCell className="font-mono text-muted">{c.amountDue.toLocaleString()}</TableCell>
-                    <TableCell className="font-mono text-muted">{c.amountPaid.toLocaleString()}</TableCell>
-                    <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
-                    <TableCell>
-                      {latestPayment ? (
-                        <Badge
-                          label={`${latestPayment.method} ${latestPayment.status}`}
-                          variant={paymentStatusVariant(latestPayment.status)}
-                        />
-                      ) : (
-                        <span className="text-xs text-muted">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-3">
-                        {canManage ? (
-                          <>
-                            {c.status !== 'PAID' && (
-                              <button onClick={() => openPayment(c)} className="text-brand text-xs hover:underline">Record Payment</button>
-                            )}
-                            <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
-                          </>
-                        ) : c.status === 'PAID' ? (
-                          // Their own contribution, so they can produce their own receipt. Safe to
-                          // press twice: the backend returns the document already on file rather
-                          // than filing a second one.
-                          <button
-                            onClick={() => handleReceipt(c)}
-                            disabled={receiptingId === c.id}
-                            className="text-brand text-xs hover:underline disabled:opacity-50"
-                          >
-                            {receiptingId === c.id ? 'Preparing…' : 'Receipt'}
-                          </button>
-                        ) : (
-                          mpesaPending ? (
-                            <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
-                          ) : (
-                            <>
-                              <button onClick={() => openMpesaConfirm(c)} className="text-brand text-xs hover:underline">Pay via M-Pesa</button>
-                              <button onClick={() => openCardPayment(c)} className="text-brand text-xs hover:underline">Pay by Card</button>
-                            </>
-                          )
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          {contributions.length === 0 ? (
+            <div className="rounded-2xl bg-surface shadow-card">
+              <EmptyState title="No contributions yet" description="Contributions appear here once a cycle is billed." />
+            </div>
+          ) : (
+            <Table
+              columns={contributionColumns}
+              rows={pageItems}
+              rowKey={(c) => c.id}
+            />
+          )}
         </Reveal>
       )}
 
@@ -535,7 +566,7 @@ export default function ContributionsPage() {
               <FormError message={modalNotice} />
             )}
             <p className="text-sm text-muted">
-              Due {payingContribution.amountDue.toLocaleString()}, already paid {payingContribution.amountPaid.toLocaleString()}.
+              Due {formatMoney(payingContribution.amountDue, currency)}, already paid {formatMoney(payingContribution.amountPaid, currency)}.
             </p>
             <FormField label="Amount" htmlFor="payment-amount" required>
               <Input id="payment-amount" required type="number" min="0" step="0.01" value={paymentForm.amount}
@@ -570,7 +601,7 @@ export default function ContributionsPage() {
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">
               <p className="text-xs text-muted">{mpesaConfirm.period}</p>
               <p className="font-mono text-2xl font-bold text-brand">
-                KES {(mpesaConfirm.amountDue - mpesaConfirm.amountPaid).toLocaleString()}
+                {formatMoney(mpesaConfirm.amountDue - mpesaConfirm.amountPaid, currency)}
               </p>
               {member?.phone && <p className="text-xs text-muted">To {member.phone}</p>}
             </div>
@@ -602,7 +633,7 @@ export default function ContributionsPage() {
             <div className="bg-paper-dim rounded-xl p-4 space-y-1">
               <p className="text-xs text-muted">{cardPayment.period}</p>
               <p className="font-mono text-2xl font-bold text-brand">
-                KES {(cardPayment.amountDue - cardPayment.amountPaid).toLocaleString()}
+                {formatMoney(cardPayment.amountDue - cardPayment.amountPaid, currency)}
               </p>
             </div>
             <FormField label="Receipt email" htmlFor="card-payment-email" required>

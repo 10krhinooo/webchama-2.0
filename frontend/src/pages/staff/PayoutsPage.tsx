@@ -21,7 +21,7 @@ import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import FormError from '../../components/ui/FormError'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
@@ -30,6 +30,8 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Reveal from '../../components/ui/Reveal'
+import { formatMoney } from '../../utils/money'
+import { formatDate } from '../../utils/dates'
 
 const EMPTY_SCHEDULE_FORM = { rotationOrderType: 'SENIORITY' as RotationOrderType }
 const EMPTY_PAYOUT_FORM = { scheduledDate: '' }
@@ -47,6 +49,76 @@ export default function PayoutsPage() {
   const chamaId = Number(chamaIdParam)
   const { isTreasurer, isChairperson, member, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
+
+  /**
+   * The rotation, as columns. Position and member lead the card because the question this table
+   * answers is "whose turn is it", in that order.
+   */
+  const scheduleColumns: TableColumn<PayoutScheduleEntry>[] = [
+    {
+      key: 'position',
+      header: 'Position',
+      priority: 1,
+      render: (e) => <span className="font-mono text-muted">{e.sequencePosition}</span>,
+    },
+    {
+      key: 'member',
+      header: 'Member',
+      priority: 1,
+      render: (e) => <span className="font-medium text-ink">{e.memberName}</span>,
+    },
+    { key: 'order', header: 'Order', render: (e) => <span className="text-muted">{e.rotationOrderType}</span> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (e) => <Badge label={e.status} variant={scheduleStatusVariant(e.status)} />,
+    },
+  ]
+
+  const payoutColumns: TableColumn<Payout>[] = [
+    {
+      key: 'round',
+      header: 'Round',
+      priority: 1,
+      render: (p) => <span className="font-mono text-muted">Round {p.roundNumber}</span>,
+    },
+    ...(canManage
+      ? [
+          {
+            key: 'member',
+            header: 'Member',
+            priority: 1 as const,
+            render: (p: Payout) => <span className="font-medium text-ink">{p.memberName}</span>,
+          },
+        ]
+      : []),
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (p) => <Badge label={p.status} variant={payoutStatusVariant(p.status)} />,
+    },
+    // Was rendering the raw ISO string, so a member read "2026-09-08" where every other date in
+    // the app reads "8 Sept 2026".
+    { key: 'scheduled', header: 'Scheduled', render: (p) => <span className="text-muted">{formatDate(p.scheduledDate)}</span> },
+    {
+      key: 'amount',
+      header: 'Amount',
+      render: (p) => <span className="font-mono text-muted">{formatMoney(p.amount, chama?.currency)}</span>,
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      render: (p) =>
+        canManage && p.status === 'SCHEDULED' ? (
+          <div className="text-right">
+            <button onClick={() => setDisbursingPayout(p)} className="text-brand text-xs hover:underline">
+              Disburse
+            </button>
+          </div>
+        ) : null,
+    },
+  ]
 
   const [schedule, setSchedule] = useState<PayoutScheduleEntry[]>([])
   const [payouts, setPayouts] = useState<Payout[]>([])
@@ -206,81 +278,40 @@ export default function PayoutsPage() {
       ) : (
         <>
           <Reveal eager delayMs={80} as="section" className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-y-2">
               <h2 className="font-heading text-lg font-semibold text-ink">Rotation Schedule</h2>
               {canManage && <Button onClick={openScheduleModal}>Generate Schedule</Button>}
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Position</TableHead>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {schedule.length === 0 && (
-                  <TableRow>
-                  <TableCell colSpan={4}>
-                    <EmptyState title="No rotation schedule generated yet" description="Generate one to set who receives each round." />
-                  </TableCell>
-                </TableRow>
-                )}
-                {schedule.map((entry) => (
-                  <TableRow key={entry.id} className={member && entry.memberId === member.id ? 'bg-primary-light/40 hover:bg-primary-light/40' : undefined}>
-                    <TableCell className="font-mono text-muted">{entry.sequencePosition}</TableCell>
-                    <TableCell className="font-medium text-ink">{entry.memberName}</TableCell>
-                    <TableCell className="text-muted">{entry.rotationOrderType}</TableCell>
-                    <TableCell><Badge label={entry.status} variant={scheduleStatusVariant(entry.status)} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {schedule.length === 0 ? (
+              <div className="rounded-2xl bg-surface shadow-card">
+                <EmptyState title="No rotation schedule generated yet" description="Generate one to set who receives each round." />
+              </div>
+            ) : (
+              <Table
+                columns={scheduleColumns}
+                rows={schedule}
+                rowKey={(entry) => entry.id}
+                rowClassName={(entry) =>
+                  member && entry.memberId === member.id
+                    ? 'bg-primary-light/40 hover:bg-primary-light/40'
+                    : undefined
+                }
+              />
+            )}
           </Reveal>
 
           <Reveal eager delayMs={160} as="section" className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-y-2">
               <h2 className="font-heading text-lg font-semibold text-ink">{canManage ? 'Payouts' : 'My Payouts'}</h2>
               {canManage && <Button onClick={openPayoutModal}>Create Next Payout</Button>}
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Round</TableHead>
-                  {canManage && <TableHead>Member</TableHead>}
-                  <TableHead>Scheduled</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payouts.length === 0 && (
-                  <TableRow>
-                  <TableCell colSpan={6}>
-                    <EmptyState title="No payouts yet" description="Create the next payout once a rotation schedule exists." />
-                  </TableCell>
-                </TableRow>
-                )}
-                {payouts.map((payout) => (
-                  <TableRow key={payout.id}>
-                    <TableCell className="font-mono text-muted">{payout.roundNumber}</TableCell>
-                    {canManage && <TableCell className="font-medium text-ink">{payout.memberName}</TableCell>}
-                    <TableCell className="text-muted">{payout.scheduledDate}</TableCell>
-                    <TableCell className="font-mono text-muted">{payout.amount.toLocaleString()}</TableCell>
-                    <TableCell><Badge label={payout.status} variant={payoutStatusVariant(payout.status)} /></TableCell>
-                    <TableCell className="text-right">
-                      {canManage && payout.status === 'SCHEDULED' && (
-                        <button onClick={() => setDisbursingPayout(payout)} className="text-brand text-xs hover:underline">
-                          Disburse
-                        </button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {payouts.length === 0 ? (
+              <div className="rounded-2xl bg-surface shadow-card">
+                <EmptyState title="No payouts yet" description="Create the next payout once a rotation schedule exists." />
+              </div>
+            ) : (
+              <Table columns={payoutColumns} rows={payouts} rowKey={(p) => p.id} />
+            )}
           </Reveal>
 
           {canManage && chama && (
@@ -396,7 +427,7 @@ export default function PayoutsPage() {
       {disbursingPayout && (
         <ConfirmDialog
           title="Mark payout disbursed"
-          message={`Mark the round ${disbursingPayout.roundNumber} payout of ${disbursingPayout.amount.toLocaleString()} for ${disbursingPayout.memberName} as disbursed? This cannot be undone.`}
+          message={`Mark the round ${disbursingPayout.roundNumber} payout of ${formatMoney(disbursingPayout.amount, chama?.currency)} for ${disbursingPayout.memberName} as disbursed? This cannot be undone.`}
           confirmLabel="Mark Disbursed"
           variant="primary"
           loading={disbursing}

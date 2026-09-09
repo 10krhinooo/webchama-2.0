@@ -5,18 +5,50 @@ import LoadFailed from '../../components/ui/LoadFailed'
 import EmptyState from '../../components/ui/EmptyState'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
 import Badge from '../../components/ui/Badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import Pagination from '../../components/ui/Pagination'
 import { usePagination } from '../../hooks/usePagination'
+import { formatDateTime } from '../../utils/dates'
 
 const SUSPICIOUS_ERROR = 'user_temporarily_disabled'
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString()
+  return formatDateTime(iso)
 }
 
 export default function SecurityEventsPage() {
   const [events, setEvents] = useState<SecurityEvent[]>([])
+
+  /**
+   * Time and type lead the card. This is an audit feed, so the question is always "what happened,
+   * and when", and the identifiers below it are only read once something looks wrong.
+   */
+  const eventColumns: TableColumn<SecurityEvent>[] = [
+    {
+      key: 'time',
+      header: 'Time',
+      priority: 1,
+      render: (e) => <span className="whitespace-nowrap font-mono text-muted">{formatTime(e.eventTime)}</span>,
+    },
+    { key: 'type', header: 'Type', priority: 1, render: (e) => <span className="font-medium text-ink">{e.type}</span> },
+    {
+      key: 'source',
+      header: 'Source',
+      render: (e) => <Badge label={e.source} variant={e.source === 'ADMIN' ? 'primary' : 'muted'} />,
+    },
+    { key: 'user', header: 'User', render: (e) => <span className="font-mono text-muted">{e.keycloakUserId ?? '\u2014'}</span> },
+    { key: 'ip', header: 'IP address', render: (e) => <span className="font-mono text-muted">{e.ipAddress ?? '\u2014'}</span> },
+    {
+      key: 'error',
+      header: 'Error',
+      render: (e) =>
+        e.error ? (
+          <Badge label={e.error} variant={e.error === SUSPICIOUS_ERROR ? 'danger' : 'warning'} />
+        ) : (
+          <>{'\u2014'}</>
+        ),
+    },
+  ]
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -84,43 +116,18 @@ export default function SecurityEventsPage() {
       ) : error ? (
         <LoadFailed what="the security event feed" detail={error} onRetry={refresh} />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Time</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>IP address</TableHead>
-              <TableHead>Error</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.length === 0 && (
-              <TableRow>
-                  <TableCell colSpan={6}>
-                    <EmptyState title="No security events found" description="Sign-ins and account changes from Keycloak appear here." />
-                  </TableCell>
-                </TableRow>
-            )}
-            {pageItems.map((event) => (
-              <TableRow key={event.id} className={event.error === SUSPICIOUS_ERROR ? 'bg-danger/5 hover:bg-danger/5' : undefined}>
-                <TableCell className="font-mono text-muted whitespace-nowrap">{formatTime(event.eventTime)}</TableCell>
-                <TableCell><Badge label={event.source} variant={event.source === 'ADMIN' ? 'primary' : 'muted'} /></TableCell>
-                <TableCell className="font-medium text-ink">{event.type}</TableCell>
-                <TableCell className="font-mono text-muted">{event.keycloakUserId ?? '—'}</TableCell>
-                <TableCell className="font-mono text-muted">{event.ipAddress ?? '—'}</TableCell>
-                <TableCell>
-                  {event.error ? (
-                    <Badge label={event.error} variant={event.error === SUSPICIOUS_ERROR ? 'danger' : 'warning'} />
-                  ) : (
-                    '—'
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        events.length === 0 ? (
+          <div className="rounded-2xl bg-surface shadow-card">
+            <EmptyState title="No security events found" description="Sign-ins and account changes from Keycloak appear here." />
+          </div>
+        ) : (
+          <Table
+            columns={eventColumns}
+            rows={pageItems}
+            rowKey={(e) => e.id}
+            rowClassName={(e) => (e.error === SUSPICIOUS_ERROR ? 'bg-danger/5 hover:bg-danger/5' : undefined)}
+          />
+        )
       )}
 
       {!loading && <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} label="events" />}

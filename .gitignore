@@ -61,3 +61,6 @@ src/main/resources/application.properties
 # Local scratch directories, intentionally not tracked
 /.docbuild/
 /.claude/
+
+# Local review output, generated for the maintainer to open in a browser
+/SYSTEM_REVIEW.html

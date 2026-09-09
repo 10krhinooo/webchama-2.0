@@ -23,15 +23,19 @@ import FormError from '../../components/ui/FormError'
 import Badge from '../../components/ui/Badge'
 import { SkeletonLine } from '../../components/ui/Skeleton'
 import Reveal from '../../components/ui/Reveal'
+import { formatMoney } from '../../utils/money'
+import { formatDate } from '../../utils/dates'
 
+/** Amounts arrive here as strings, since the summary carries them as serialised BigDecimals. */
 function money(currency: string, amount: string | null) {
   if (amount === null) return '—'
-  return `${currency} ${Number(amount).toLocaleString()}`
+  return formatMoney(Number(amount), currency)
 }
 
+/** Returns null rather than a dash: the callers below drop the whole clause when there is no date. */
 function date(value: string | null) {
   if (!value) return null
-  return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDate(value)
 }
 
 /**
@@ -131,7 +135,7 @@ export default function MyMoneyPage() {
           {owing > 0 ? 'You owe' : 'You are up to date'}
         </p>
         <p className="font-display text-4xl font-bold text-ink">
-          {summary.currency} {owing.toLocaleString()}
+          {formatMoney(owing, summary.currency)}
         </p>
         {summary.overdueContributionCount > 0 && (
           <p className="text-sm text-danger">
@@ -191,7 +195,7 @@ export default function MyMoneyPage() {
       </Card>
 
       <Card className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <h2 className="font-heading text-lg font-semibold text-ink">Payouts and penalties</h2>
           <Link to={`/chamas/${chamaId}/payouts`} className="text-xs text-brand hover:underline">
             View payouts
@@ -207,7 +211,7 @@ export default function MyMoneyPage() {
                 : 'Not scheduled yet'
             }
           />
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-x-3">
             <dt className="text-muted">Penalties owed</dt>
             <dd>
               {summary.outstandingPenaltyCount === 0 ? (
@@ -245,7 +249,7 @@ export default function MyMoneyPage() {
                   <p className="truncate font-mono text-sm text-ink">{doc.documentNumber}</p>
                   <p className="text-xs text-muted">
                     {DOCUMENT_TYPE_LABELS[doc.documentType]} &middot;{' '}
-                    {new Date(doc.createdAt).toLocaleDateString()}
+                    {formatDate(doc.createdAt)}
                   </p>
                 </div>
                 <LoadingButton
@@ -281,7 +285,7 @@ export default function MyMoneyPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-wrap items-center justify-between gap-x-3">
       <dt className="text-muted">{label}</dt>
       <dd className="font-mono text-ink">{value}</dd>
     </div>

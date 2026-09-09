@@ -13,6 +13,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import PhoneInput from '../../components/ui/PhoneInput'
 import LoadingButton from '../../components/ui/LoadingButton'
+import { formatMoney } from '../../utils/money'
 
 const EMPTY_JOIN_FORM: JoinChamaRequest = {
   joinCode: '',
@@ -99,7 +100,7 @@ export default function MyChamasPage() {
   return (
     <div className="space-y-4">
       {firstName && <p className="text-sm text-muted">Hello, {firstName}</p>}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">My Chamas</h1>
         <div className="flex items-center gap-4">
           <button onClick={openJoinModal} className="text-sm font-semibold text-brand hover:underline">
@@ -144,7 +145,7 @@ export default function MyChamasPage() {
                 </div>
                 {c.description && <p className="text-sm text-muted line-clamp-2">{c.description}</p>}
                 <p className="font-mono text-xs text-muted">
-                  {c.type.replaceAll('_', ' ')} &middot; {c.currency} {c.contributionAmount.toLocaleString()} /{' '}
+                  {c.type.replaceAll('_', ' ')} &middot; {formatMoney(c.contributionAmount, c.currency)} /{' '}
                   {c.contributionFrequency.toLowerCase()}
                 </p>
               </Card>

@@ -38,6 +38,7 @@ vi.mock('../../hooks/useMyMembership', () => ({
 vi.mock('../../lib/cardPaymentSession', () => ({
   savePendingCardPayment: vi.fn(),
 }))
+vi.mock('../../hooks/useChamaCurrency', () => ({ useChamaCurrency: () => 'KES' }))
 
 import {
   getContributions,
@@ -186,7 +187,7 @@ describe('ContributionsPage', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('My Contributions')).toBeTruthy())
-    expect(screen.getByText('500')).toBeTruthy()
+    expect(screen.getByText('Ksh 500.00')).toBeTruthy()
     expect(screen.queryByText('+ New Contribution')).toBeNull()
     expect(mockGetContributions).not.toHaveBeenCalled()
   })
@@ -501,7 +502,7 @@ describe('ContributionsPage', () => {
     fireEvent.click(screen.getByText('Pay via M-Pesa'))
 
     expect(screen.getByText('Confirm M-Pesa Payment')).toBeTruthy()
-    expect(screen.getByText('KES 300')).toBeTruthy()
+    expect(screen.getByText('Ksh 300.00')).toBeTruthy()
     expect(screen.getByText('To 254700000002')).toBeTruthy()
     expect(mockPayContributionWithMpesa).not.toHaveBeenCalled()
   })

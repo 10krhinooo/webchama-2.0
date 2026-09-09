@@ -94,6 +94,13 @@ export default function NotificationPreferencesPage() {
         <FormError message={loadError} />
       ) : (
         <Card className="p-0">
+          {/*
+            Deliberately not converted to the column-def Table. This one carries an sr-only
+            caption and scope="row" header cells, which that API cannot express, and at three
+            columns it fits a phone anyway. It gets a scroll container instead, so a long event
+            label cannot push the page sideways now that the app shell no longer scrolls.
+          */}
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">Notification preferences by event type</caption>
             <thead className="border-b border-border bg-paper-dim">
@@ -110,6 +117,7 @@ export default function NotificationPreferencesPage() {
                     {EVENT_FAMILY_LABELS[family]}
                   </th>
                   <td className="px-4 py-3 text-center">
+                    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
                     <input
                       type="checkbox"
                       checked={preferences[family].inAppEnabled}
@@ -119,8 +127,10 @@ export default function NotificationPreferencesPage() {
                       aria-label={`${EVENT_FAMILY_LABELS[family]} in app`}
                       className="h-4 w-4 accent-primary"
                     />
+                    </label>
                   </td>
                   <td className="px-4 py-3 text-center">
+                    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
                     <input
                       type="checkbox"
                       checked={preferences[family].emailEnabled}
@@ -128,11 +138,13 @@ export default function NotificationPreferencesPage() {
                       aria-label={`${EVENT_FAMILY_LABELS[family]} email`}
                       className="h-4 w-4 accent-primary"
                     />
+                    </label>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 

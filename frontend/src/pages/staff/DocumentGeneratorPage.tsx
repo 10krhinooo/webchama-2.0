@@ -19,7 +19,7 @@ import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import FormError from '../../components/ui/FormError'
 import Badge from '../../components/ui/Badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
@@ -27,6 +27,8 @@ import Select from '../../components/ui/Select'
 import Textarea from '../../components/ui/Textarea'
 import Pagination from '../../components/ui/Pagination'
 import { usePagination } from '../../hooks/usePagination'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const STEPS = ['Setup', 'Line Items', 'Details', 'Preview & Send']
 
@@ -49,6 +51,24 @@ function statusVariant(status: DeliveryStatus | null) {
 export default function DocumentGeneratorPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
+
+  const documentColumns: TableColumn<GeneratedDocument>[] = [
+    { key: 'number', header: 'Number', priority: 1, render: (d) => <span className="font-mono text-ink">{d.documentNumber}</span> },
+    { key: 'member', header: 'Member', priority: 1, render: (d) => <span className="font-medium text-ink">{d.memberName}</span> },
+    { key: 'type', header: 'Type', render: (d) => <span className="text-muted">{d.documentType}</span> },
+    { key: 'total', header: 'Total', render: (d) => <span className="font-mono text-muted">{formatMoney(d.totalAmount, currency)}</span> },
+    {
+      key: 'email',
+      header: 'Email',
+      render: (d) =>
+        d.emailStatus ? (
+          <Badge label={d.emailStatus} variant={statusVariant(d.emailStatus)} />
+        ) : (
+          <span className="text-muted text-xs">Not sent</span>
+        ),
+    },
+  ]
   const { isTreasurer, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
 
@@ -208,7 +228,7 @@ export default function DocumentGeneratorPage() {
   if (mode === 'wizard') {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <h1 className="font-heading text-2xl font-bold text-ink">New Document</h1>
           <Button variant="secondary" onClick={() => setMode('list')}>Cancel</Button>
         </div>
@@ -296,7 +316,7 @@ export default function DocumentGeneratorPage() {
                           onChange={(e) => updateLineItem(i, { unitPrice: e.target.value })}
                         />
                       </td>
-                      <td className="py-1 text-right font-mono text-muted">{lineItemTotal(item).toLocaleString()}</td>
+                      <td className="py-1 text-right font-mono text-muted">{formatMoney(lineItemTotal(item), currency)}</td>
                       <td className="py-1 text-right">
                         {lineItems.length > 1 && (
                           <button type="button" onClick={() => removeLineItem(i)} className="text-danger text-xs hover:underline">
@@ -310,7 +330,7 @@ export default function DocumentGeneratorPage() {
               </table>
               <Button variant="ghost" onClick={addLineItem}>+ Add line item</Button>
               <div className="flex justify-end border-t border-border pt-3">
-                <p className="font-mono text-lg font-bold text-brand">Total {grandTotal.toLocaleString()}</p>
+                <p className="font-mono text-lg font-bold text-brand">Total {formatMoney(grandTotal, currency)}</p>
               </div>
             </div>
           )}
@@ -331,9 +351,9 @@ export default function DocumentGeneratorPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs text-muted">{generated.documentNumber}</p>
-                  <p className="font-mono text-2xl font-bold text-brand">KES {generated.totalAmount.toLocaleString()}</p>
+                  <p className="font-mono text-2xl font-bold text-brand">{formatMoney(generated.totalAmount, currency)}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <LoadingButton onClick={handleSendEmail} loading={sendingEmail} loadingText="Sending…">
                     Send Email
                   </LoadingButton>
@@ -378,7 +398,7 @@ export default function DocumentGeneratorPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">Documents</h1>
         <Button onClick={openWizard}>+ New Document</Button>
       </div>
@@ -411,7 +431,7 @@ export default function DocumentGeneratorPage() {
               <div>
                 <p className="text-xs text-muted">{agmResult.documentNumber}</p>
                 <p className="font-mono text-xl font-bold text-brand">
-                  Closing balance: KES {agmResult.totalAmount.toLocaleString()}
+                  Closing balance: {formatMoney(agmResult.totalAmount, currency)}
                 </p>
               </div>
               <Button variant="secondary" onClick={() => setAgmResult(null)}>Dismiss</Button>
@@ -433,42 +453,12 @@ export default function DocumentGeneratorPage() {
         <TablePageSkeleton withFilter={false} />
       ) : loadError ? (
         <LoadFailed what="documents" detail={loadError} onRetry={refresh} />
+      ) : documents.length === 0 ? (
+        <div className="rounded-2xl bg-surface shadow-card">
+          <EmptyState title="No documents generated yet" description="Generate a receipt or statement and it will be listed here." />
+        </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Number</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Member</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Email</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {documents.length === 0 && (
-              <TableRow>
-                  <TableCell colSpan={5}>
-                    <EmptyState title="No documents generated yet" description="Generate a receipt or statement and it will be listed here." />
-                  </TableCell>
-                </TableRow>
-            )}
-            {pageItems.map((doc) => (
-              <TableRow key={doc.id}>
-                <TableCell className="font-mono text-ink">{doc.documentNumber}</TableCell>
-                <TableCell className="text-muted">{doc.documentType}</TableCell>
-                <TableCell className="font-medium text-ink">{doc.memberName}</TableCell>
-                <TableCell className="font-mono text-muted">{doc.totalAmount.toLocaleString()}</TableCell>
-                <TableCell>
-                  {doc.emailStatus ? (
-                    <Badge label={doc.emailStatus} variant={statusVariant(doc.emailStatus)} />
-                  ) : (
-                    <span className="text-muted text-xs">Not sent</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Table columns={documentColumns} rows={pageItems} rowKey={(d) => d.id} />
       )}
 
       {!loading && !roleLoading && (

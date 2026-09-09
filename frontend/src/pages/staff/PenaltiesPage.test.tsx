@@ -19,6 +19,7 @@ import {
 import { getMembers } from '../../api/members'
 import { useMyMembership } from '../../hooks/useMyMembership'
 import { selectOption } from '../../test-utils/selectOption'
+vi.mock('../../hooks/useChamaCurrency', () => ({ useChamaCurrency: () => 'KES' }))
 
 const mockGetPenalties = getPenalties as ReturnType<typeof vi.fn>
 const mockGetMyPenalties = getMyPenalties as ReturnType<typeof vi.fn>
@@ -124,7 +125,7 @@ describe('PenaltiesPage', () => {
     renderPage()
 
     // Only APPROVED counts as outstanding: PENDING is undecided and PAID is settled.
-    expect(await screen.findByText('KES 750')).toBeTruthy()
+    expect(await screen.findByText('Ksh 750.00')).toBeTruthy()
     expect(screen.getByText('Awaiting decision')).toBeTruthy()
   })
 

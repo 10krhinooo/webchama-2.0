@@ -17,7 +17,7 @@ import { useMyMembership } from '../../hooks/useMyMembership'
 import { usePagination } from '../../hooks/usePagination'
 import LoadFailed from '../../components/ui/LoadFailed'
 import { TablePageSkeleton } from '../../components/ui/SkeletonLayouts'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import LoadingButton from '../../components/ui/LoadingButton'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
@@ -32,6 +32,9 @@ import TransientAlert from '../../components/ui/TransientAlert'
 import EmptyState from '../../components/ui/EmptyState'
 import StatTile from '../../components/ui/StatTile'
 import Reveal from '../../components/ui/Reveal'
+import { formatMoney } from '../../utils/money'
+import { formatDate } from '../../utils/dates'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_FORM = { memberId: '', reason: 'LATE_CONTRIBUTION' as PenaltyReason, amount: '' }
 
@@ -49,13 +52,88 @@ function statusVariant(status: PenaltyStatus) {
   return 'warning' as const
 }
 
-const formatMoney = (amount: number) => `KES ${amount.toLocaleString()}`
-
 export default function PenaltiesPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
+
   const { isTreasurer, isChairperson, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
+
+  const penaltyColumns: TableColumn<Penalty>[] = [
+    ...(canManage
+      ? [
+          {
+            key: 'member',
+            header: 'Member',
+            priority: 1 as const,
+            render: (p: Penalty) => <span className="font-medium text-ink">{p.memberName}</span>,
+          },
+        ]
+      : []),
+    { key: 'reason', header: 'Reason', priority: 1, render: (p) => <>{REASON_LABELS[p.reason]}</> },
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (p) => (
+        <>
+          <Badge label={p.status} variant={statusVariant(p.status)} />
+          {p.status === 'WAIVED' && p.waiverReason && (
+            <p className="mt-1 text-xs text-muted">{p.waiverReason}</p>
+          )}
+        </>
+      ),
+    },
+    { key: 'amount', header: 'Amount', render: (p) => <span className="font-mono">{formatMoney(p.amount, currency)}</span> },
+    { key: 'issued', header: 'Issued', render: (p) => <span className="text-muted">{formatDate(p.imposedAt)}</span> },
+    ...(canManage
+      ? [
+          {
+            key: 'actions',
+            header: 'Actions',
+            render: (p: Penalty) => (
+              <div className="flex flex-wrap justify-end gap-2">
+                {p.status === 'PENDING' && (
+                  <button
+                    onClick={() =>
+                      runAction(p, () => approvePenalty(chamaId, p.id), `Penalty for ${p.memberName} approved.`)
+                    }
+                    disabled={actingId === p.id}
+                    className="text-xs text-brand hover:underline disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                )}
+                {(p.status === 'PENDING' || p.status === 'APPROVED') && (
+                  <button
+                    onClick={() => {
+                      setWaiverReason('')
+                      setWaiving(p)
+                    }}
+                    disabled={actingId === p.id}
+                    className="text-xs text-muted hover:underline disabled:opacity-50"
+                  >
+                    Waive
+                  </button>
+                )}
+                {p.status === 'APPROVED' && (
+                  <button
+                    onClick={() =>
+                      runAction(p, () => settlePenalty(chamaId, p.id), `Penalty for ${p.memberName} settled.`)
+                    }
+                    disabled={actingId === p.id}
+                    className="text-xs text-success hover:underline disabled:opacity-50"
+                  >
+                    Record payment
+                  </button>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ]
 
   const [penalties, setPenalties] = useState<Penalty[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -176,7 +254,7 @@ export default function PenaltiesPage() {
       {canManage && !loading && !loadError && (
         <Reveal>
           <div className="grid gap-4 sm:grid-cols-2">
-            <StatTile label="Outstanding" value={formatMoney(outstanding)} detail="Approved and unpaid" />
+            <StatTile label="Outstanding" value={formatMoney(outstanding, currency)} detail="Approved and unpaid" />
             <StatTile label="Awaiting decision" value={awaitingDecision} detail="Issued but not yet approved or waived" />
           </div>
         </Reveal>
@@ -197,84 +275,13 @@ export default function PenaltiesPage() {
         />
       ) : (
         <Reveal>
-          <Table data-testid="penalties-table">
-            <TableHeader>
-              <TableRow>
-                {canManage && <TableHead>Member</TableHead>}
-                <TableHead>Reason</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Issued</TableHead>
-                {canManage && <TableHead>Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageItems.map((penalty) => (
-                <TableRow key={penalty.id} data-testid={`penalty-row-${penalty.id}`}>
-                  {canManage && <TableCell className="font-medium text-ink">{penalty.memberName}</TableCell>}
-                  <TableCell>{REASON_LABELS[penalty.reason]}</TableCell>
-                  <TableCell className="font-mono">{formatMoney(penalty.amount)}</TableCell>
-                  <TableCell>
-                    <Badge label={penalty.status} variant={statusVariant(penalty.status)} />
-                    {penalty.status === 'WAIVED' && penalty.waiverReason && (
-                      <p className="mt-1 text-xs text-muted">{penalty.waiverReason}</p>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted">
-                    {new Date(penalty.imposedAt).toLocaleDateString()}
-                  </TableCell>
-                  {canManage && (
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        {penalty.status === 'PENDING' && (
-                          <button
-                            onClick={() =>
-                              runAction(
-                                penalty,
-                                () => approvePenalty(chamaId, penalty.id),
-                                `Penalty for ${penalty.memberName} approved.`,
-                              )
-                            }
-                            disabled={actingId === penalty.id}
-                            className="text-xs text-brand hover:underline disabled:opacity-50"
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {(penalty.status === 'PENDING' || penalty.status === 'APPROVED') && (
-                          <button
-                            onClick={() => {
-                              setWaiverReason('')
-                              setWaiving(penalty)
-                            }}
-                            disabled={actingId === penalty.id}
-                            className="text-xs text-muted hover:underline disabled:opacity-50"
-                          >
-                            Waive
-                          </button>
-                        )}
-                        {penalty.status === 'APPROVED' && (
-                          <button
-                            onClick={() =>
-                              runAction(
-                                penalty,
-                                () => settlePenalty(chamaId, penalty.id),
-                                `Penalty for ${penalty.memberName} settled.`,
-                              )
-                            }
-                            disabled={actingId === penalty.id}
-                            className="text-xs text-success hover:underline disabled:opacity-50"
-                          >
-                            Record payment
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Table
+            data-testid="penalties-table"
+            columns={penaltyColumns}
+            rows={pageItems}
+            rowKey={(penalty) => penalty.id}
+            rowTestId={(penalty) => `penalty-row-${penalty.id}`}
+          />
           <Pagination
             page={page}
             totalPages={totalPages}
@@ -346,7 +353,7 @@ export default function PenaltiesPage() {
         <Modal title={`Waive penalty for ${waiving.memberName}`} onClose={() => setWaiving(null)}>
           <form onSubmit={handleWaive} className="space-y-4">
             <p className="text-sm text-ink/80">
-              Waiving cancels {formatMoney(waiving.amount)} for {REASON_LABELS[waiving.reason].toLowerCase()}.
+              Waiving cancels {formatMoney(waiving.amount, currency)} for {REASON_LABELS[waiving.reason].toLowerCase()}.
             </p>
             <FormField
               label="Reason for waiving"

@@ -35,7 +35,7 @@ import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 
 const ALL_ROLES: MemberRoleType[] = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'MEMBER']
@@ -59,6 +59,53 @@ export default function MembersPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
   const { isChairperson, loading: roleLoading } = useMyMembership(chamaId)
+
+  const memberColumns: TableColumn<Member>[] = [
+    { key: 'name', header: 'Name', priority: 1, render: (m) => <span className="font-medium text-ink">{m.fullName}</span> },
+    { key: 'status', header: 'Status', priority: 1, render: (m) => <Badge label={m.status} variant={statusVariant(m.status)} /> },
+    { key: 'phone', header: 'Phone', render: (m) => <span className="font-mono text-muted">{m.phone}</span> },
+    {
+      key: 'roles',
+      header: 'Roles',
+      render: (m) => (
+        <span className="space-x-1">
+          {m.roles.map((r) => (
+            <Badge key={r} label={r} variant="primary" />
+          ))}
+        </span>
+      ),
+    },
+    ...(isChairperson
+      ? [
+          {
+            key: 'actions',
+            header: <span className="sr-only">Actions</span>,
+            render: (m: Member) => (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                <button onClick={() => openEdit(m)} className="rounded px-2 py-1.5 text-brand text-xs hover:bg-primary/10">Edit</button>
+                {m.status === 'ACTIVE' ? (
+                  <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'SUSPENDED')}
+                    className="rounded px-2 py-1.5 text-warning text-xs hover:bg-warning/10 disabled:opacity-40">Suspend</button>
+                ) : (
+                  <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'ACTIVE')}
+                    className="rounded px-2 py-1.5 text-success text-xs hover:bg-success/10 disabled:opacity-40">Activate</button>
+                )}
+                {m.status !== 'EXITED' && (
+                  <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'EXITED')}
+                    className="rounded px-2 py-1.5 text-muted text-xs hover:bg-paper-dim disabled:opacity-40">Mark exited</button>
+                )}
+                <button disabled={resendingId === m.id} onClick={() => handleResendInvite(m)}
+                  className="rounded px-2 py-1.5 text-brand text-xs hover:bg-primary/10 disabled:opacity-40">
+                  {resendingId === m.id ? 'Reissuing\u2026' : 'Reissue invite'}
+                </button>
+                <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+                <button onClick={() => setRemoving(m)} className="rounded px-2 py-1.5 text-danger text-xs hover:bg-danger/10">Remove</button>
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ]
 
   const [chama, setChama] = useState<Chama | null>(null)
   const [members, setMembers] = useState<Member[]>([])
@@ -314,13 +361,13 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-4">
-      <Reveal eager className="flex items-center justify-between">
+      <Reveal eager className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-ink">Members</h1>
           {chama && <p className="text-sm text-muted">{chama.name}</p>}
         </div>
         {isChairperson && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={openImport}>Import from file</Button>
             <Button onClick={openCreate}>+ Invite Member</Button>
           </div>
@@ -345,7 +392,7 @@ export default function MembersPage() {
             Regenerate code
           </LoadingButton>
 
-          <form onSubmit={handleInvite} className="flex items-end gap-2 pt-2">
+          <form onSubmit={handleInvite} className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-end">
             <FormField label="Invite by email" htmlFor="member-invite-email" hint={inviteNotice ?? undefined}>
               <Input
                 id="member-invite-email"
@@ -370,60 +417,13 @@ export default function MembersPage() {
         <LoadFailed what="the member list" detail={loadError} onRetry={refresh} />
       ) : (
         <Reveal eager delayMs={80}>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead>Status</TableHead>
-                {isChairperson && <TableHead />}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5}>
-                    <EmptyState title="No members yet" description="Invite someone, or share the join code above." />
-                  </TableCell>
-                </TableRow>
-              )}
-              {pageItems.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium text-ink">{m.fullName}</TableCell>
-                  <TableCell className="font-mono text-muted">{m.phone}</TableCell>
-                  <TableCell className="space-x-1">
-                    {m.roles.map((r) => <Badge key={r} label={r} variant="primary" />)}
-                  </TableCell>
-                  <TableCell><Badge label={m.status} variant={statusVariant(m.status)} /></TableCell>
-                  {isChairperson && (
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(m)} className="rounded px-2 py-1.5 text-brand text-xs hover:bg-primary/10">Edit</button>
-                        {m.status === 'ACTIVE' ? (
-                          <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'SUSPENDED')}
-                            className="rounded px-2 py-1.5 text-warning text-xs hover:bg-warning/10 disabled:opacity-40">Suspend</button>
-                        ) : (
-                          <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'ACTIVE')}
-                            className="rounded px-2 py-1.5 text-success text-xs hover:bg-success/10 disabled:opacity-40">Activate</button>
-                        )}
-                        {m.status !== 'EXITED' && (
-                          <button disabled={statusUpdating === m.id} onClick={() => handleStatusChange(m, 'EXITED')}
-                            className="rounded px-2 py-1.5 text-muted text-xs hover:bg-paper-dim disabled:opacity-40">Mark exited</button>
-                        )}
-                        <button disabled={resendingId === m.id} onClick={() => handleResendInvite(m)}
-                          className="rounded px-2 py-1.5 text-brand text-xs hover:bg-primary/10 disabled:opacity-40">
-                          {resendingId === m.id ? 'Reissuing…' : 'Reissue invite'}
-                        </button>
-                        <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
-                        <button onClick={() => setRemoving(m)} className="rounded px-2 py-1.5 text-danger text-xs hover:bg-danger/10">Remove</button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {members.length === 0 ? (
+            <div className="rounded-2xl bg-surface shadow-card">
+              <EmptyState title="No members yet" description="Invite someone, or share the join code above." />
+            </div>
+          ) : (
+            <Table columns={memberColumns} rows={pageItems} rowKey={(m) => m.id} />
+          )}
         </Reveal>
       )}
 
@@ -499,7 +499,7 @@ export default function MembersPage() {
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setShowImport(false)}>Close</Button>
               <LoadingButton
                 variant="secondary"

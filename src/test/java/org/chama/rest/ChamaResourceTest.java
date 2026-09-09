@@ -112,6 +112,12 @@ class ChamaResourceTest {
     MeetingRepository meetingRepository;
 
     @Inject
+    org.chama.repository.ResolutionRepository resolutionRepository;
+
+    @Inject
+    org.chama.repository.ResolutionVoteRepository resolutionVoteRepository;
+
+    @Inject
     PaymentRepository paymentRepository;
 
     @BeforeEach
@@ -245,6 +251,131 @@ class ChamaResourceTest {
         });
 
         given().when().delete("/api/chamas/{id}", chamaId).then().statusCode(204);
+    }
+
+    /**
+     * The six tables that were missing from the old hand-ordered cascade.
+     *
+     * <p>approval, resolution, welfare_fund, welfare_contribution, welfare_withdrawal and
+     * generated_document all reference chama with no cascade, and none of them were in
+     * ChamaService.delete. So deleting a chama that had ever recorded an approval, opened a
+     * resolution, run a welfare fund or produced a receipt failed on a foreign key, and nothing
+     * caught it because the delete tests only ever deleted chamas with nothing in them.
+     *
+     * <p>V49 moved the work to the database. This asserts the case that used to fail, and
+     * ChamaDeletionCascadeTest stops a new table drifting out of it the same way.
+     */
+    @Test
+    @TestSecurity(user = "founder")
+    void deletingAChamaTakesItsGovernanceAndWelfareRecordsWithIt() {
+        int chamaId = given()
+            .contentType("application/json")
+            .body(CREATE_BODY)
+            .when().post("/api/chamas")
+            .then().statusCode(201)
+            .extract().path("id");
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            Chama chama = chamaRepository.findById((long) chamaId);
+
+            Member member = new Member();
+            member.chama = chama;
+            member.keycloakUserId = "founder-governance";
+            member.fullName = "Governance Member";
+            member.phone = "254700000088";
+            member.status = org.chama.domain.enums.MemberStatus.ACTIVE;
+            memberRepository.persist(member);
+
+            org.chama.domain.model.Approval approval = new org.chama.domain.model.Approval();
+            approval.chama = chama;
+            approval.targetType = org.chama.domain.enums.ApprovalTargetType.LOAN_DISBURSEMENT;
+            approval.targetId = 1L;
+            approval.member = member;
+            approval.amount = new java.math.BigDecimal("61000");
+            approval.status = org.chama.domain.enums.ApprovalStatus.PENDING;
+            approval.requestedBy = member;
+            approval.requestedAt = java.time.Instant.now();
+            approvalRepository.persist(approval);
+
+            org.chama.domain.model.Meeting meeting = new org.chama.domain.model.Meeting();
+            meeting.chama = chama;
+            meeting.meetingDate = java.time.LocalDate.of(2026, 9, 8);
+            meeting.agenda = "Quarterly review";
+            meetingRepository.persist(meeting);
+
+            org.chama.domain.model.MeetingAttendance attendance = new org.chama.domain.model.MeetingAttendance();
+            attendance.meeting = meeting;
+            attendance.member = member;
+            attendance.status = org.chama.domain.enums.AttendanceStatus.PRESENT;
+            meetingAttendanceRepository.persist(attendance);
+
+            org.chama.domain.model.Resolution resolution = new org.chama.domain.model.Resolution();
+            resolution.chama = chama;
+            resolution.meeting = meeting;
+            resolution.title = "Raise the monthly contribution";
+            resolution.status = org.chama.domain.enums.ResolutionStatus.OPEN;
+            resolution.openedBy = member;
+            resolution.openedAt = java.time.Instant.now();
+            resolutionRepository.persist(resolution);
+
+            org.chama.domain.model.ResolutionVote vote = new org.chama.domain.model.ResolutionVote();
+            vote.resolution = resolution;
+            vote.member = member;
+            vote.choice = org.chama.domain.enums.VoteChoice.FOR;
+            vote.votedAt = java.time.Instant.now();
+            resolutionVoteRepository.persist(vote);
+
+            org.chama.domain.model.WelfareFund fund = new org.chama.domain.model.WelfareFund();
+            fund.chama = chama;
+            fund.target = new java.math.BigDecimal("100000");
+            fund.createdAt = java.time.Instant.now();
+            welfareFundRepository.persist(fund);
+
+            org.chama.domain.model.WelfareContribution welfareContribution =
+                new org.chama.domain.model.WelfareContribution();
+            welfareContribution.chama = chama;
+            welfareContribution.member = member;
+            welfareContribution.amount = new java.math.BigDecimal("500");
+            welfareContribution.status = org.chama.domain.enums.WelfareContributionStatus.PAID;
+            welfareContribution.createdAt = java.time.Instant.now();
+            welfareContributionRepository.persist(welfareContribution);
+
+            org.chama.domain.model.WelfareWithdrawal withdrawal =
+                new org.chama.domain.model.WelfareWithdrawal();
+            withdrawal.chama = chama;
+            withdrawal.amount = new java.math.BigDecimal("300");
+            withdrawal.reason = "Funeral support";
+            withdrawal.status = org.chama.domain.enums.WelfareWithdrawalStatus.PENDING_APPROVAL;
+            withdrawal.requestedBy = member;
+            withdrawal.requestedAt = java.time.Instant.now();
+            welfareWithdrawalRepository.persist(withdrawal);
+
+            org.chama.domain.model.GeneratedDocument document =
+                new org.chama.domain.model.GeneratedDocument();
+            document.chama = chama;
+            document.member = member;
+            document.documentType = org.chama.domain.enums.DocumentType.CUSTOM_RECEIPT;
+            document.documentNumber = "RCP-DELETE-1";
+            document.memberName = "Governance Member";
+            document.lineItemsJson = "[]";
+            document.totalAmount = new java.math.BigDecimal("500");
+            document.createdAt = java.time.Instant.now();
+            generatedDocumentRepository.persist(document);
+        });
+
+        given().when().delete("/api/chamas/{id}", chamaId).then().statusCode(204);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            assertEquals(0, approvalRepository.count("chama.id", (long) chamaId));
+            assertEquals(0, resolutionRepository.count("chama.id", (long) chamaId));
+            assertEquals(0, welfareFundRepository.count("chama.id", (long) chamaId));
+            assertEquals(0, welfareContributionRepository.count("chama.id", (long) chamaId));
+            assertEquals(0, welfareWithdrawalRepository.count("chama.id", (long) chamaId));
+            assertEquals(0, generatedDocumentRepository.count("chama.id", (long) chamaId));
+            // Reached only through their parents, which is the other half of what V49 changed.
+            assertEquals(0, meetingAttendanceRepository.count("meeting.chama.id", (long) chamaId));
+            assertEquals(0, resolutionVoteRepository.count("resolution.chama.id", (long) chamaId));
+        });
     }
 
     @Test

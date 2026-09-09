@@ -36,6 +36,8 @@ import FormError from '../../components/ui/FormError'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import LoadingButton from '../../components/ui/LoadingButton'
+import { formatMoney } from '../../utils/money'
+import { formatDate, formatDateTime } from '../../utils/dates'
 
 const ACTIVE_LOAN_STATUSES: Loan['status'][] = ['APPROVED', 'DISBURSED', 'REPAYING']
 
@@ -54,10 +56,6 @@ const ACTIVITY_EVENT_LABELS: Record<string, string> = {
   DOCUMENT_GENERATED: 'Document generated',
   CHAMA_MARKED_INACTIVE: 'Chama marked inactive',
   CHAMA_REACTIVATED: 'Chama reactivated',
-}
-
-function formatMoney(amount: number, currency: string) {
-  return `${currency} ${amount.toLocaleString()}`
 }
 
 function sumProgress(contributions: Contribution[], currency: string) {
@@ -346,7 +344,7 @@ export default function DashboardPage() {
             empty="No payout scheduled yet"
             detail={
               nextPayout
-                ? `${formatMoney(nextPayout.amount, currency)} on ${nextPayout.scheduledDate}`
+                ? `${formatMoney(nextPayout.amount, currency)} on ${formatDate(nextPayout.scheduledDate)}`
                 : undefined
             }
           />
@@ -442,7 +440,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-medium text-ink">{entry.description}</p>
                   <p className="mt-0.5 text-xs text-muted">
                     {ACTIVITY_EVENT_LABELS[entry.eventType] ?? entry.eventType} &middot;{' '}
-                    {new Date(entry.createdAt).toLocaleString()}
+                    {formatDateTime(entry.createdAt)}
                   </p>
                 </div>
               ))}
@@ -456,7 +454,7 @@ export default function DashboardPage() {
           <div className="grid gap-6 lg:grid-cols-3">
             <HealthScoreCard health={health} />
             <div className="lg:col-span-2">
-              <ContributionTrendChart points={trend} />
+              <ContributionTrendChart points={trend} currency={currency} />
             </div>
           </div>
         </Reveal>
@@ -464,7 +462,7 @@ export default function DashboardPage() {
 
       {isManager && arrears.length > 0 && (
         <Reveal>
-          <ArrearsAgeingChart buckets={arrears} />
+          <ArrearsAgeingChart buckets={arrears} currency={currency} />
         </Reveal>
       )}
 

@@ -31,7 +31,9 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_FORM = { memberId: '', principal: '', interestRate: '', interestMethod: 'FLAT' as InterestMethod, termMonths: '' }
 const EMPTY_PAYMENT_FORM = { amount: '' }
@@ -51,8 +53,6 @@ function repaymentStatusVariant(status: LoanRepayment['status']) {
   if (status === 'OVERDUE') return 'danger' as const
   return 'muted' as const
 }
-
-const formatMoney = (amount: number) => `KES ${amount.toLocaleString()}`
 
 function creditScoreVariant(band: CreditScore['band']) {
   if (band === 'EXCELLENT' || band === 'GOOD') return 'success' as const
@@ -82,8 +82,104 @@ function creditScoreDescription(score: CreditScore) {
 export default function LoansPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
   const { isTreasurer, isChairperson, member, loading: roleLoading } = useMyMembership(chamaId)
   const canManage = isTreasurer || isChairperson
+
+  /**
+   * Member and status lead the card: whose loan, and where it has got to. Principal follows as a
+   * label/value row rather than in the header line, because on a phone the amount is what the
+   * reader compares between cards and a right-aligned value column is easier to scan than a run
+   * of bold text.
+   */
+  const loanColumns: TableColumn<Loan>[] = [
+    ...(canManage
+      ? [
+          {
+            key: 'member',
+            header: 'Member',
+            priority: 1 as const,
+            render: (loan: Loan) => <span className="font-medium text-ink">{loan.memberName}</span>,
+          },
+          {
+            key: 'credit',
+            header: 'Credit Score',
+            render: (loan: Loan) =>
+              creditScores[loan.memberId] !== undefined ? (
+                <Badge
+                  label={creditScoreLabel(creditScores[loan.memberId])}
+                  variant={creditScoreVariant(creditScores[loan.memberId].band)}
+                  description={creditScoreDescription(creditScores[loan.memberId])}
+                />
+              ) : (
+                <span className="text-muted text-xs">&mdash;</span>
+              ),
+          },
+        ]
+      : []),
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (loan) => <Badge label={loan.status} variant={loanStatusVariant(loan.status)} />,
+    },
+    {
+      key: 'principal',
+      header: 'Principal',
+      render: (loan) => <span className="font-mono text-muted">{formatMoney(loan.principal, currency)}</span>,
+    },
+    {
+      key: 'interest',
+      header: 'Interest',
+      render: (loan) => (
+        <span className="text-muted">
+          {loan.interestRate}% ({loan.interestMethod === 'FLAT' ? 'Flat' : 'Reducing balance'})
+        </span>
+      ),
+    },
+    { key: 'term', header: 'Term', render: (loan) => <span className="text-muted">{loan.termMonths} mo</span> },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      render: (loan) => (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {canManage && loan.status === 'REQUESTED' && (
+            <button
+              onClick={() => handleApprove(loan)}
+              disabled={approvingId === loan.id}
+              className="text-brand text-xs hover:underline disabled:opacity-50"
+            >
+              {approvingId === loan.id ? 'Approving\u2026' : 'Approve'}
+            </button>
+          )}
+          {canManage && loan.status === 'REQUESTED' && (
+            <button
+              onClick={() => handleReject(loan)}
+              disabled={approvingId === loan.id}
+              className="text-danger text-xs hover:underline disabled:opacity-50"
+            >
+              Reject
+            </button>
+          )}
+          {canManage && loan.status === 'APPROVED' && (
+            <button
+              onClick={() => setDisbursing(loan)}
+              disabled={disbursingId === loan.id}
+              className="text-success text-xs hover:underline disabled:opacity-50"
+            >
+              {disbursingId === loan.id ? 'Disbursing\u2026' : 'Disburse'}
+            </button>
+          )}
+          {loan.status === 'DISBURSEMENT_PENDING' && (
+            <span className="text-xs text-muted" title="Waiting for the provider to confirm">
+              Payout in flight
+            </span>
+          )}
+          <button onClick={() => openSchedule(loan)} className="text-brand text-xs hover:underline">View Schedule</button>
+        </div>
+      ),
+    },
+  ]
 
   const [loans, setLoans] = useState<Loan[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -263,7 +359,7 @@ export default function LoansPage() {
 
   return (
     <div className="space-y-4">
-      <Reveal eager className="flex items-center justify-between">
+      <Reveal eager className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">{canManage ? 'Loans' : 'My Loans'}</h1>
         <Button onClick={openCreate}>+ Request Loan</Button>
       </Reveal>
@@ -274,83 +370,11 @@ export default function LoansPage() {
         <TablePageSkeleton withFilter={false} />
       ) : (
         <Reveal eager delayMs={80}>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {canManage && <TableHead>Member</TableHead>}
-                {canManage && <TableHead>Credit Score</TableHead>}
-                <TableHead>Principal</TableHead>
-                <TableHead>Interest</TableHead>
-                <TableHead>Term</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loans.length === 0 && (
-                <TableRow><TableCell colSpan={canManage ? 7 : 5} className="py-10 text-center text-sm text-muted">No loans yet.</TableCell></TableRow>
-              )}
-              {pageItems.map((loan) => (
-                <TableRow key={loan.id}>
-                  {canManage && <TableCell className="font-medium text-ink">{loan.memberName}</TableCell>}
-                  {canManage && (
-                    <TableCell>
-                      {creditScores[loan.memberId] !== undefined
-                        ? <Badge
-                            label={creditScoreLabel(creditScores[loan.memberId])}
-                            variant={creditScoreVariant(creditScores[loan.memberId].band)}
-                            description={creditScoreDescription(creditScores[loan.memberId])}
-                          />
-                        : <span className="text-muted text-xs">—</span>}
-                    </TableCell>
-                  )}
-                  <TableCell className="font-mono text-muted">{loan.principal.toLocaleString()}</TableCell>
-                  <TableCell className="text-muted">
-                    {loan.interestRate}% ({loan.interestMethod === 'FLAT' ? 'Flat' : 'Reducing balance'})
-                  </TableCell>
-                  <TableCell className="text-muted">{loan.termMonths} mo</TableCell>
-                  <TableCell><Badge label={loan.status} variant={loanStatusVariant(loan.status)} /></TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-3">
-                      {canManage && loan.status === 'REQUESTED' && (
-                        <button
-                          onClick={() => handleApprove(loan)}
-                          disabled={approvingId === loan.id}
-                          className="text-brand text-xs hover:underline disabled:opacity-50"
-                        >
-                          {approvingId === loan.id ? 'Approving…' : 'Approve'}
-                        </button>
-                      )}
-                      {canManage && loan.status === 'REQUESTED' && (
-                        <button
-                          onClick={() => handleReject(loan)}
-                          disabled={approvingId === loan.id}
-                          className="text-danger text-xs hover:underline disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      )}
-                      {canManage && loan.status === 'APPROVED' && (
-                        <button
-                          onClick={() => setDisbursing(loan)}
-                          disabled={disbursingId === loan.id}
-                          className="text-success text-xs hover:underline disabled:opacity-50"
-                        >
-                          {disbursingId === loan.id ? 'Disbursing…' : 'Disburse'}
-                        </button>
-                      )}
-                      {loan.status === 'DISBURSEMENT_PENDING' && (
-                        <span className="text-xs text-muted" title="Waiting for the provider to confirm">
-                          Payout in flight
-                        </span>
-                      )}
-                      <button onClick={() => openSchedule(loan)} className="text-brand text-xs hover:underline">View Schedule</button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {loans.length === 0 ? (
+            <div className="rounded-2xl bg-surface py-10 text-center text-sm text-muted shadow-card">No loans yet.</div>
+          ) : (
+            <Table columns={loanColumns} rows={pageItems} rowKey={(loan) => loan.id} />
+          )}
         </Reveal>
       )}
 
@@ -405,8 +429,8 @@ export default function LoansPage() {
           title="Disburse this loan"
           message={
             needsDualSignOff(disbursing)
-              ? `${formatMoney(disbursing.principal)} is above this chama's approval threshold, so it needs a second sign-off before it can be paid out. If that has not cleared on the Approvals page, this will be rejected.`
-              : `Send ${formatMoney(disbursing.principal)} to ${disbursing.memberName} by M-Pesa. This moves real money and cannot be undone from here.`
+              ? `${formatMoney(disbursing.principal, currency)} is above this chama's approval threshold, so it needs a second sign-off before it can be paid out. If that has not cleared on the Approvals page, this will be rejected.`
+              : `Send ${formatMoney(disbursing.principal, currency)} to ${disbursing.memberName} by M-Pesa. This moves real money and cannot be undone from here.`
           }
           confirmLabel="Disburse"
           variant="primary"
@@ -439,8 +463,8 @@ export default function LoansPage() {
                   <tr key={r.id}>
                     <td className="py-2">{r.installmentNumber}</td>
                     <td className="py-2 text-muted">{r.scheduledDate}</td>
-                    <td className="py-2 font-mono text-muted">{r.amountDue.toLocaleString()}</td>
-                    <td className="py-2 font-mono text-muted">{r.amountPaid.toLocaleString()}</td>
+                    <td className="py-2 font-mono text-muted">{formatMoney(r.amountDue, currency)}</td>
+                    <td className="py-2 font-mono text-muted">{formatMoney(r.amountPaid, currency)}</td>
                     <td className="py-2"><Badge label={r.status} variant={repaymentStatusVariant(r.status)} /></td>
                     {canManage && (
                       <td className="py-2 text-right">
@@ -464,7 +488,7 @@ export default function LoansPage() {
               <FormError message={paymentNotice} />
             )}
             <p className="text-sm text-muted">
-              Due {payingRepayment.amountDue.toLocaleString()}, already paid {payingRepayment.amountPaid.toLocaleString()}.
+              Due {formatMoney(payingRepayment.amountDue, currency)}, already paid {formatMoney(payingRepayment.amountPaid, currency)}.
             </p>
             <FormField label="Amount" htmlFor="loan-payment-amount" required>
               <Input id="loan-payment-amount" required type="number" min="0" step="0.01" value={paymentForm.amount}

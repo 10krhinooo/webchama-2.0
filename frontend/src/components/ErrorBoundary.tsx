@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import ErrorScreen from './feedback/ErrorScreen'
+import { reportError } from '../lib/errorReporting'
 
 interface Props {
   children: ReactNode
@@ -24,6 +25,9 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Unhandled render error', error, info)
+    // The console line is for whoever has devtools open, which is nobody in production. This is
+    // the half that reaches someone who can fix it.
+    reportError(error, info.componentStack)
   }
 
   render() {

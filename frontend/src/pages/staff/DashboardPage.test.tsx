@@ -237,7 +237,7 @@ describe('DashboardPage', () => {
     renderAt()
 
     await waitFor(() => expect(screen.getByText('Outstanding loans')).toBeTruthy())
-    expect(screen.getByText('KES 5,000')).toBeTruthy()
+    expect(screen.getByText('Ksh 5,000.00')).toBeTruthy()
     expect(screen.getByText('1 active loan')).toBeTruthy()
     expect(screen.getByText('Next payout')).toBeTruthy()
     expect(screen.getByText('X')).toBeTruthy()
@@ -283,15 +283,15 @@ describe('DashboardPage', () => {
 
     await waitFor(() => expect(screen.getByText('Welfare fund')).toBeTruthy())
     expect(mockGetWelfareFund).toHaveBeenCalledWith(3)
-    expect(screen.getByText('KES 4,000')).toBeTruthy()
-    expect(screen.getByText('of KES 10,000 goal')).toBeTruthy()
+    expect(screen.getByText('Ksh 4,000.00')).toBeTruthy()
+    expect(screen.getByText('of Ksh 10,000.00 goal')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Edit goal'))
     fireEvent.change(screen.getByLabelText('Welfare fund goal'), { target: { value: '20000' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(mockUpdateWelfareFundTarget).toHaveBeenCalledWith(3, { target: 20000 }))
-    await waitFor(() => expect(screen.getByText('of KES 20,000 goal')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('of Ksh 20,000.00 goal')).toBeTruthy())
   })
 
   it('shows an error notice when saving the welfare fund goal fails', async () => {
@@ -333,7 +333,7 @@ describe('DashboardPage', () => {
     renderAt()
 
     await waitFor(() => expect(screen.getByText('My loan balance')).toBeTruthy())
-    expect(screen.getByText('KES 800')).toBeTruthy()
+    expect(screen.getByText('Ksh 800.00')).toBeTruthy()
     expect(screen.getByText('My payout position')).toBeTruthy()
     expect(screen.getByText('No payout scheduled yet')).toBeTruthy()
   })
@@ -342,14 +342,14 @@ describe('DashboardPage', () => {
     mockUseMyMembership.mockReturnValue({ isChairperson: true, isTreasurer: false, loading: false })
     mockGetContributions.mockResolvedValue([])
     mockUseActivityFeed.mockReturnValue({
-      entries: [{ id: 1, chamaId: 3, eventType: 'CONTRIBUTION_PAID', description: 'Grace paid KES 500', createdAt: '2026-07-24T10:00:00Z' }],
+      entries: [{ id: 1, chamaId: 3, eventType: 'CONTRIBUTION_PAID', description: 'Grace paid Ksh 500.00', createdAt: '2026-07-24T10:00:00Z' }],
       loading: false,
     })
 
     renderAt()
 
     await waitFor(() => expect(screen.getByText('Recent activity')).toBeTruthy())
-    expect(screen.getByText('Grace paid KES 500')).toBeTruthy()
+    expect(screen.getByText('Grace paid Ksh 500.00')).toBeTruthy()
   })
 
   it('does not show a recent-activity panel for a plain member', async () => {
@@ -370,7 +370,7 @@ describe('DashboardPage', () => {
     renderAt()
 
     await waitFor(() => expect(screen.getByText('Savings goal')).toBeTruthy())
-    expect(screen.getByText('KES 320,000 of KES 500,000 saved')).toBeTruthy()
+    expect(screen.getByText('Ksh 320,000.00 of Ksh 500,000.00 saved')).toBeTruthy()
   })
 
   it('omits the savings goal card when no target is set', async () => {

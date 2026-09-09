@@ -223,37 +223,45 @@ function HomePage() {
           </div>
         </section>
 
-        {/* Roles — cascading card stack, staggered via CSS nth-child delay once the grid scrolls into view */}
-        <section id="roles" className="shell py-20">
-          <Reveal variant="fade">
-            <p className="text-center font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
-              Everyone has a seat
-            </p>
-            <h2 className="mt-4 text-center text-3xl font-bold text-ink sm:text-4xl">
-              Built around the roles your chama already has.
-            </h2>
-          </Reveal>
-          <div
-            ref={roleGridRef}
-            className={`stagger-children mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4 ${roleGridInView ? "stagger-in" : ""}`}
-          >
-            {ROLES.map((r) => (
-              <div key={r.role} className="transition-transform duration-300 hover:-translate-y-1">
-                <RoleCard role={r.role} items={r.items} />
-              </div>
-            ))}
+        {/* Roles — cascading card stack, staggered via CSS nth-child delay once the grid scrolls into view.
+            The band background sits on the section so it runs edge to edge; only the inner div is capped
+            by the shell. Putting the shell on the section itself left the band capped too, which read as
+            dead margins either side of the page on a wide monitor. */}
+        <section id="roles" className="bg-paper-dim">
+          <div className="shell py-20">
+            <Reveal variant="fade">
+              <p className="text-center font-heading text-xs font-semibold uppercase tracking-[0.2em] text-brand">
+                Everyone has a seat
+              </p>
+              <h2 className="mt-4 text-center text-3xl font-bold text-ink sm:text-4xl">
+                Built around the roles your chama already has.
+              </h2>
+            </Reveal>
+            <div
+              ref={roleGridRef}
+              className={`stagger-children mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4 ${roleGridInView ? "stagger-in" : ""}`}
+            >
+              {ROLES.map((r) => (
+                <div key={r.role} className="transition-transform duration-300 hover:-translate-y-1">
+                  <RoleCard role={r.role} items={r.items} />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Testimonial */}
-        <section className="bg-paper-dim py-20">
-          <Reveal variant="scale">
-            <WhatsAppQuote
-              quote="We used to get confused about who had paid what. Sasa, everyone can see it on their phone before the meeting even starts."
-              name="Grace W."
-              role="Chairlady, Tumaini Chama"
-            />
-          </Reveal>
+        {/* Testimonial — plain paper between the roles band above and the primary band below, aligned to
+            the shell like every other section (the quote keeps its own reading width inside it). */}
+        <section className="bg-paper">
+          <div className="shell py-20">
+            <Reveal variant="scale">
+              <WhatsAppQuote
+                quote="We used to get confused about who had paid what. Sasa, everyone can see it on their phone before the meeting even starts."
+                name="Grace W."
+                role="Chairlady, Tumaini Chama"
+              />
+            </Reveal>
+          </div>
         </section>
 
         {/* Final CTA */}

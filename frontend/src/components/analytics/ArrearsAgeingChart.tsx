@@ -1,5 +1,6 @@
 import type { ArrearsBucket } from '../../api/analytics'
 import Card from '../ui/Card'
+import { formatMoney } from '../../utils/money'
 
 /**
  * Unpaid contribution balances by age.
@@ -8,7 +9,13 @@ import Card from '../ui/Card'
  * categories and the useful comparison is between their sizes, which a plain bar conveys without
  * an axis to read.
  */
-export default function ArrearsAgeingChart({ buckets }: { buckets: ArrearsBucket[] }) {
+export default function ArrearsAgeingChart({
+  buckets,
+  currency,
+}: {
+  buckets: ArrearsBucket[]
+  currency?: string
+}) {
   const amounts = buckets.map((b) => Number(b.amount))
   const largest = Math.max(...amounts, 1)
   const total = amounts.reduce((sum, amount) => sum + amount, 0)
@@ -17,7 +24,7 @@ export default function ArrearsAgeingChart({ buckets }: { buckets: ArrearsBucket
     <Card data-testid="arrears-ageing-chart" className="space-y-3">
       <div className="flex items-baseline justify-between">
         <h2 className="font-heading text-lg font-semibold text-ink">Arrears by age</h2>
-        <span className="font-mono text-sm text-muted">{total.toLocaleString()} owed</span>
+        <span className="font-mono text-sm text-muted">{formatMoney(total, currency)} owed</span>
       </div>
       {total === 0 ? (
         <p className="text-sm text-muted">Nothing is in arrears.</p>
@@ -28,7 +35,7 @@ export default function ArrearsAgeingChart({ buckets }: { buckets: ArrearsBucket
               <div className="flex items-center justify-between text-sm">
                 <span className="text-ink/80">{bucket.bucket} days</span>
                 <span className="font-mono text-muted">
-                  {Number(bucket.amount).toLocaleString()}
+                  {formatMoney(Number(bucket.amount), currency)}
                   <span className="ml-2 text-xs text-subtle">
                     {bucket.members} {bucket.members === 1 ? 'member' : 'members'}
                   </span>

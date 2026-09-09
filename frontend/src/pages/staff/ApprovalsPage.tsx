@@ -23,12 +23,14 @@ import Modal from '../../components/ui/Modal'
 import FormError from '../../components/ui/FormError'
 import ApprovalStampBadge from '../../components/marketing/ApprovalStampBadge'
 import SignOffTrail from '../../components/marketing/SignOffTrail'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import TransientAlert from '../../components/ui/TransientAlert'
 import FormField from '../../components/ui/FormField'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
+import { formatMoney } from '../../utils/money'
+import { useChamaCurrency } from '../../hooks/useChamaCurrency'
 
 const EMPTY_FORM = { targetType: 'LOAN_DISBURSEMENT' as ApprovalTargetType, targetId: '', memberId: '', amount: '', reason: '' }
 
@@ -47,6 +49,55 @@ function targetTypeLabel(type: ApprovalTargetType) {
 export default function ApprovalsPage() {
   const { chamaId: chamaIdParam } = useParams<{ chamaId: string }>()
   const chamaId = Number(chamaIdParam)
+  const currency = useChamaCurrency(chamaId)
+
+  const approvalColumns: TableColumn<Approval>[] = [
+    {
+      key: 'member',
+      header: 'Member',
+      priority: 1,
+      render: (a) => <span className="font-medium text-ink">{a.memberName}</span>,
+    },
+    { key: 'status', header: 'Status', priority: 1, render: (a) => <ApprovalStampBadge status={a.status} /> },
+    { key: 'type', header: 'Type', render: (a) => <span className="text-muted">{targetTypeLabel(a.targetType)}</span> },
+    { key: 'amount', header: 'Amount', render: (a) => <span className="font-mono text-muted">{formatMoney(a.amount, currency)}</span> },
+    { key: 'reason', header: 'Reason', render: (a) => <span className="text-muted">{a.reason || '\u2014'}</span> },
+    {
+      key: 'signoff',
+      header: 'Sign-off',
+      render: (a) => (
+        <SignOffTrail requestedByName={a.requestedByName} firstApproverName={a.firstApproverName} />
+      ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      render: (a) => {
+        // The requester cannot supply either signature, and a signatory cannot supply both, so the
+        // button is disabled for whoever already signed rather than hidden: the reason matters.
+        const alreadySignedByMe = member != null && a.firstApproverMemberId === member.id
+        return a.status === 'PENDING' ? (
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <button
+              onClick={() => handleApprove(a)}
+              disabled={actingId === a.id || alreadySignedByMe}
+              title={alreadySignedByMe ? 'A different signatory must provide the second sign-off' : undefined}
+              className="text-brand text-xs hover:underline disabled:opacity-50"
+            >
+              {actingId === a.id ? 'Signing\u2026' : 'Sign off'}
+            </button>
+            <button
+              onClick={() => handleReject(a)}
+              disabled={actingId === a.id}
+              className="text-danger text-xs hover:underline disabled:opacity-50"
+            >
+              Reject
+            </button>
+          </div>
+        ) : null
+      },
+    },
+  ]
   const { member, loading: roleLoading } = useMyMembership(chamaId)
 
   const [approvals, setApprovals] = useState<Approval[]>([])
@@ -141,7 +192,7 @@ export default function ApprovalsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">Approvals</h1>
         <Button onClick={openCreate}>+ Request Approval</Button>
       </div>
@@ -153,64 +204,13 @@ export default function ApprovalsPage() {
       ) : loadError ? (
         <LoadFailed what="approvals" detail={loadError} onRetry={refresh} />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Member</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead>Sign-off</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {approvals.length === 0 && (
-              <TableRow>
-                  <TableCell colSpan={7}>
-                    <EmptyState title="No approval requests yet" description="Requests appear here when a loan or payout is above this chama's threshold." />
-                  </TableCell>
-                </TableRow>
-            )}
-            {pageItems.map((approval) => {
-              const alreadySignedByMe = member != null && approval.firstApproverMemberId === member.id
-              return (
-                <TableRow key={approval.id}>
-                  <TableCell className="font-medium text-ink">{approval.memberName}</TableCell>
-                  <TableCell className="text-muted">{targetTypeLabel(approval.targetType)}</TableCell>
-                  <TableCell className="font-mono text-muted">{approval.amount.toLocaleString()}</TableCell>
-                  <TableCell className="text-muted">{approval.reason || '—'}</TableCell>
-                  <TableCell>
-                    <SignOffTrail requestedByName={approval.requestedByName} firstApproverName={approval.firstApproverName} />
-                  </TableCell>
-                  <TableCell><ApprovalStampBadge status={approval.status} /></TableCell>
-                  <TableCell>
-                    {approval.status === 'PENDING' && (
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => handleApprove(approval)}
-                          disabled={actingId === approval.id || alreadySignedByMe}
-                          title={alreadySignedByMe ? 'A different signatory must provide the second sign-off' : undefined}
-                          className="text-brand text-xs hover:underline disabled:opacity-50"
-                        >
-                          {actingId === approval.id ? 'Signing…' : 'Sign off'}
-                        </button>
-                        <button
-                          onClick={() => handleReject(approval)}
-                          disabled={actingId === approval.id}
-                          className="text-danger text-xs hover:underline disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+        approvals.length === 0 ? (
+          <div className="rounded-2xl bg-surface shadow-card">
+            <EmptyState title="No approval requests yet" description="Requests appear here when a loan or payout is above this chama's threshold." />
+          </div>
+        ) : (
+          <Table columns={approvalColumns} rows={pageItems} rowKey={(a) => a.id} />
+        )
       )}
 
       {!loading && !roleLoading && (
@@ -242,7 +242,7 @@ export default function ApprovalsPage() {
                   onChange={(v) => setForm({ ...form, targetId: v })}>
                   <option value="" disabled>Select a loan</option>
                   {loans.map((l) => (
-                    <option key={l.id} value={l.id}>{l.memberName} &middot; {l.principal.toLocaleString()}</option>
+                    <option key={l.id} value={l.id}>{l.memberName} &middot; {formatMoney(l.principal, currency)}</option>
                   ))}
                 </Select>
               </FormField>

@@ -253,6 +253,17 @@ passes when you run the class alone and fails in the full suite, on rows some ot
 behind that still reference `member` or `chama`. Older classes still carry their own copy of the
 list; new ones should not.
 
+**Add a table that belongs to a chama, and give it `ON DELETE CASCADE`.** Deleting a chama used to
+be an ordered list of bulk deletes in `ChamaService`, mirrored by a second list in
+`TestDataCleaner`, and every new per-chama table had to be added to both. It drifted: by the time
+V49 replaced it, six tables were missing from the list, so deleting a chama that had ever recorded
+an approval, produced a receipt, opened a resolution or run a welfare fund failed on a foreign key.
+The database owns this now, and `ChamaDeletionCascadeTest` walks the live constraints and fails the
+build when a table can be reached from a chama by one that does not cascade. Fix it with a
+migration, the way V49 did, rather than another line in a list. The member-facing constraints are
+deliberately left alone: they are the database's half of the `EXITED` soft-delete rule, which is
+why `MemberService` refuses to delete a member with financial history.
+
 **Refuse an action in a way the user can read.** Throw a `WebApplicationException` subclass with
 the sentence you want them to see: `throw new BadRequestException("This member has history and
 can't be deleted. Set their status to EXITED instead.")`. `WebApplicationExceptionMapper` puts that
