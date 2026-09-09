@@ -13,20 +13,10 @@ import org.chama.dto.MyChamaDto;
 import org.chama.dto.SavingsProgressDto;
 import org.chama.dto.UpdateAutoPushSettingsDto;
 import org.chama.dto.UpdateChamaDto;
-import org.chama.repository.ActivityLogRepository;
 import org.chama.repository.ChamaRepository;
 import org.chama.repository.ContributionRepository;
-import org.chama.repository.LoanDisbursementRepository;
-import org.chama.repository.LoanRepaymentRepository;
-import org.chama.repository.LoanRepository;
-import org.chama.repository.MeetingAttendanceRepository;
-import org.chama.repository.MeetingRepository;
 import org.chama.repository.MemberRepository;
 import org.chama.repository.MemberRoleRepository;
-import org.chama.repository.PaymentRepository;
-import org.chama.repository.PayoutRepository;
-import org.chama.repository.PayoutScheduleRepository;
-import org.chama.repository.PenaltyRepository;
 import org.chama.security.CurrentUser;
 
 import java.security.SecureRandom;
@@ -54,35 +44,15 @@ public class ChamaService {
     @Inject
     ContributionRepository contributionRepository;
 
-    @Inject
-    PaymentRepository paymentRepository;
 
-    @Inject
-    ActivityLogRepository activityLogRepository;
 
-    @Inject
-    LoanRepaymentRepository loanRepaymentRepository;
 
-    @Inject
-    LoanDisbursementRepository loanDisbursementRepository;
 
-    @Inject
-    LoanRepository loanRepository;
 
-    @Inject
-    PayoutRepository payoutRepository;
 
-    @Inject
-    PayoutScheduleRepository payoutScheduleRepository;
 
-    @Inject
-    PenaltyRepository penaltyRepository;
 
-    @Inject
-    MeetingAttendanceRepository meetingAttendanceRepository;
 
-    @Inject
-    MeetingRepository meetingRepository;
 
     /**
      * SUPER_ADMIN gets no special treatment here, per MIGRATION_PLAN.md section 5 ("no operational
@@ -233,34 +203,26 @@ public class ChamaService {
         return chama;
     }
 
+    /**
+     * Removes a chama and everything belonging to it.
+     *
+     * <p>The rows go because the database says so, not because this method remembers to name them.
+     * Every table carrying a chama_id cascades from the chama, and the four children that have no
+     * chama_id of their own cascade from their parent, all declared in V49.
+     *
+     * <p>This used to be an ordered sequence of fourteen bulk deletes, and the ordering was the
+     * least of it: every new per-chama table had to be added here and to the test cleaner, and six
+     * of them had not been. Deleting a chama that had ever recorded an approval, produced a
+     * receipt, opened a resolution or run a welfare fund failed on a foreign key. A list that has
+     * to be maintained by whoever remembers is not an invariant, which is why the database keeps
+     * it now and {@code ChamaDeletionCascadeTest} fails the build if a new table arrives without a
+     * cascade.
+     */
     @Transactional
     public void delete(Long id) {
         if (!chamaRepository.findByIdOptional(id).isPresent()) {
             throw new NotFoundException();
         }
-        // Order matters: every table below references chama directly or transitively (member,
-        // loan, meeting), so they must go first. Bulk delete-by-query throughout (never loading
-        // the child entities into the persistence context) avoids stale-entity flush ordering
-        // issues with the final chamaRepository.deleteById(id) below.
-        paymentRepository.delete("chama.id", id);
-        loanRepaymentRepository.delete("loan.chama.id", id);
-        // Must run before loanRepository.delete below: loan_disbursement.loan_id is a NOT NULL FK
-        // with no cascade (issue P1-7).
-        loanDisbursementRepository.delete("loan.chama.id", id);
-        loanRepository.delete("chama.id", id);
-        payoutRepository.delete("chama.id", id);
-        payoutScheduleRepository.delete("chama.id", id);
-        penaltyRepository.delete("chama.id", id);
-        meetingAttendanceRepository.delete("meeting.chama.id", id);
-        meetingRepository.delete("chama.id", id);
-        contributionRepository.delete("chama.id", id);
-        memberRoleRepository.deleteByChamaId(id);
-        memberRepository.delete("chama.id", id);
-        // activity_log references chama with no cascade and was missing from this list, so
-        // deleting a chama that had recorded any activity, which is every chama that has been
-        // used, failed on the foreign key. notification is absent here deliberately: its own
-        // foreign key cascades, see V41.
-        activityLogRepository.delete("chama.id", id);
         chamaRepository.deleteById(id);
     }
 }
