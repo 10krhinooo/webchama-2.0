@@ -83,6 +83,18 @@
             <artifactId>openpdf</artifactId>
             <version>3.0.5</version>
         </dependency>
+        <!--
+            The plain SDK rather than io.quarkiverse.loggingsentry:quarkus-logging-sentry. That
+            extension is the idiomatic choice, but its latest release (2.1.2) was built against
+            Quarkus 3.15.3 and this project runs 3.38.0, and it works by forwarding every ERROR
+            log line, which on this codebase would ship messages containing member names and
+            amounts. Capturing explicitly is what SentryConfiguration's scrubbing needs.
+        -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry</artifactId>
+            <version>8.55.0</version>
+        </dependency>
         <dependency>
             <groupId>io.quarkiverse.groovy</groupId>
             <artifactId>quarkus-groovy-junit5</artifactId>
