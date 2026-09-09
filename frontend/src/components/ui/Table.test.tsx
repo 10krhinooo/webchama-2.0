@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import {
   Table,
@@ -9,6 +9,39 @@ import {
   TableCell,
   type TableColumn,
 } from './Table'
+
+/**
+ * Renders as if on a narrow screen.
+ *
+ * Table mounts the card stack or the table, never both, so the branch is chosen by matchMedia
+ * rather than by CSS the test environment does not apply. jsdom answers `false` to every query,
+ * which is what keeps the wide layout the default everywhere else; a test that wants the cards
+ * says so here.
+ */
+function renderCompact(ui: React.ReactElement) {
+  vi.stubGlobal(
+    'matchMedia',
+    (query: string) =>
+      ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList,
+  )
+  return render(ui)
+}
+
+// Top level, not inside one describe: the compact stub must be cleared for every test in the
+// file, including those in the second describe block, or a stubbed narrow viewport leaks into
+// tests that expect the table.
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('Table', () => {
   it('renders a semantic table with header and body rows', () => {
@@ -81,7 +114,7 @@ describe('Table with columns and rows', () => {
   })
 
   it('renders the same rows as a card stack list', () => {
-    render(<Table columns={columns} rows={rows} rowKey={rowKey} />)
+    renderCompact(<Table columns={columns} rows={rows} rowKey={rowKey} />)
     const list = screen.getByRole('list')
     const cards = within(list).getAllByRole('listitem')
     expect(cards).toHaveLength(2)
@@ -90,7 +123,7 @@ describe('Table with columns and rows', () => {
   })
 
   it('puts priority-1 columns in the card header line, not the label/value rows', () => {
-    render(<Table columns={columns} rows={rows} rowKey={rowKey} />)
+    renderCompact(<Table columns={columns} rows={rows} rowKey={rowKey} />)
     const card = within(screen.getByRole('list')).getAllByRole('listitem')[0]
     // The value renders in the bold header line, outside the dl, and without its column label.
     expect(within(card).getByText('Jane Doe').closest('dl')).toBeNull()
@@ -98,7 +131,7 @@ describe('Table with columns and rows', () => {
   })
 
   it('renders columns without an explicit priority as label/value rows', () => {
-    render(<Table columns={columns} rows={rows} rowKey={rowKey} />)
+    renderCompact(<Table columns={columns} rows={rows} rowKey={rowKey} />)
     const card = within(screen.getByRole('list')).getAllByRole('listitem')[0]
     expect(within(card).getByText('Phone').closest('dl')).not.toBeNull()
     expect(within(card).getByText('0712 000001').closest('dl')).not.toBeNull()
@@ -106,11 +139,15 @@ describe('Table with columns and rows', () => {
     expect(within(card).getByText('TREASURER')).toBeTruthy()
   })
 
-  it('omits priority-3 columns from the card stack but keeps them in the table', () => {
-    render(<Table columns={columns} rows={rows} rowKey={rowKey} />)
+  it('omits priority-3 columns from the card stack', () => {
+    renderCompact(<Table columns={columns} rows={rows} rowKey={rowKey} />)
     const list = screen.getByRole('list')
     expect(within(list).queryByText('Joined')).toBeNull()
     expect(within(list).queryByText('2024-01-05')).toBeNull()
+  })
+
+  it('keeps priority-3 columns in the table', () => {
+    render(<Table columns={columns} rows={rows} rowKey={rowKey} />)
     expect(within(screen.getByRole('table')).getByRole('cell', { name: '2024-01-05' })).toBeTruthy()
   })
 
@@ -118,7 +155,7 @@ describe('Table with columns and rows', () => {
     const plain: TableColumn<Row>[] = [
       { key: 'phone', header: 'Phone', render: (row) => row.phone },
     ]
-    render(<Table columns={plain} rows={rows} rowKey={rowKey} />)
+    renderCompact(<Table columns={plain} rows={rows} rowKey={rowKey} />)
     const card = within(screen.getByRole('list')).getAllByRole('listitem')[0]
     expect(within(card).getByText('0712 000001').closest('dl')).not.toBeNull()
     expect(card.querySelector('dl')?.className).not.toContain('mt-2')
@@ -128,7 +165,7 @@ describe('Table with columns and rows', () => {
     const headerOnly: TableColumn<Row>[] = [
       { key: 'name', header: 'Name', render: (row) => row.name, priority: 1 },
     ]
-    render(<Table columns={headerOnly} rows={rows} rowKey={rowKey} />)
+    renderCompact(<Table columns={headerOnly} rows={rows} rowKey={rowKey} />)
     const card = within(screen.getByRole('list')).getAllByRole('listitem')[0]
     expect(within(card).getByText('Jane Doe')).toBeTruthy()
     expect(card.querySelector('dl')).toBeNull()

@@ -71,4 +71,24 @@ test.describe('mobile navigation', () => {
     const breadcrumb = asMember.getByRole('navigation', { name: 'Breadcrumb' })
     await expect(breadcrumb.getByText('Contributions')).toBeVisible()
   })
+
+  // The card stack is chosen by matchMedia, so unlike the CSS-hidden first version it genuinely
+  // does not render a table at this width. That is only observable in a real browser.
+  test('the contributions table becomes a card stack, not a sideways scroll', async ({ asMember }) => {
+    await asMember.setViewportSize(PHONE)
+    await asMember.goto(`/chamas/${chama}/contributions`)
+    await expect(asMember.getByRole('heading', { level: 1 })).toBeVisible()
+
+    // Wait for a card, not just the heading: the rows arrive after the page settles, and a bare
+    // count taken too early reads zero for both renderings and passes the table assertion by
+    // accident.
+    await expect(asMember.getByRole('listitem').first()).toBeVisible()
+    await expect(asMember.getByRole('table')).toHaveCount(0)
+  })
+
+  test('the same page is a table on a wide screen', async ({ asMember }) => {
+    await asMember.setViewportSize({ width: 1280, height: 900 })
+    await asMember.goto(`/chamas/${chama}/contributions`)
+    await expect(asMember.getByRole('table')).toBeVisible()
+  })
 })

@@ -38,7 +38,7 @@ import { SkeletonLine } from '../../components/ui/Skeleton'
 import Select from '../../components/ui/Select'
 import Pagination from '../../components/ui/Pagination'
 import Reveal from '../../components/ui/Reveal'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
+import { Table, type TableColumn } from '../../components/ui/Table'
 import { usePagination } from '../../hooks/usePagination'
 import { formatMoney } from '../../utils/money'
 import { useChamaCurrency } from '../../hooks/useChamaCurrency'
@@ -103,6 +103,100 @@ export default function ContributionsPage() {
   const [streak, setStreak] = useState<number | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
   const { page, totalPages, total, pageSize, pageItems, setPage } = usePagination(contributions)
+
+  /**
+   * The table as column definitions, so the same data renders as a table from `md` up and as a
+   * card stack below it. Priorities decide the card: 1 goes in the card's header line, 2 becomes a
+   * label and value row, 3 is table-only.
+   *
+   * Period and status lead the card because they are what a member scans for, in that order:
+   * which month, and did it go through. The member's own name is not on their own card, only on a
+   * treasurer's, which is why the Member column is added conditionally rather than hidden.
+   */
+  const contributionColumns: TableColumn<Contribution>[] = [
+    ...(canManage
+      ? [
+          {
+            key: 'member',
+            header: 'Member',
+            priority: 1 as const,
+            render: (c: Contribution) => <span className="font-medium text-ink">{c.memberName}</span>,
+          },
+        ]
+      : []),
+    { key: 'period', header: 'Period', priority: 1, render: (c) => <span className="text-muted">{c.period}</span> },
+    {
+      key: 'status',
+      header: 'Status',
+      priority: 1,
+      render: (c) => <Badge label={c.status} variant={statusVariant(c.status)} />,
+    },
+    {
+      key: 'due',
+      header: 'Due',
+      render: (c) => <span className="font-mono text-muted">{formatMoney(c.amountDue, currency)}</span>,
+    },
+    {
+      key: 'paid',
+      header: 'Paid',
+      render: (c) => <span className="font-mono text-muted">{formatMoney(c.amountPaid, currency)}</span>,
+    },
+    {
+      key: 'payment',
+      header: 'Payment',
+      render: (c) => {
+        const latestPayment = latestPaymentFor(payments, c.id)
+        return latestPayment ? (
+          <Badge
+            label={`${latestPayment.method} ${latestPayment.status}`}
+            variant={paymentStatusVariant(latestPayment.status)}
+          />
+        ) : (
+          <span className="text-xs text-muted">&mdash;</span>
+        )
+      },
+    },
+    {
+      key: 'actions',
+      // Labelled for a screen reader but not shown: an empty th is a real barrier in table
+      // navigation mode, and on a card the label column stays visually blank beside the buttons.
+      header: <span className="sr-only">Actions</span>,
+      render: (c) => {
+        const latestPayment = latestPaymentFor(payments, c.id)
+        const mpesaPending = latestPayment?.method === 'MPESA' && latestPayment.status === 'PENDING'
+        return (
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {canManage ? (
+              <>
+                {c.status !== 'PAID' && (
+                  <button onClick={() => openPayment(c)} className="text-brand text-xs hover:underline">Record Payment</button>
+                )}
+                <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
+              </>
+            ) : c.status === 'PAID' ? (
+              // Their own contribution, so they can produce their own receipt. Safe to press
+              // twice: the backend returns the document already on file rather than filing a
+              // second one.
+              <button
+                onClick={() => handleReceipt(c)}
+                disabled={receiptingId === c.id}
+                className="text-brand text-xs hover:underline disabled:opacity-50"
+              >
+                {receiptingId === c.id ? 'Preparing\u2026' : 'Receipt'}
+              </button>
+            ) : mpesaPending ? (
+              <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
+            ) : (
+              <>
+                <button onClick={() => openMpesaConfirm(c)} className="text-brand text-xs hover:underline">Pay via M-Pesa</button>
+                <button onClick={() => openCardPayment(c)} className="text-brand text-xs hover:underline">Pay by Card</button>
+              </>
+            )}
+          </div>
+        )
+      },
+    },
+  ]
 
   useEffect(() => {
     setAutoPayEnabled(member?.autoPayEnabled ?? false)
@@ -367,83 +461,17 @@ export default function ContributionsPage() {
         <LoadFailed what="contributions" detail={loadError} onRetry={refresh} />
       ) : (
         <Reveal eager delayMs={80}>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                {canManage && <TableHead>Member</TableHead>}
-                <TableHead>Period</TableHead>
-                <TableHead>Due</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contributions.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7}>
-                    <EmptyState title="No contributions yet" description="Contributions appear here once a cycle is billed." />
-                  </TableCell>
-                </TableRow>
-              )}
-              {pageItems.map((c) => {
-                const latestPayment = latestPaymentFor(payments, c.id)
-                const mpesaPending = latestPayment?.method === 'MPESA' && latestPayment.status === 'PENDING'
-                return (
-                  <TableRow key={c.id}>
-                    {canManage && <TableCell className="font-medium text-ink">{c.memberName}</TableCell>}
-                    <TableCell className="text-muted">{c.period}</TableCell>
-                    <TableCell className="font-mono text-muted">{formatMoney(c.amountDue, currency)}</TableCell>
-                    <TableCell className="font-mono text-muted">{formatMoney(c.amountPaid, currency)}</TableCell>
-                    <TableCell><Badge label={c.status} variant={statusVariant(c.status)} /></TableCell>
-                    <TableCell>
-                      {latestPayment ? (
-                        <Badge
-                          label={`${latestPayment.method} ${latestPayment.status}`}
-                          variant={paymentStatusVariant(latestPayment.status)}
-                        />
-                      ) : (
-                        <span className="text-xs text-muted">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-3">
-                        {canManage ? (
-                          <>
-                            {c.status !== 'PAID' && (
-                              <button onClick={() => openPayment(c)} className="text-brand text-xs hover:underline">Record Payment</button>
-                            )}
-                            <button onClick={() => setDeleting(c)} className="text-danger text-xs hover:underline">Delete</button>
-                          </>
-                        ) : c.status === 'PAID' ? (
-                          // Their own contribution, so they can produce their own receipt. Safe to
-                          // press twice: the backend returns the document already on file rather
-                          // than filing a second one.
-                          <button
-                            onClick={() => handleReceipt(c)}
-                            disabled={receiptingId === c.id}
-                            className="text-brand text-xs hover:underline disabled:opacity-50"
-                          >
-                            {receiptingId === c.id ? 'Preparing…' : 'Receipt'}
-                          </button>
-                        ) : (
-                          mpesaPending ? (
-                            <span className="text-xs text-muted">M-Pesa prompt sent, check your phone</span>
-                          ) : (
-                            <>
-                              <button onClick={() => openMpesaConfirm(c)} className="text-brand text-xs hover:underline">Pay via M-Pesa</button>
-                              <button onClick={() => openCardPayment(c)} className="text-brand text-xs hover:underline">Pay by Card</button>
-                            </>
-                          )
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          {contributions.length === 0 ? (
+            <div className="rounded-2xl bg-surface shadow-card">
+              <EmptyState title="No contributions yet" description="Contributions appear here once a cycle is billed." />
+            </div>
+          ) : (
+            <Table
+              columns={contributionColumns}
+              rows={pageItems}
+              rowKey={(c) => c.id}
+            />
+          )}
         </Reveal>
       )}
 
