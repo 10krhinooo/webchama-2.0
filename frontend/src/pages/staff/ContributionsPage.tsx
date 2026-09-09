@@ -322,12 +322,12 @@ export default function ContributionsPage() {
 
   return (
     <div className="space-y-4">
-      <Reveal eager className="flex items-center justify-between">
+      <Reveal eager className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">
           {canManage ? 'Contributions' : 'My Contributions'}
         </h1>
         {!roleLoading && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4 gap-y-2">
             {!canManage && streak !== null && streak > 0 && (
               <span
                 data-testid="contribution-streak"

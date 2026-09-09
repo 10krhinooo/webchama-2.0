@@ -203,9 +203,9 @@ export default function WelfareFundPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-heading text-2xl font-bold text-ink">Welfare Fund</h1>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button onClick={openContribute}>+ Contribute</Button>
           {isManager && <Button variant="secondary" onClick={openRecord}>+ Record Contribution</Button>}
           {isManager && <Button variant="secondary" onClick={openWithdraw}>+ Withdrawal</Button>}

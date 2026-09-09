@@ -123,7 +123,7 @@ export default function ResolutionsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">Resolutions</h1>
         {canManage && <Button onClick={openCreate}>+ Open Resolution</Button>}
       </div>

@@ -211,7 +211,7 @@ export default function DocumentGeneratorPage() {
   if (mode === 'wizard') {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <h1 className="font-heading text-2xl font-bold text-ink">New Document</h1>
           <Button variant="secondary" onClick={() => setMode('list')}>Cancel</Button>
         </div>
@@ -336,7 +336,7 @@ export default function DocumentGeneratorPage() {
                   <p className="text-xs text-muted">{generated.documentNumber}</p>
                   <p className="font-mono text-2xl font-bold text-brand">{formatMoney(generated.totalAmount, currency)}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <LoadingButton onClick={handleSendEmail} loading={sendingEmail} loadingText="Sending…">
                     Send Email
                   </LoadingButton>
@@ -381,7 +381,7 @@ export default function DocumentGeneratorPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">Documents</h1>
         <Button onClick={openWizard}>+ New Document</Button>
       </div>

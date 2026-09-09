@@ -207,7 +207,7 @@ export default function ChamasPage() {
 
   return (
     <div className="space-y-4">
-      <Reveal eager className="flex items-center justify-between">
+      <Reveal eager className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="font-heading text-2xl font-bold text-ink">Chamas</h1>
         <Button onClick={openCreate}>+ New Chama</Button>
       </Reveal>

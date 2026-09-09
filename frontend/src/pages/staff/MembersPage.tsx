@@ -314,13 +314,13 @@ export default function MembersPage() {
 
   return (
     <div className="space-y-4">
-      <Reveal eager className="flex items-center justify-between">
+      <Reveal eager className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-ink">Members</h1>
           {chama && <p className="text-sm text-muted">{chama.name}</p>}
         </div>
         {isChairperson && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={openImport}>Import from file</Button>
             <Button onClick={openCreate}>+ Invite Member</Button>
           </div>
@@ -345,7 +345,7 @@ export default function MembersPage() {
             Regenerate code
           </LoadingButton>
 
-          <form onSubmit={handleInvite} className="flex items-end gap-2 pt-2">
+          <form onSubmit={handleInvite} className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-end">
             <FormField label="Invite by email" htmlFor="member-invite-email" hint={inviteNotice ?? undefined}>
               <Input
                 id="member-invite-email"
@@ -499,7 +499,7 @@ export default function MembersPage() {
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setShowImport(false)}>Close</Button>
               <LoadingButton
                 variant="secondary"
